@@ -1,0 +1,29 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: {{ .Values.ingress.apiVersion }}
+kind: Ingress
+metadata:
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.ingress.labels }}
+{{ toYaml .Values.ingress.labels | indent 4 }}
+{{- end }}
+{{- if .Values.ingress.annotations }}
+  annotations:
+{{ toYaml .Values.ingress.annotations | indent 4 }}
+{{- end }}
+  name: {{ template "retool.fullname" . }}
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: {{ template "retool.fullname" . }}
+          servicePort: {{ .Values.service.externalPort }}
+{{- if .Values.ingress.hostName }}
+    host: {{ .Values.ingress.hostName | quote }}
+{{- end }}
+{{- if .Values.ingress.tls }}
+  tls:
+{{ toYaml .Values.ingress.tls | indent 4 }}
+{{- end -}}
+{{- end }}
