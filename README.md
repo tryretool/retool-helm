@@ -18,17 +18,17 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
 1. Add the Retool Helm repository:
     
-    $ helm repo add retool https://charts.retool.com
-    "retool" has been added to your repositories
+        $ helm repo add retool https://charts.retool.com
+        "retool" has been added to your repositories
     
 2. Ensure you have access to the `retool` chart: 
 
-    $ helm search repo retool/retool
-    NAME         	CHART VERSION	APP VERSION	DESCRIPTION                
-    retool/retool	4.0.0        	2.66.2     	A Helm chart for Kubernetes
+        $ helm search repo retool/retool
+        NAME         	CHART VERSION	APP VERSION	DESCRIPTION                
+        retool/retool	4.0.0        	2.66.2     	A Helm chart for Kubernetes
 
 3. Now you're all ready to install Retool:
 
-    $ helm install my-retool retool/retool
+        $ helm install my-retool retool/retool
 
 Please see the many options supported in the `values.yaml` file.
