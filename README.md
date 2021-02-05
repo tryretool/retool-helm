@@ -1,5 +1,7 @@
 # retool-helm
 
+[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/retool)](https://artifacthub.io/packages/search?repo=retool)
+
 This repository contains the official Helm chart for installing and configuring
 Retool on Kubernetes. For full documentation on all the ways you can deploy
 Retool on your own infrastructure, please see the [Setup
