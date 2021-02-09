@@ -1,20 +1,19 @@
 {{- if gt .Values.replicaCount 1.0 }}
-apiVersion: apps/v1
+apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-jobs-runner
   labels:
-{{- include "retool.labels" . | nindent 4 }}
+    app: {{ template "retool.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "retool.fullname" . }}-jobs-runner
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
-      app.kubernetes.io/instance: {{ .Release.Name }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -23,8 +22,8 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
-        app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        app: {{ template "retool.fullname" . }}-jobs-runner
+        release: "{{ .Release.Name }}"
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}

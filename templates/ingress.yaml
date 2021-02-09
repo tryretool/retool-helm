@@ -3,7 +3,10 @@ apiVersion: {{ .Values.ingress.apiVersion }}
 kind: Ingress
 metadata:
   labels:
-    {{- include "retool.labels" . | nindent 4 }}
+    app: {{ template "retool.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
 {{- if .Values.ingress.labels }}
 {{ toYaml .Values.ingress.labels | indent 4 }}
 {{- end }}

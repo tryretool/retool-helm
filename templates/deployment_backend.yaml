@@ -1,18 +1,18 @@
-apiVersion: apps/v1
+apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}
   labels:
-{{- include "retool.labels" . | nindent 4 }}
+    app: {{ template "retool.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "retool.fullname" . }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-{{- include "retool.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -21,7 +21,8 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
-{{- include "retool.selectorLabels" . | nindent 8 }}
+        app: {{ template "retool.name" . }}
+        release: "{{ .Release.Name }}"
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
