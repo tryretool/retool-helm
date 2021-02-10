@@ -51,7 +51,7 @@ spec:
         env:
           - name: NODE_ENV
             value: production
-          {{- if gt .Values.replicaCount 1.0 }}
+          {{- if gt .Values.replicaCount 1 }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR
           {{- end }}
