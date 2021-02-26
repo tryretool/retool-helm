@@ -101,6 +101,8 @@ spec:
                 key: google-client-secret
           - name: RESTRICTED_DOMAIN
             value: {{ default "" .Values.config.auth.google.domain }}
+          - name: BASE_DOMAIN
+            value: {{ default "" .Values.config.baseDomain }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
