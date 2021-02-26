@@ -58,6 +58,8 @@ spec:
             value: JOBS_RUNNER
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
+          - name: BASE_DOMAIN
+            value: {{ .Values.config.baseDomain | quote }}
           - name: POSTGRES_HOST
             value: {{ template "retool.postgresql.host" . }}
           - name: POSTGRES_PORT
