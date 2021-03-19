@@ -180,3 +180,15 @@ spec:
 {{- if .Values.extraVolumes }}
 {{ toYaml .Values.extraVolumes | indent 8 }}
 {{- end }}
+---
+{{- if .Values.podDisruptionBudget }}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "retool.fullname" . }}
+spec:
+  {{ toYaml .Values.podDisruptionBudget }}
+  selector:
+    matchLabels:
+  {{- include "retool.selectorLabels" . | nindent 6 }}
+{{- end }}
