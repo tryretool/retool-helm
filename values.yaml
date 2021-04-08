@@ -22,7 +22,7 @@ config:
 
 image:
   repository: "tryretool/backend"
-  tag: "latest"
+  tag: "X.Y.Z"
   pullPolicy: "IfNotPresent"
 
 commandline:
