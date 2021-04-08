@@ -22,7 +22,7 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 through the `config.postgresql.\*` properties at the top of the file.
 
 3. In the `values.yaml` file, set the version of Retool you want to install in the `image.tag` field. See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see your options, and [Docker Hub](https://hub.docker.com/r/tryretool/backend/tags) for the latest version numbers. To prevent issues while upgrading Retool, set a specific semver version number (i.e. a version in the format X.Y.Z) instead of a tag name.
-    * For example, if you want to install the latest "release-candidate", go to [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) and look up the current Retool release number associated with the "release-candidate" and fill in the specific version number. (As of early April 2021 the "release-candidate" version is "2.65.3".)
+    * If you're not sure which version to install, we recommend starting with the "release-candidate". To find out the specific version number of the "release-candidate", visit [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions). (As of early April 2021 the "release-candidate" version is "2.65.3".)
 
 4. Please see the many other options supported in the `values.yaml` file.
 
