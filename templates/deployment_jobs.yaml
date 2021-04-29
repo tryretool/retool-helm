@@ -68,17 +68,29 @@ spec:
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:
+                {{- if .Values.config.licenseKeySecretName }}
+                name: {{ .Values.config.licenseKeySecretName }}
+                {{- else }}
                 name: {{ template "retool.fullname" . }}
+                {{- end }}
                 key: license-key
           - name: JWT_SECRET
             valueFrom:
               secretKeyRef:
+                {{- if .Values.config.jwtSecretName }}
+                name: {{ .Values.config.jwtSecretName }}
+                {{- else }}
                 name: {{ template "retool.fullname" . }}
+                {{- end }}
                 key: jwt-secret
           - name: ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
+                {{- if .Values.config.encryptionKeySecretName }}
+                name: {{ .Values.config.encryptionKeySecretName }}
+                {{- else }}
                 name: {{ template "retool.fullname" . }}
+                {{- end }}
                 key: encryption-key
           - name: POSTGRES_USER
             value: {{ template "retool.postgresql.user" . }}
@@ -87,8 +99,12 @@ spec:
               secretKeyRef:
           {{- if  .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
-          {{- else  }}
+          {{- else }}
+                {{- if .Values.config.postgresql.passwordSecretName }}
+                name: {{ .Values.config.postgresql.passwordSecretName }}
+                {{- else }}
                 name: {{ template "retool.fullname" . }}
+                {{- end }}
           {{- end }}
                 key: postgresql-password
           - name: CLIENT_ID
@@ -96,7 +112,11 @@ spec:
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
+                {{- if .Values.config.auth.google.clientSecretSecretName }}
+                name: {{ .Values.config.auth.google.clientSecretSecretName }}
+                {{- else }}
                 name: {{ template "retool.fullname" . }}
+                {{- end }}
                 key: google-client-secret
           - name: RESTRICTED_DOMAIN
             value: {{ default "" .Values.config.auth.google.domain }}

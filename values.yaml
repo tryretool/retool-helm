@@ -3,14 +3,18 @@
 
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
+  # licenseKeySecretName:
   useInsecureCookies: true
   auth:
     google:
       clientId:
       clientSecret:
+      # clientSecretSecretName:
       domain:
   encryptionKey:
+  # encryptionKeySecretName:
   jwtSecret:
+  # jwtSecretSecretName:
 
   postgresql: {}
     # Specify if postgresql subchart is disabled
@@ -19,6 +23,7 @@ config:
     # db:
     # user:
     # password:
+    # passwordSecretName:
 
 image:
   repository: "tryretool/backend"
@@ -79,6 +84,7 @@ postgresql:
   postgresqlDatabase: hammerhead_production
   postgresqlUsername: retool
   postgresqlPassword: retool
+  #postgresqlPasswordSecretName:
   service:
     port: 5432
   # Use the offical docker image rather than bitnami/docker
