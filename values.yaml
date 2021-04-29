@@ -3,17 +3,21 @@
 
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
+  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey), expected key name is license-key
   # licenseKeySecretName:
   useInsecureCookies: true
   auth:
     google:
       clientId:
       clientSecret:
+      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret), expected key name is google-client-secret
       # clientSecretSecretName:
       domain:
   encryptionKey:
+  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey), expected key name is encryption-key
   # encryptionKeySecretName:
   jwtSecret:
+  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret), expected key name is jwt-secret
   # jwtSecretSecretName:
 
   postgresql: {}
@@ -23,6 +27,7 @@ config:
     # db:
     # user:
     # password:
+    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password), expected key name is postgresql-password
     # passwordSecretName:
 
 image:
@@ -84,7 +89,6 @@ postgresql:
   postgresqlDatabase: hammerhead_production
   postgresqlUsername: retool
   postgresqlPassword: retool
-  #postgresqlPasswordSecretName:
   service:
     port: 5432
   # Use the offical docker image rather than bitnami/docker
