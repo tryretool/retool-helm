@@ -69,28 +69,31 @@ spec:
               secretKeyRef:
                 {{- if .Values.config.licenseKeySecretName }}
                 name: {{ .Values.config.licenseKeySecretName }}
+                key: {{ .Values.config.licenseKeySecretKey | default "license-key" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
-                {{- end }}
                 key: license-key
+                {{- end }}
           - name: JWT_SECRET
             valueFrom:
               secretKeyRef:
                 {{- if .Values.config.jwtSecretName }}
                 name: {{ .Values.config.jwtSecretName }}
+                key: {{ .Values.config.jwtSecretKey | default "jwt-secret" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
-                {{- end }}
                 key: jwt-secret
+                {{- end }}
           - name: ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
                 {{- if .Values.config.encryptionKeySecretName }}
                 name: {{ .Values.config.encryptionKeySecretName }}
+                key: {{ .Values.config.encryptionKeySecretKey | default "encryption-key" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
-                {{- end }}
                 key: encryption-key
+                {{- end }}
           - name: POSTGRES_USER
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
@@ -100,14 +103,16 @@ spec:
               secretKeyRef:
           {{- if  .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
+                key: postgresql-password
           {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}
+                key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
+                key: postgresql-password
                 {{- end }}
           {{- end }}
-                key: postgresql-password
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: CLIENT_SECRET
@@ -115,10 +120,11 @@ spec:
               secretKeyRef:
                 {{- if .Values.config.auth.google.clientSecretSecretName }}
                 name: {{ .Values.config.auth.google.clientSecretSecretName }}
+                key: {{ .Values.config.auth.google.clientSecretSecretKey | default "google-client-secret" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
-                {{- end }}
                 key: google-client-secret
+                {{- end }}
           - name: RESTRICTED_DOMAIN
             value: {{ default "" .Values.config.auth.google.domain }}
           {{- end }}

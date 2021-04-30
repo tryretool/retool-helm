@@ -3,22 +3,30 @@
 
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
-  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey), expected key name is license-key
+  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
   # licenseKeySecretName:
+  # licenseKeySecretKey is the key in the k8s secret, default: license-key
+  # licenseKeySecretKey:
   useInsecureCookies: true
   auth:
     google:
       clientId:
       clientSecret:
-      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret), expected key name is google-client-secret
+      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
       # clientSecretSecretName:
+      # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
+      # clientSecretSecretKey:
       domain:
   encryptionKey:
-  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey), expected key name is encryption-key
+  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:
+  # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
+  # encryptionKeySecretKey:
   jwtSecret:
-  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret), expected key name is jwt-secret
+  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret)
   # jwtSecretSecretName:
+  # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
+  # jwtSecretSecretKey:
 
   postgresql: {}
     # Specify if postgresql subchart is disabled
@@ -27,8 +35,10 @@ config:
     # db:
     # user:
     # password:
-    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password), expected key name is postgresql-password
+    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
     # passwordSecretName:
+    # passwordSecretKey is the key in the k8s secret, default: postgresql-password
+    # passwordSecretKey:
 
 image:
   repository: "tryretool/backend"
