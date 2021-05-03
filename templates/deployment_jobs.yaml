@@ -103,11 +103,11 @@ spec:
           - name: BASE_DOMAIN
             value: {{ .Values.config.baseDomain | quote }}
           - name: GITHUB_APP_ID
-            value: {{ default "" .Values.config.githubAppId }}
+            value: {{ .Values.config.githubAppId | default "" | quote }}
           - name: GITHUB_APP_INSTALLATION_ID
-            value: {{ default "" .Values.config.githubAppInstallationId }}
+            value: {{ .Values.config.githubAppInstallationId | default "" | quote }}
           - name: GITHUB_APP_PRIVATE_KEY
-            value: {{ default "" .Values.config.githubAppPrivateKey }}
+            value: {{ .Values.config.githubAppPrivateKey | default "" | quote }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
