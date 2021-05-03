@@ -125,6 +125,7 @@ livenessProbe:
   path: /api/checkHealth
   initialDelaySeconds: 30
   timeoutSeconds: 10
+  failureThreshold: 3
 
 readinessProbe:
   enabled: true

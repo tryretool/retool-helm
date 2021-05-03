@@ -148,6 +148,7 @@ spec:
             port: {{ .Values.service.internalPort }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
 {{- end }}
 {{- if .Values.readinessProbe.enabled }}
         readinessProbe:
