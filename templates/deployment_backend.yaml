@@ -103,6 +103,12 @@ spec:
             value: {{ default "" .Values.config.auth.google.domain }}
           - name: BASE_DOMAIN
             value: {{ default "" .Values.config.baseDomain }}
+          - name: GITHUB_APP_ID
+            value: {{ default "" .Values.config.githubAppId }}
+          - name: GITHUB_APP_INSTALLATION_ID
+            value: {{ default "" .Values.config.githubAppInstallationId }}
+          - name: GITHUB_APP_PRIVATE_KEY
+            value: {{ default "" .Values.config.githubAppPrivateKey }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"

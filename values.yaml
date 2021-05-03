@@ -12,6 +12,9 @@ config:
   encryptionKey:
   jwtSecret:
   baseDomain:
+  githubAppId:
+  githubAppInstallationId:
+  githubAppPrivateKey:
 
   postgresql: {}
     # Specify if postgresql subchart is disabled
