@@ -64,6 +64,8 @@ spec:
             value: {{ template "retool.postgresql.port" . }}
           - name: POSTGRES_DB
             value: {{ template "retool.postgresql.db" . }}
+          - name: POSTGRES_SSL_ENABLED
+            value: {{ template "retool.postgresql.ssl_enabled" . }}
           {{- if not .Values.externalSecrets.enabled }}
           - name: LICENSE_KEY
             valueFrom:
