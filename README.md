@@ -30,8 +30,7 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
 1. In the `values.yaml` file, set values for `encryptionKey` and `jwtSecret`. They should each be a different long, random string that you keep private. See our docs on [Environment Variables](https://docs.retool.com/docs/environment-variables) for more information on how they are used.
 
-1. In the `values.yaml` file, set the version of Retool you want to install in the `image.tag` field. See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see your options, and [Docker Hub](https://hub.docker.com/r/tryretool/backend/tags) for the latest version numbers. To prevent issues while upgrading Retool, set a specific semver version number (i.e. a version in the format X.Y.Z) instead of a tag name.
-    * If you're not sure which version to install, we recommend starting with the "release-candidate". To find out the specific version number of the "release-candidate", visit [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions). (As of early April 2021 the "release-candidate" version is "2.65.3".)
+1. In the `values.yaml` file, set the version of Retool you want to install in the `image.tag` field. See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see our most recent version. To prevent issues while upgrading Retool, set a specific semver version number (i.e. a version in the format X.Y.Z) in the `image.tag` field.
 
 1. Please see the many other options supported in the `values.yaml` file.
 
