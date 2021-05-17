@@ -109,6 +109,8 @@ spec:
             value: {{ .Values.config.githubAppInstallationId | default "" | quote }}
           - name: GITHUB_APP_PRIVATE_KEY
             value: {{ .Values.config.githubAppPrivateKey | default "" | quote }}
+          - name: VERSION_CONTROL_LOCKED
+            value: {{ .Values.config.versionControlLocked | default "" | quote }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
