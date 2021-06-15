@@ -7,7 +7,7 @@ config:
   # licenseKeySecretName:
   # licenseKeySecretKey is the key in the k8s secret, default: license-key
   # licenseKeySecretKey:
-  useInsecureCookies: true
+  useInsecureCookies: false
   auth:
     google:
       clientId:
