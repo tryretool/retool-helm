@@ -77,9 +77,9 @@ spec:
           - name: JWT_SECRET
             valueFrom:
               secretKeyRef:
-                {{- if .Values.config.jwtSecretName }}
-                name: {{ .Values.config.jwtSecretName }}
-                key: {{ .Values.config.jwtSecretKey | default "jwt-secret" }}
+                {{- if .Values.config.jwtSecretSecretName }}
+                name: {{ .Values.config.jwtSecretSecretName }}
+                key: {{ .Values.config.jwtSecretSecretKey | default "jwt-secret" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
                 key: jwt-secret
