@@ -105,7 +105,7 @@ postgresql:
   # since Retool depends on the uuid-ossp extension
   image:
     repository: "postgres"
-    tag: "10.6"
+    tag: "11.13"
   postgresqlDataDir: "/data/pgdata"
   persistence:
     enabled: true
