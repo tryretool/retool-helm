@@ -14,8 +14,7 @@ config:
       customOauth2SsoClientSecret:
       customOauth2SsoAuthUrl:
       triggerOauth2SsoLoginAutomatically:
-      triggerSamlLoginAutomatically:
-
+      triggerSamlLoginAutomatically:      
   encryptionKey:
   jwtSecret:
   baseDomain:
