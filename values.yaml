@@ -3,30 +3,24 @@
 
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
-  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
-  # licenseKeySecretName:
-  # licenseKeySecretKey is the key in the k8s secret, default: license-key
-  # licenseKeySecretKey:
-  useInsecureCookies: false
+  useInsecureCookies: true
   auth:
     google:
       clientId:
       clientSecret:
-      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
-      # clientSecretSecretName:
-      # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
-      # clientSecretSecretKey:
       domain:
+    onelogin:
+      customOauth2SsoClientId:
+      customOauth2SsoClientSecret:
+      customOauth2SsoAuthUrl:
+      triggerOauth2SsoLoginAutomatically:
+      triggerSamlLoginAutomatically:      
   encryptionKey:
-  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
-  # encryptionKeySecretName:
-  # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
-  # encryptionKeySecretKey:
   jwtSecret:
-  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret)
-  # jwtSecretSecretName:
-  # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
-  # jwtSecretSecretKey:
+  baseDomain:
+  githubAppId:
+  githubAppInstallationId:
+  githubAppPrivateKey:
 
   postgresql: {}
     # Specify if postgresql subchart is disabled
@@ -35,15 +29,11 @@ config:
     # db:
     # user:
     # password:
-    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
-    # passwordSecretName:
-    # passwordSecretKey is the key in the k8s secret, default: postgresql-password
-    # passwordSecretKey:
 
 image:
   repository: "tryretool/backend"
   # Will default to Chart AppVersion if left empty
-  tag: "X.Y.Z"
+  tag:
   pullPolicy: "IfNotPresent"
 
 commandline:
@@ -125,7 +115,6 @@ livenessProbe:
   path: /api/checkHealth
   initialDelaySeconds: 30
   timeoutSeconds: 10
-  failureThreshold: 3
 
 readinessProbe:
   enabled: true
@@ -168,15 +157,6 @@ podAnnotations: {}
 # Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
 replicaCount: 1
 revisionHistoryLimit: 3
-
-# Optional pod disruption budget, for ensuring higher availability of the
-# Retool application.  Specify either minAvailable or maxUnavailable, as
-# either an integer pod count (1) or a string percentage ("50%").
-# Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-#
-# Example:
-# podDisruptionBudget:
-#   maxUnavailable: 1
 
 # Custom labels for pod assignment
 podLabels: {}

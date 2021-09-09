@@ -127,6 +127,16 @@ spec:
                 {{- end }}
           - name: RESTRICTED_DOMAIN
             value: {{ default "" .Values.config.auth.google.domain }}
+          - name: BASE_DOMAIN
+            value: {{ default "" .Values.config.baseDomain }}
+          - name: GITHUB_APP_ID
+            value: {{ .Values.config.githubAppId | default "" | quote }}
+          - name: GITHUB_APP_INSTALLATION_ID
+            value: {{ .Values.config.githubAppInstallationId | default "" | quote }}
+          - name: GITHUB_APP_PRIVATE_KEY
+            value: {{ .Values.config.githubAppPrivateKey | default "" | quote }}
+          - name: VERSION_CONTROL_LOCKED
+            value: {{ .Values.config.versionControlLocked | default "" | quote }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
