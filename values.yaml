@@ -9,6 +9,12 @@ config:
       clientId:
       clientSecret:
       domain:
+        onelogin:
+        customOauth2SsoClientId:
+        customOauth2SsoClientSecret:
+        customOauth2SsoAuthUrl:
+        triggerOauth2SsoLoginAutomatically:
+        triggerSamlLoginAutomatically:
   encryptionKey:
   jwtSecret:
   baseDomain:
