@@ -49,6 +49,16 @@ spec:
 {{ toYaml .Values.commandline.args | indent 10 }}
         {{- end }}
         env:
+          - name: CUSTOM_OAUTH2_SSO_CLIENT_ID
+            value: {{ .Values.config.auth.onelogin.custom_oauth2_sso_client_id | quote }}
+          - name: CUSTOM_OAUTH2_SSO_CLIENT_SECRET
+            value: {{ .Values.config.auth.onelogin.custom_oauth2_sso_client_secret | quote }}
+          - name: CUSTOM_OAUTH2_SSO_AUTH_URL
+            value: {{ .Values.config.auth.onelogin.custom_oauth2_sso_client_secret | quote }}
+          - name: TRIGGER_OAUTH_2_SSO_LOGIN_AUTOMATICALLY
+            value: {{ .Values.config.auth.onelogin.trigger_oauth_2_sso_login_automatically | quote }}
+          - name: TRIGGER_SAML_LOGIN_AUTOMATICALLY
+            value: {{ .Values.config.auth.onelogin.trigger_saml_login_automatically | quote }}
           - name: NODE_ENV
             value: production
           {{- if gt (int (toString (.Values.replicaCount))) 1 }}
