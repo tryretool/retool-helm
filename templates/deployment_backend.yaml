@@ -55,6 +55,8 @@ spec:
             value: {{ .Values.config.auth.onelogin.customOauth2SsoClientSecret | quote }}
           - name: CUSTOM_OAUTH2_SSO_AUTH_URL
             value: {{ .Values.config.auth.onelogin.customOauth2SsoAuthUrl | quote }}
+          - name: CUSTOM_OAUTH2_SSO_TOKEN_URL
+            value: { { .Values.config.auth.onelogin.customOauth2SsoTokenUrl | quote } }
           - name: TRIGGER_OAUTH_2_SSO_LOGIN_AUTOMATICALLY
             value: {{ .Values.config.auth.onelogin.triggerOauth2SsoLoginAutomatically | quote }}
           - name: TRIGGER_SAML_LOGIN_AUTOMATICALLY

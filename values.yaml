@@ -13,6 +13,7 @@ config:
       customOauth2SsoClientId:
       customOauth2SsoClientSecret:
       customOauth2SsoAuthUrl:
+      customOauth2SsoTokenUrl:
       triggerOauth2SsoLoginAutomatically:
       triggerSamlLoginAutomatically:
   encryptionKey:
