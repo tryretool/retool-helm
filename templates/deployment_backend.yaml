@@ -104,13 +104,11 @@ spec:
           - name: BASE_DOMAIN
             value: {{ default "" .Values.config.baseDomain }}
           - name: GITHUB_APP_ID
-            value: {{ .Values.config.githubAppId | default "" | quote }}
+            value: {{ default "" .Values.config.githubAppId }}
           - name: GITHUB_APP_INSTALLATION_ID
-            value: {{ .Values.config.githubAppInstallationId | default "" | quote }}
+            value: {{ default "" .Values.config.githubAppInstallationId }}
           - name: GITHUB_APP_PRIVATE_KEY
-            value: {{ .Values.config.githubAppPrivateKey | default "" | quote }}
-          - name: VERSION_CONTROL_LOCKED
-            value: {{ .Values.config.versionControlLocked | default "" | quote }}
+            value: {{ default "" .Values.config.githubAppPrivateKey }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
