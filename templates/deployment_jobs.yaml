@@ -91,15 +91,6 @@ spec:
                 name: {{ template "retool.fullname" . }}
           {{- end }}
                 key: postgresql-password
-          - name: CLIENT_ID
-            value: {{ default "" .Values.config.auth.google.clientId }}
-          - name: CLIENT_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "retool.fullname" . }}
-                key: google-client-secret
-          - name: RESTRICTED_DOMAIN
-            value: {{ default "" .Values.config.auth.google.domain }}
           - name: BASE_DOMAIN
             value: {{ .Values.config.baseDomain | quote }}
           - name: GITHUB_APP_ID
