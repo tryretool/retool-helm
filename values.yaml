@@ -5,10 +5,8 @@ config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
   useInsecureCookies: true
   auth:
-    google:
-      clientId:
-      clientSecret:
-      domain:
+    onelogin:
+      scimAuthToken:
   encryptionKey:
   jwtSecret:
   baseDomain:
