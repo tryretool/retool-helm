@@ -9,7 +9,6 @@ config:
       clientId:
       clientSecret:
       domain:
-
   encryptionKey:
   jwtSecret:
   baseDomain:
