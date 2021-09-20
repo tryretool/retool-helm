@@ -87,13 +87,13 @@ spec:
             valueFrom:
               secretKeyRef:
           {{- if  .Values.postgresql.enabled }}
-                name: {{ template "retool.postgresql.fullname" . }}
+                name: {{ template "retool.postgresql.fullname" . | quote }}
           {{- else  }}
                 name: {{ template "retool.fullname" . }}
           {{- end }}
                 key: postgresql-password
           - name: CLIENT_ID
-            value: {{ default "" .Values.config.auth.google.clientId }}
+            value: {{ default "" .Values.config.auth.google.clientId | quote }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -102,13 +102,13 @@ spec:
           - name: RESTRICTED_DOMAIN
             value: {{ default "" .Values.config.auth.google.domain }}
           - name: BASE_DOMAIN
-            value: {{ default "" .Values.config.baseDomain }}
+            value: {{ default "" .Values.config.baseDomain | quote }}
           - name: GITHUB_APP_ID
-            value: {{ default "" .Values.config.githubAppId }}
+            value: {{ default "" .Values.config.githubAppId | quote }}
           - name: GITHUB_APP_INSTALLATION_ID
-            value: {{ default "" .Values.config.githubAppInstallationId }}
+            value: {{ default "" .Values.config.githubAppInstallationId | quote }}
           - name: GITHUB_APP_PRIVATE_KEY
-            value: {{ default "" .Values.config.githubAppPrivateKey }}
+            value: {{ default "" .Values.config.githubAppPrivateKey | quote }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
