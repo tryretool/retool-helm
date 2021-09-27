@@ -94,6 +94,9 @@ ingress:
   # servicePort: service-port
 
 postgresql:
+  # We highly recommend you do NOT use this subchart as is to run Postgres in a container
+  # for your production instance of Retool; it is a default. Please use a managed Postgres,
+  # or self-host more permanantly. Use enabled: false and set in config above to do so.
   enabled: true
   ssl_enabled: false
   postgresqlDatabase: hammerhead_production
@@ -105,6 +108,8 @@ postgresql:
   # since Retool depends on the uuid-ossp extension
   image:
     repository: "postgres"
+    # 10.6 is a default, please use 11.13+
+    # see https://www.postgresql.org/support/versioning/
     tag: "10.6"
   postgresqlDataDir: "/data/pgdata"
   persistence:
