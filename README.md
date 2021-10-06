@@ -25,6 +25,7 @@ Guide](https://docs.retool.com/docs/setup-instructions).
         $ helm search repo retool/retool
         NAME         	CHART VERSION	APP VERSION	DESCRIPTION                
         retool/retool	4.0.0        	2.66.2     	A Helm chart for Kubernetes
+1. Run this command `git clone https://github.com/tryretool/retool-helm.git`
 
 1. In the `values.yaml` file, disable the included postgresql chart by setting `postgresql.enabled` to `false`. Then specify your external database through the `config.postgresql.\*` properties at the top of the file.
 
@@ -36,4 +37,4 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
 1. Now you're all ready to install Retool:
 
-        $ helm install my-retool retool/retool
+        $ helm install my-retool retool/retool -f values.yml
