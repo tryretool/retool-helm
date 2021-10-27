@@ -108,7 +108,7 @@ postgresql:
   # since Retool depends on the uuid-ossp extension
   image:
     repository: "postgres"
-    # 10.6 is a default, please use 11.13+
+    # 10.6 is a default, please use 13.4+
     # see https://www.postgresql.org/support/versioning/
     tag: "10.6"
   postgresqlDataDir: "/data/pgdata"
