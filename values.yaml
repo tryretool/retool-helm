@@ -214,3 +214,13 @@ securityContext:
 extraConfigMapMounts: []
 
 initContainers: {}
+
+extraManifests: []
+# extraManifests:
+#  - apiVersion: cloud.google.com/v1beta1
+#    kind: BackendConfig
+#    metadata:
+#      name: "{{ .Release.Name }}-testing"
+#    spec:
+#      securityPolicy:
+#        name: "my-gcp-cloud-armor-policy"
