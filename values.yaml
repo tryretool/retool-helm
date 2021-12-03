@@ -51,6 +51,10 @@ commandline:
 
 env: {}
 
+# Optionally specify additional environment variables to be populated from Kubernetes secrets.
+# Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
+environmentSecrets: []
+
 # Support for external secrets https://github.com/godaddy/kubernetes-external-secrets
 externalSecrets:
   enabled: false
