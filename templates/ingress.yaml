@@ -16,9 +16,12 @@ spec:
   rules:
   - http:
       paths:
-      - backend:
-          serviceName: {{ template "retool.fullname" . }}
-          servicePort: {{ .Values.service.externalPort }}
+      - pathType: {{ .Values.ingress.pathType }}
+        backend:
+          service:
+            name: {{ template "retool.fullname" . }}
+            port: 
+              number: {{ .Values.service.externalPort }}
 {{- if .Values.ingress.hostName }}
     host: {{ .Values.ingress.hostName | quote }}
 {{- end }}

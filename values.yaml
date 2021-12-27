@@ -92,6 +92,7 @@ ingress:
   #   hosts:
   #     - retool.example.com
   # servicePort: service-port
+  pathType: ImplementationSpecific
 
 postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
