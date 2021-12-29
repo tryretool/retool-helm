@@ -38,6 +38,7 @@ spec:
           {{- else }}
           serviceName: {{ template "retool.fullname" . }}
           servicePort: {{ .Values.service.externalPort }}
+          {{- end }}
 {{- if .Values.ingress.hostName }}
     host: {{ .Values.ingress.hostName | quote }}
 {{- end }}
