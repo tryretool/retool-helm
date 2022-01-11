@@ -40,6 +40,10 @@ config:
     # passwordSecretKey is the key in the k8s secret, default: postgresql-password
     # passwordSecretKey:
 
+# If false, you need to provide your own secret
+secret:
+  create: true
+
 image:
   repository: "tryretool/backend"
   # Will default to Chart AppVersion if left empty
