@@ -42,8 +42,8 @@ config:
 
 image:
   repository: "tryretool/backend"
-  # Will default to Chart AppVersion if left empty
-  tag: "X.Y.Z"
+  # You need to pick a specific tag here, this chart will not make a decision for you
+  tag: ""
   pullPolicy: "IfNotPresent"
 
 commandline:
