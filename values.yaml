@@ -79,8 +79,6 @@ service:
 
 ingress:
   enabled: false
-  # For Kubernetes v1.14+, use 'networking.k8s.io/v1beta1'
-  apiVersion: "extensions/v1beta1"
   labels: {}
   annotations: {}
   # kubernetes.io/ingress.class: nginx
@@ -92,6 +90,8 @@ ingress:
   #   hosts:
   #     - retool.example.com
   # servicePort: service-port
+  pathType: ImplementationSpecific
+  className: nginx
 
 postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
