@@ -51,6 +51,18 @@ commandline:
 
 env: {}
 
+# Optionally specify additional environment variables to be populated from Kubernetes secrets.
+# Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
+environmentSecrets: []
+  # - name: SCIM_AUTH_TOKEN
+  #   secretKeyRef:
+  #     name: retool-scim-auth-token
+  #     key: auth-token
+  # - name: GITHUB_APP_PRIVATE_KEY
+  #   secretKeyRef:
+  #     name: retool-github-app-private-key
+  #     key: private-key
+
 # Support for external secrets https://github.com/godaddy/kubernetes-external-secrets
 externalSecrets:
   enabled: false
@@ -213,3 +225,13 @@ securityContext:
 extraConfigMapMounts: []
 
 initContainers: {}
+
+extraManifests: []
+# extraManifests:
+#  - apiVersion: cloud.google.com/v1beta1
+#    kind: BackendConfig
+#    metadata:
+#      name: "{{ .Release.Name }}-testing"
+#    spec:
+#      securityPolicy:
+#        name: "my-gcp-cloud-armor-policy"

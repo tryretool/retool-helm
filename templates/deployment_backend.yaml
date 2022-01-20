@@ -132,6 +132,13 @@ spec:
           - name: "{{ $key }}"
             value: "{{ $value }}"
           {{- end }}
+          {{- range .Values.environmentSecrets }}
+          - name: {{ .name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretKeyRef.name }}
+                key: {{ .secretKeyRef.key }}
+          {{- end }}
         {{- if .Values.externalSecrets.enabled }}
         envFrom:
         - secretRef:
