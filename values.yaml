@@ -235,3 +235,9 @@ extraManifests: []
 #    spec:
 #      securityPolicy:
 #        name: "my-gcp-cloud-armor-policy"
+
+# Support for AWS Security groups for pods
+# Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
+securityGroupPolicy:
+  enabled: false
+  groupIds: []
