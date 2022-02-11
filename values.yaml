@@ -235,3 +235,29 @@ extraManifests: []
 #    spec:
 #      securityPolicy:
 #        name: "my-gcp-cloud-armor-policy"
+
+extraSidecarContainers:
+  enabled: false
+  containers: []
+  # containers:
+  #   - name: mySidecarContainer
+  #     image: "resourceAddress:version"
+  #     imagePullPolicy: IfNotPresent
+  #     resources:
+  #       limits:
+  #         cpu: 100m
+  #         memory: 128Mi
+  #       requests:
+  #         cpu: 100m
+  #         memory: 128Mi
+  #     env:
+  #       - name: POD_NAME
+  #         valueFrom:
+  #           fieldRef:
+  #             apiVersion: v1
+  #             fieldPath: metadata.name
+  #       - name: POD_NAMESPACE
+  #         valueFrom:
+  #           fieldRef:
+  #             apiVersion: v1
+  #             fieldPath: metadata.namespace 
