@@ -1,0 +1,12 @@
+{{- if .Values.securityGroupPolicy.enabled -}}
+apiVersion: vpcresources.k8s.aws/v1beta1
+kind: SecurityGroupPolicy
+metadata:
+  name: {{ template "retool.fullname" . }}
+  labels: {{- include "retool.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "retool.selectorLabels" . | nindent 6 }}
+  securityGroups:
+    groupIds: {{ toYaml .Values.securityGroupPolicy.groupIds | nindent 6 }}
+{{- end }}
