@@ -261,3 +261,9 @@ extraSidecarContainers:
   #           fieldRef:
   #             apiVersion: v1
   #             fieldPath: metadata.namespace 
+
+# Support for AWS Security groups for pods
+# Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
+securityGroupPolicy:
+  enabled: false
+  groupIds: []
