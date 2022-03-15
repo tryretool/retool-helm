@@ -95,8 +95,10 @@ ingress:
   annotations: {}
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
-  # configures the hostname e.g. retool.example.com
-  hostName:
+  hosts:
+  # - host: retool.example.com
+  #   paths:
+  #     - path: /
   tls:
   # - secretName: retool.example.com
   #   hosts:
