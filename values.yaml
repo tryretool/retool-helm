@@ -102,6 +102,7 @@ ingress:
   #   hosts:
   #     - retool.example.com
   # servicePort: service-port
+  path: "/"
   pathType: ImplementationSpecific
 
 postgresql:
