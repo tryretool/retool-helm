@@ -22,11 +22,17 @@ spec:
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
+{{- if .Values.jobRunner.annotations }}
+{{ toYaml .Values.jobRunner.annotations | indent 8 }}
+{{- end }}
       labels:
         app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
         app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if .Values.jobRunner.labels }}
+{{ toYaml .Values.jobRunner.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
