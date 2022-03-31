@@ -7,11 +7,6 @@ config:
   # licenseKeySecretName:
   # licenseKeySecretKey is the key in the k8s secret, default: license-key
   # licenseKeySecretKey:
-  offlineLicenseKey:
-  # offlineLicenseKeySecretName is the name of the secret where the Retool offline license key is stored (can be used instead of offlineLicenseKey)
-  # offlineLicenseKeySecretName:
-  # offlineLicenseKeySecretKey is the key in the k8s secret, default: offline-license-key
-  # offlineLicenseKeySecretKey:
   useInsecureCookies: false
   auth:
     google:
@@ -95,7 +90,9 @@ service:
   # portName: service-port
 
 ingress:
-  enabled: false
+  enabled: true
+  # For k8s 1.18+
+  # ingressClassName:
   labels: {}
   annotations: {}
   # kubernetes.io/ingress.class: nginx
