@@ -80,16 +80,6 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: license-key
                 {{- end }}
-          - name: OFFLINE_LICENSE_KEY
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.config.offlineLicenseKeySecretName }}
-                name: {{ .Values.config.offlineLicenseKeySecretName }}
-                key: {{ .Values.config.offlineLicenseKeySecretKey | default "offline-license-key" }}
-                {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: offline-license-key
-                {{- end }}
           - name: JWT_SECRET
             valueFrom:
               secretKeyRef:
