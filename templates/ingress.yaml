@@ -19,6 +19,9 @@ metadata:
 {{- end }}
   name: {{ template "retool.fullname" . }}
 spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- end }}
   rules:
   - http:
       paths:
