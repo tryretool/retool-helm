@@ -90,13 +90,17 @@ service:
   # portName: service-port
 
 ingress:
-  enabled: false
+  enabled: true
+  # For k8s 1.18+
+  # ingressClassName:
   labels: {}
   annotations: {}
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
-  # configures the hostname e.g. retool.example.com
-  hostName:
+  hosts:
+  # - host: retool.example.com
+  #   paths:
+  #     - path: /
   tls:
   # - secretName: retool.example.com
   #   hosts:
@@ -179,7 +183,9 @@ tolerations: []
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
 nodeSelector: {}
 
+# Common annotations for all pods (backend and job runner).
 podAnnotations: {}
+
 # Increasing replica count will deploy a separate pod for backend and jobs
 # Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
 replicaCount: 1
@@ -194,8 +200,22 @@ revisionHistoryLimit: 3
 # podDisruptionBudget:
 #   maxUnavailable: 1
 
-# Custom labels for pod assignment
+# Common labels for all pods (backend and job runner) for pod assignment
 podLabels: {}
+
+jobRunner:
+  # Annotations for job runner pods
+  annotations: {}
+
+  # Labels for job runner pods
+  labels: {}
+
+backend:
+  # Annotations for backendpods
+  annotations: {}
+
+  # Labels for backend pods
+  labels: {}
 
 persistentVolumeClaim:
   # set to true to use pvc

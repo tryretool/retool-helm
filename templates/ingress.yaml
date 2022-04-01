@@ -1,4 +1,7 @@
 {{- if .Values.ingress.enabled }}
+{{- $fullName := include "retool.fullname" . -}}
+{{- $svcPort := .Values.service.externalPort -}}
+{{- $pathType := .Values.ingress.pathType -}}
 {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1
 {{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
@@ -19,26 +22,51 @@ metadata:
 {{- end }}
   name: {{ template "retool.fullname" . }}
 spec:
+  {{- if and .Values.ingress.ingressClassName (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- end }}
   rules:
-  - http:
-      paths:
-      - path: {{ .path }}
-        {{- if and .Values.ingress.pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
-        pathType: {{ .Values.ingress.pathType }}
-        {{- end }}
-        backend:
-          {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
-          service:
-            name: {{ template "retool.fullname" . }}
-            port: 
-              number: {{ .Values.service.externalPort }}
-          {{- else }}
-          serviceName: {{ template "retool.fullname" . }}
-          servicePort: {{ .Values.service.externalPort }}
+    {{- if .Values.ingress.hostName }}
+    - host: {{ .Values.ingress.hostName | quote }}
+      http:
+        paths:
+          - path:
+            {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ $pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: {{ $svcPort }}
+              {{- end }}
+    {{- else }}
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ $pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: {{ $svcPort }}
+              {{- end }}
           {{- end }}
-{{- if .Values.ingress.hostName }}
-    host: {{ .Values.ingress.hostName | quote }}
-{{- end }}
+    {{- end }}
+  {{- end }}
 {{- if .Values.ingress.tls }}
   tls:
 {{ toYaml .Values.ingress.tls | indent 4 }}

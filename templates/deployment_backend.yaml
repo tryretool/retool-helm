@@ -20,10 +20,16 @@ spec:
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
+{{- if .Values.backend.annotations }}
+{{ toYaml .Values.backend.annotations | indent 8 }}
+{{- end }}
       labels:
 {{- include "retool.selectorLabels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if .Values.backend.labels }}
+{{ toYaml .Values.backend.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
