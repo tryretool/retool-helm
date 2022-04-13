@@ -192,6 +192,9 @@ spec:
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
 {{- end }}
+{{- if .Values.extraSidecarContainers.enabled }}
+{{ toYaml .Values.extraSidecarContainers.containers | indent 6 }}
+{{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}

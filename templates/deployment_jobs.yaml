@@ -47,6 +47,9 @@ spec:
 {{- end }}
 {{- end }}
       containers:
+{{- if .Values.extraSidecarContainers.enabled }}
+{{ toYaml .Values.extraSidecarContainers.containers | indent 6 }}
+{{- end }}
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
