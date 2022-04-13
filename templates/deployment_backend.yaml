@@ -69,7 +69,7 @@ spec:
             value: {{ template "retool.postgresql.port" . }}
           - name: POSTGRES_DB
             value: {{ template "retool.postgresql.db" . }}
-          {{- if not .Values.externalSecrets.enabled }}
+          {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:
@@ -149,6 +149,13 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.externalSecrets.name }}
+        {{- end }}
+        {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
+        envFrom:
+        {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
+        - secretRef:
+            name: {{ .name }}
+        {{- end }}
         {{- end }}
         ports:
         - containerPort: {{ .Values.service.internalPort }}

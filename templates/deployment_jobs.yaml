@@ -72,7 +72,7 @@ spec:
             value: {{ template "retool.postgresql.db" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
-          {{- if not .Values.externalSecrets.enabled }}
+         {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:
@@ -150,6 +150,13 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.externalSecrets.name }}
+        {{- end }}
+        {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
+        envFrom:
+        {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
+        - secretRef:
+            name: {{ .name }}
+        {{- end }}
         {{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
