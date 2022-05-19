@@ -63,10 +63,25 @@ environmentSecrets: []
   #     name: retool-github-app-private-key
   #     key: private-key
 
-# Support for external secrets https://github.com/godaddy/kubernetes-external-secrets
+# Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
+# These are mutually exclusive as both enable reading in environments variables via External Secrets.
 externalSecrets:
+  # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
+  # This mode only allows a single secret name to be provided.
   enabled: false
   name: retool-config
+  # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
+  externalSecretsOperator:
+    enabled: false
+    # External Secrets Operator Backend Types: https://github.com/external-secrets/external-secrets#supported-backends
+    # Default set to AWS Secrets Manager.
+    backendType: secretsManager
+    # Array of name/path key/value pairs to use for the External Secrets Objects.
+    secretRef: {}
+      # - name: retool-config
+      #   path: global-retool-config
+      # - name: retool-db
+      #   path: global-retool-db-config
 
 files: {}
 
