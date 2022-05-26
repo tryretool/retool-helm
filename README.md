@@ -39,7 +39,7 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
         $ helm install my-retool retool/retool -f values.yaml
 
-## Instructions
+## Additional Configuration
 
 ### Externalize database
 Modify `values.yaml`:
