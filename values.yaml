@@ -63,6 +63,8 @@ environmentSecrets: []
   #     name: retool-github-app-private-key
   #     key: private-key
 
+extraEnvs: []
+
 # Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
 # These are mutually exclusive as both enable reading in environments variables via External Secrets.
 externalSecrets:
