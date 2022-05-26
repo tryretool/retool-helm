@@ -39,7 +39,9 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
         $ helm install my-retool retool/retool -f values.yaml
 
-### External Database
+## Additional Configuration
+
+### Externalize database
 Modify `values.yaml`:
 
 * Disable the included postgresql chart by setting `postgresql.enabled` to `false`. Then specify your external database through the `config.postgresql.\*` properties at the top of the file.
