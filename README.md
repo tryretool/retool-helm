@@ -29,11 +29,11 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
 1. Modify the `values.yaml` file:
 
-* Uncomment `ingress.hosts` and change `ingress.hosts.host` to be the hostname of your kubernetes instance.
+        * Uncomment `ingress.hosts` and change `ingress.hosts.host` to be the hostname of your kubernetes instance.
 
-* Set values for `encryptionKey` and `jwtSecret`. They should each be a different long, random string that you keep private. See our docs on [Environment Variables](https://docs.retool.com/docs/environment-variables) for more information on how they are used.
+        * Set values for `encryptionKey` and `jwtSecret`. They should each be a different long, random string that you keep private. See our docs on [Environment Variables](https://docs.retool.com/docs/environment-variables) for more information on how they are used.
 
-* Set the version of Retool (i.e. a version in the format X.Y.Z) you want to install in the `image.tag` field. See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see our most recent version.
+        * Set `image.tag` with the version of Retool you want to install (i.e. a version in the format X.Y.Z). See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see our most recent version.
 
 1. Now you're all ready to install Retool:
 
