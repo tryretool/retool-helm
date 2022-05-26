@@ -27,14 +27,36 @@ Guide](https://docs.retool.com/docs/setup-instructions).
         retool/retool	4.0.0        	2.66.2     	A Helm chart for Kubernetes
 1. Run this command `git clone https://github.com/tryretool/retool-helm.git`
 
-1. In the `values.yaml` file, disable the included postgresql chart by setting `postgresql.enabled` to `false`. Then specify your external database through the `config.postgresql.\*` properties at the top of the file.
+1. Modify the `values.yaml` file:
 
-1. In the `values.yaml` file, set values for `encryptionKey` and `jwtSecret`. They should each be a different long, random string that you keep private. See our docs on [Environment Variables](https://docs.retool.com/docs/environment-variables) for more information on how they are used.
+* Uncomment `ingress.hosts` and change `ingress.hosts.host` to be the hostname of your kubernetes instance.
 
-1. In the `values.yaml` file, set the version of Retool you want to install in the `image.tag` field. See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see our most recent version. To prevent issues while upgrading Retool, set a specific semver version number (i.e. a version in the format X.Y.Z) in the `image.tag` field.
+* Set values for `encryptionKey` and `jwtSecret`. They should each be a different long, random string that you keep private. See our docs on [Environment Variables](https://docs.retool.com/docs/environment-variables) for more information on how they are used.
 
-1. Please see the many other options supported in the `values.yaml` file.
+* Set the version of Retool (i.e. a version in the format X.Y.Z) you want to install in the `image.tag` field. See our guide on [Retool Release Versions](https://docs.retool.com/docs/updating-retool-on-premise#retool-release-versions) to see our most recent version.
 
 1. Now you're all ready to install Retool:
 
         $ helm install my-retool retool/retool -f values.yaml
+
+### External Database
+Modify `values.yaml`:
+
+* Disable the included postgresql chart by setting `postgresql.enabled` to `false`. Then specify your external database through the `config.postgresql.\*` properties at the top of the file.
+
+### gRPC
+1. Create a `configMap` of the directory which contains your `proto` files.
+
+        $ kubectl create configmap protos --from-file=<protos-path>
+
+2. Modify `values.yaml`:
+
+        extraVolumeMounts:
+        - name: protos
+        mountPath: /retool_backend/protos
+        readOnly: true
+
+        extraVolumes:
+        - name: protos
+        configMap:
+        name: protos 
