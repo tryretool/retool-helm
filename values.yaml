@@ -65,7 +65,7 @@ environmentSecrets: []
 
 # Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
 # Can also include environment secrets here instead of in environmentSecrets
-extraEnvs: []
+environmentVariables: []
   #   - name: SCIM_AUTH_TOKEN
   #     valueFrom:
   #       secretKeyRef:
@@ -76,7 +76,7 @@ extraEnvs: []
   #       secretKeyRef:
   #         name: retool-github-app-private-key
   #         key: private-key
-  #   - name: NAME
+  #   - name: POD_HOST_IP
   #     valueFrom:
   #       fieldRef:
   #         fieldPath: status.hostIP
