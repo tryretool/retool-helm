@@ -63,6 +63,24 @@ environmentSecrets: []
   #     name: retool-github-app-private-key
   #     key: private-key
 
+# Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
+# Can also include environment secrets here instead of in environmentSecrets
+environmentVariables: []
+  #   - name: SCIM_AUTH_TOKEN
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: retool-scim-auth-token
+  #         key: auth-token
+  #   - name: GITHUB_APP_PRIVATE_KEY
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: retool-github-app-private-key
+  #         key: private-key
+  #   - name: POD_HOST_IP
+  #     valueFrom:
+  #       fieldRef:
+  #         fieldPath: status.hostIP
+
 # Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
 # These are mutually exclusive as both enable reading in environments variables via External Secrets.
 externalSecrets:
