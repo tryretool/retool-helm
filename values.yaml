@@ -1,5 +1,5 @@
 # nameOverride:
-# fullNameOverride:
+# fullnameOverride:
 
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
@@ -95,7 +95,7 @@ externalSecrets:
     # Default set to AWS Secrets Manager.
     backendType: secretsManager
     # Array of name/path key/value pairs to use for the External Secrets Objects.
-    secretRef: {}
+    secretRef: []
       # - name: retool-config
       #   path: global-retool-config
       # - name: retool-db
