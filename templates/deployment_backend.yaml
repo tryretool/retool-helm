@@ -61,8 +61,12 @@ spec:
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR
           {{- end }}
+          - name: CLIENT_ID
+            value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
+          - name: RESTRICTED_DOMAIN
+            value: {{ default "" .Values.config.auth.google.domain }}
           - name: POSTGRES_HOST
             value: {{ template "retool.postgresql.host" . }}
           - name: POSTGRES_PORT
@@ -119,8 +123,6 @@ spec:
                 key: postgresql-password
                 {{- end }}
           {{- end }}
-          - name: CLIENT_ID
-            value: {{ default "" .Values.config.auth.google.clientId }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -131,8 +133,6 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: google-client-secret
                 {{- end }}
-          - name: RESTRICTED_DOMAIN
-            value: {{ default "" .Values.config.auth.google.domain }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
