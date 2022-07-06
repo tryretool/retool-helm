@@ -35,6 +35,8 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
 * Set `config.licenseKey` with your license key.
 
+* To force Retool to send the auth cookies over HTTP, set `config.useInsecureCookies` to `true`. Leave the default value of `false` if you will use https to connect to the instance.
+
 5. Now you're all ready to install Retool:
 
         $ helm install my-retool retool/retool -f values.yaml
