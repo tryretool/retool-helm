@@ -71,4 +71,12 @@ Modify `values.yaml`:
 ### Ingress
 Modify `values.yaml`:
 
-* Uncomment `ingress.hosts` and change `ingress.hosts.host` to be the hostname of your kubernetes instance.
+- Uncomment `ingress.hosts` and change `ingress.hosts.host` to be the hostname where you will access Retool.
+- If you are implementing TLS for your Retool instance, uncomment `ingress.tls` and:
+    - Specify the name of the SSL certificate to use as the value of `ingress.tls.secretName`.
+    - Specify an array containing the hostname where you will access Retool (the same value you configured for `ingress.hosts.host`).
+
+GKE-specific configurations:
+
+- Specify `/*` as the value of `ingress.hosts.paths.path`.
+- Comment out `ingress.tls.servicePort` as it is not required.
