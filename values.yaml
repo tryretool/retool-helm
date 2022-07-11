@@ -28,6 +28,8 @@ config:
   # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
   # jwtSecretSecretKey:
 
+  # IMPORTANT: Incompatible with postgresql subchart
+  # Please disable the subchart in order to use a managed or external postgres instance.
   postgresql: {}
     # Specify if postgresql subchart is disabled
     # host:
