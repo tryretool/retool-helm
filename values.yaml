@@ -37,6 +37,7 @@ config:
     # db:
     # user:
     # password:
+    # ssl_enabled:
     # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
     # passwordSecretName:
     # passwordSecretKey is the key in the k8s secret, default: postgresql-password
