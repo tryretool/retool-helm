@@ -253,24 +253,6 @@ backend:
   # Labels for backend pods
   labels: {}
 
-persistentVolumeClaim:
-  # set to true to use pvc
-  enabled: false
-  # set to true to use you own pvc
-  existingClaim: false
-  annotations: {}
-
-  accessModes:
-    - ReadWriteOnce
-  size: "15Gi"
-  ## If defined, storageClassName: <storageClass>
-  ## If set to "-", storageClassName: "", which disables dynamic provisioning
-  ## If undefined (the default) or set to null, no storageClassName spec is
-  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-  ##   GKE, AWS & OpenStack)
-  ##
-  # storageClass: "-"
-
 # default security context
 securityContext:
   enabled: false
