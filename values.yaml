@@ -257,6 +257,19 @@ backend:
   # Labels for backend pods
   labels: {}
 
+workflows:
+  enabled: true
+
+  # A replicaCount of 1 will launch 5 pods -- 1 workflow worker and 4 pods that make up the executor temporal cluster
+  # Scaling this number will split the workflow worker pod into three separate services
+  # The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
+  replicaCount: 1
+    # Annotations for workflows worker pods
+  annotations: {}
+
+  # Labels for workflows worker pods
+  labels: {}
+
 persistentVolumeClaim:
   # set to true to use pvc
   enabled: false

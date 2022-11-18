@@ -11,3 +11,6 @@ dependencies:
     version: 10.14.3
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
+  - name: retool-workflows-helm
+    version: 0.1.0
+    condition: workflows.enabled
