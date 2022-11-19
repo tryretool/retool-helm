@@ -1,8 +1,8 @@
-{{- if and .Values.workflowsEnabled (eq (int (toString (.Values.replicaCount))) 1)-}}
+{{- if and .Values.workflows.enabled (eq (int (toString (.Values.workflows.replicaCount))) 1) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ template "retool.fullname" . }}-workflow-backend
   labels:
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
@@ -29,8 +29,8 @@ spec:
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
-{{- if .Values.workflowsWorker.labels }}
-{{ toYaml .Values.workflowsWorker.labels | indent 8 }}
+{{- if .Values.workflows.labels }}
+{{ toYaml .Values.workflows.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
@@ -59,13 +59,17 @@ spec:
           - name: NODE_ENV
             value: production
           - name: SERVICE_TYPE
-            value: TEMPORAL_WORKFLOWS_WORKER,DB_CONNECTOR,WORKFLOWS_BACKEND
+            value: TEMPORAL_WORKFLOWS_WORKER,DB_CONNECTOR,WORKFLOW_BACKEND
+          - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+            value: "100"
+          - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+            value: "1800000"
           - name: DISABLE_DATABASE_MIGRATIONS
-            value: true
+            value: "true"
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: temporal-cluster-workflows-frontend
+            value: retool-workflows-temporal-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
-            value: 7233
+            value: "7233"
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
@@ -247,4 +251,16 @@ spec:
     matchLabels:
   {{- include "retool.selectorLabels" . | nindent 6 }}
 {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "retool.fullname" . }}-workflow-backend
+spec:
+  selector:
+    app: {{ template "retool.fullname" . }}-workflow-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3001
 {{- end }}

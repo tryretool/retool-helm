@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ template "retool.fullname" . }}-main-backend
   labels:
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}

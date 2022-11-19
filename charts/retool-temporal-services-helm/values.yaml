@@ -1,5 +1,5 @@
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "retool-workflows-temporal"
 
 # Chart debug mode
 # (eg. disable helm hook delete policy)
@@ -20,7 +20,7 @@ server:
   enabled: true
   sidecarContainers:
   image:
-    repository: temporalio/server
+    repository: temporalio/server-autosetup
     tag: 1.18.0
     pullPolicy: IfNotPresent
 
@@ -85,14 +85,14 @@ server:
     logLevel: "debug,info"
 
     # IMPORTANT: This value cannot be changed, once it's set.
-    numHistoryShards: 512
+    numHistoryShards: 256
 
     persistence:
       defaultStore: default
       additionalStores: {}
 
       default:
-        driver: "cassandra"
+        driver: "sql"
 
         cassandra:
           hosts: []
@@ -111,21 +111,17 @@ server:
           # maxConns: 2
 
         sql:
-          driver: "mysql"
-          host: "mysql"
-          port: 3306
-          database: "temporal"
-          user: "temporal"
-          password: "temporal"
-          existingSecret: ""
-          secretName: ""
+          driver: "postgres"
+          host: _HOST_
+          port: 5432
+          database: temporal
+          user: _USERNAME_
+          password: _PASSWORD_
           maxConns: 20
           maxConnLifetime: "1h"
-          # connectAttributes:
-            # tx_isolation: 'READ-COMMITTED'
 
       visibility:
-        driver: "cassandra"
+        driver: "sql"
 
         cassandra:
           hosts: []
@@ -144,18 +140,14 @@ server:
               serialConsistency: "local_serial"
 
         sql:
-          driver: "mysql"
-          host: "mysql"
-          port: 3306
-          database: "temporal_visibility"
-          user: "temporal"
-          password: "temporal"
-          existingSecret: ""
-          secretName: ""
+          driver: "postgres"
+          host: _HOST_
+          port: 5432
+          database: temporal_visibility
+          user: _USERNAME_
+          password: _PASSWORD_
           maxConns: 20
           maxConnLifetime: "1h"
-          # connectAttributes:
-          #   tx_isolation: 'READ-COMMITTED'
 
   frontend:
     # replicaCount: 1
@@ -316,14 +308,14 @@ web:
 
 schema:
   setup:
-    enabled: true
+    enabled: false
     backoffLimit: 100
   update:
-    enabled: true
+    enabled: false
     backoffLimit: 100
 
 elasticsearch:
-  enabled: true
+  enabled: false
   replicas: 3
   persistence:
     enabled: false
@@ -400,23 +392,7 @@ grafana:
          datasource: TemporalMetrics
 
 cassandra:
-  enabled: true
-  persistence:
-    enabled: false
-  image:
-    repo: cassandra
-    tag: 3.11.3
-    pullPolicy: IfNotPresent
-  config:
-    cluster_size: 3
-    ports:
-      cql: 9042
-    num_tokens: 4
-    max_heap_size: 512M
-    heap_new_size: 128M
-    seed_size: 0
-  service:
-    type: ClusterIP
+  enabled: false
 
 mysql:
   enabled: false

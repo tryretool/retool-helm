@@ -3,18 +3,8 @@ description: Helm chart for temporal cluster
 type: helm
 name: temporal-cluster-helm
 
-valueFiles:
-  - values/values.postgresql.yaml
-
 values:
   debug: true
-  fullnameOverride: temporal-cluster-workflows
-  prometheus:
-    enabled: true
-  grafana:
-    enabled: true
-  elasticsearch:
-    enabled: false
   server:
     config:
       persistence:
