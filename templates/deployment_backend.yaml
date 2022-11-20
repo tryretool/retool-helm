@@ -77,6 +77,10 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
+            value: retool-workflows-temporal-frontend
+          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
+            value: "7233"
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
