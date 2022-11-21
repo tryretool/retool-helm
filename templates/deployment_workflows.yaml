@@ -1,4 +1,4 @@
-{{- if and .Values.workflows.enabled (eq (int (toString (.Values.workflows.replicaCount))) 1) }}
+{{- if .Values.workflows.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

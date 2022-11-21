@@ -148,7 +148,7 @@ postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
   # or self-host more permanantly. Use enabled: false and set in config above to do so.
-  enabled: true
+  enabled: false
   ssl_enabled: false
   postgresqlDatabase: hammerhead_production
   postgresqlUsername: retool
@@ -258,13 +258,13 @@ backend:
   labels: {}
 
 workflows:
-  enabled: true
+  enabled: false
 
   # A replicaCount of 1 will launch 5 pods -- 1 workflow worker and 4 pods that make up the executor temporal cluster
   # Scaling this number will split the workflow worker pod into three separate services
   # The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
   replicaCount: 1
-    # Annotations for workflows worker pods
+  # Annotations for workflows worker pods
   annotations: {}
 
   # Labels for workflows worker pods

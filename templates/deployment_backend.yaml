@@ -60,6 +60,9 @@ spec:
           {{- if gt (int (toString (.Values.replicaCount))) 1 }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          {{- else }}
+          - name: SERVICE_TYPE
+            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JOBS_RUNNER
           {{- end }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
