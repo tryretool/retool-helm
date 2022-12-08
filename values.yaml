@@ -43,7 +43,71 @@ config:
     # passwordSecretKey is the key in the k8s secret, default: postgresql-password
     # passwordSecretKey:
 
+retool-temporal-services-helm:
+  # Defines image to be used for temporal server
+  image:
+    repository: tryretool/oneoff
+    tag: retool-temporal
+    pullPolicy: IfNotPresent
+  server:
+    config:
+      # the below values specify the database for temporal internals and workflow state
+      # both can point to the same db, and even the same as retool main above, although throughput
+      # will be limited. We strongly suggest using two total DBs: one for retool-main and one
+      # for default and visibility below
+      persistence:
+        default:
+          # host:
+          # port:
+          # user:
+          # password:
+          # secretName is the name of the secret where password is stored
+          # existingSecret:
+          # secretKey is the key in the k8s secret
+          # secretKey:
+        visibility:
+          # host:
+          # port:
+          # user:
+          # password:
+          # secretName is the name of the secret where password is stored
+          # existingSecret:
+          # secretKey is the key in the k8s secret
+          # secretKey:
+
+      # use-cases with very high throughput demands (>10k workflow blocks/sec) can modify
+      # below value to be higher, such as 512 or 1024
+      numHistoryShards: 128
+
+    # define resources for each temporal service -- these are sane starting points that allow
+    # for scaling to ~3 workflow workers above without hitting bottlenecks 
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1024Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  # Setting this value to true will spin up the temporal web UI, admintools,
+  # along with prometheus and grafana clusters for debugging performance
+  # TODO: define this in _helpers.tpl
+  # visibilityDebugMode: false
+  # DEBUGGING: below pods can be used for debugging and watching metrics
+  # launches prometheus pods and listeners on temporal services and worker
+  prometheus:
+    enabled: false
+  # launches a grafana pod with helpful workflows executor metrics and graphs
+  grafana:
+    enabled: false
+  # launches the temporal web UI, which allows you to see which workflows are currently running
+  web:
+    enabled: false
+  # launches the temporal admintools pod, which allows you to manage your cluster, e.g. terminate workflows
+  admintools:
+    enabled: false
+
 image:
+  # TODO: CHANGE TO ONE-OFF IMAGE
   repository: "tryretool/backend"
   # You need to pick a specific tag here, this chart will not make a decision for you
   tag: ""
@@ -260,9 +324,12 @@ backend:
 workflows:
   enabled: false
 
-  # A replicaCount of 1 will launch 5 pods -- 1 workflow worker and 4 pods that make up the executor temporal cluster
-  # Scaling this number will split the workflow worker pod into three separate services
-  # The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
+  # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
+  # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
+  # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
+  
+  # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
+  # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
   replicaCount: 1
   # Annotations for workflows worker pods
   annotations: {}

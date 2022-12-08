@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-workflow-backend
+  name: {{ template "retool.fullname" . }}-workflow-worker
   labels:
-    retoolService: {{ template "retool.fullname" . }}-workflow-backend
+    retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
@@ -14,12 +14,15 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-workflow-backend
+      retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- include "retool.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
+        prometheus.io/job: {{ template "retool.fullname" . }}-workflow-worker
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
@@ -27,7 +30,7 @@ spec:
 {{ toYaml .Values.backend.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.fullname" . }}-workflow-backend
+        retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- include "retool.selectorLabels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
@@ -60,9 +63,11 @@ spec:
         {{- end }}
         env:
           - name: NODE_ENV
-            value: production
+            value: production 
+          - name: NODE_OPTIONS
+            value: --max_old_space_size=1024
           - name: SERVICE_TYPE
-            value: DB_CONNECTOR,WORKFLOW_BACKEND
+            value: WORKFLOW_TEMPORAL_WORKER
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
@@ -73,6 +78,8 @@ spec:
             value: retool-workflows-temporal-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://retool-workflows-helm-workflow-backend
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
@@ -89,8 +96,6 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
-          - name: WORKFLOW_BACKEND_HOST
-            value: http://retool-workflows-helm-workflow-backend
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
@@ -178,25 +183,9 @@ spec:
         - containerPort: {{ .Values.service.internalPort }}
           name: {{ template "retool.name" . }}
           protocol: TCP
-{{- if .Values.livenessProbe.enabled }}
-        livenessProbe:
-          httpGet:
-            path: {{ .Values.livenessProbe.path }}
-            port: {{ .Values.service.internalPort }}
-          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-          failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
-{{- end }}
-{{- if .Values.readinessProbe.enabled }}
-        readinessProbe:
-          httpGet:
-            path: {{ .Values.readinessProbe.path }}
-            port: {{ .Values.service.internalPort }}
-          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-          successThreshold: {{ .Values.readinessProbe.successThreshold }}
-          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-{{- end }}
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         volumeMounts:
@@ -254,19 +243,23 @@ spec:
   {{ toYaml .Values.podDisruptionBudget }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-workflow-backend
   {{- include "retool.selectorLabels" . | nindent 6 }}
 {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.fullname" . }}-workflow-backend
+  name: {{ template "retool.fullname" . }}-workflow-worker
 spec:
   selector:
-    retoolService: {{ template "retool.fullname" . }}-workflow-backend
+    retoolService: {{ template "retool.fullname" . }}-workflow-worker
   ports:
   - protocol: TCP
-    port: 80
+    port: {{ .Values.service.externalPort }}
     targetPort: {{ .Values.service.internalPort }}
+    name: {{ template "retool.name" . }}
+  - protocol: TCP
+    port: 9090
+    targetPort: metrics
+    name: metrics
 {{- end }}

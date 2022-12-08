@@ -2,7 +2,7 @@ apiVersion: v2
 
 name: retool-temporal-services-helm
 
-description: Temporal is a distributed, scalable, durable, and highly available orchestration engine to execute asynchronous long-running business logic in a scalable and resilient way.
+description: A Helm chart for Temporal server for Retool Workflows.
 
 home: https://temporal.io/
 
@@ -12,8 +12,8 @@ keywords:
   - orchestration
 
 maintainers:
-  - name: Temporal Technologies Inc.
-    url: https://temporal.io/
+  - name: Retool Engineering
+    email: engineering+helm@retool.com
 
 sources:
   - https://github.com/temporalio/temporal
@@ -49,8 +49,8 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.18.0
+version: 0.1.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 1.18.0
+appVersion: 1.0.0

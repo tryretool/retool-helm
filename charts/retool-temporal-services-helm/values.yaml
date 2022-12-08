@@ -20,8 +20,8 @@ server:
   enabled: true
   sidecarContainers:
   image:
-    repository: temporalio/server-autosetup
-    tag: 1.18.0
+    repository: tryretool/oneoff
+    tag: retool-temporal
     pullPolicy: IfNotPresent
 
   # Global default settings (can be overridden per service)
@@ -227,7 +227,7 @@ server:
     affinity: {}
 
 admintools:
-  enabled: true
+  enabled: false
   image:
     repository: temporalio/admin-tools
     tag: 1.18.0
@@ -244,13 +244,13 @@ admintools:
   affinity: {}
 
 web:
-  enabled: true
+  enabled: false
   config:
     # server/config.yml file content
     auth:
       enabled: false
     routing:
-      default_to_namespace: # internal use only
+      default_to_namespace: workflows # internal use only
       issue_report_link: https://github.com/temporalio/web/issues/new/choose # set this field if you need to direct people to internal support forums
 
 
@@ -330,12 +330,12 @@ elasticsearch:
   visibilityIndex: "temporal_visibility_v1_dev"
 
 prometheus:
-  enabled: true
+  enabled: false
   nodeExporter:
     enabled: false
 
 grafana:
-  enabled: true
+  enabled: false
   replicas: 1
   testFramework:
     enabled: false
