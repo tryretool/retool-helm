@@ -57,23 +57,25 @@ retool-temporal-services-helm:
       # for default and visibility below
       persistence:
         default:
-          # host:
-          # port:
-          # user:
-          # password:
-          # secretName is the name of the secret where password is stored
-          # existingSecret:
-          # secretKey is the key in the k8s secret
-          # secretKey:
+          sql:
+            # host:
+            # port:
+            # user:
+            # password:
+            # secretName is the name of the secret where password is stored
+            # existingSecret:
+            # secretKey is the key in the k8s secret
+            # secretKey:
         visibility:
-          # host:
-          # port:
-          # user:
-          # password:
-          # secretName is the name of the secret where password is stored
-          # existingSecret:
-          # secretKey is the key in the k8s secret
-          # secretKey:
+          sql:
+            # host:
+            # port:
+            # user:
+            # password:
+            # secretName is the name of the secret where password is stored
+            # existingSecret:
+            # secretKey is the key in the k8s secret
+            # secretKey:
 
       # use-cases with very high throughput demands (>10k workflow blocks/sec) can modify
       # below value to be higher, such as 512 or 1024

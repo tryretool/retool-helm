@@ -57,6 +57,8 @@ spec:
         env:
           - name: NODE_ENV
             value: production
+          - name: IS_ONPREM
+            value: "true"
           {{- if gt (int (toString (.Values.replicaCount))) 1 }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR

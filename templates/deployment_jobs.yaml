@@ -60,6 +60,8 @@ spec:
         env:
           - name: NODE_ENV
             value: production
+          - name: IS_ONPREM
+            value: "true"
           - name: SERVICE_TYPE
             value: JOBS_RUNNER
           - name: CLIENT_ID
