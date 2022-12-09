@@ -11,7 +11,7 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       retoolService: {{ template "retool.fullname" . }}-workflow-backend
@@ -90,7 +90,7 @@ spec:
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
-            value: http://retool-workflows-helm-workflow-backend
+            value: http://{{ template "retool.fullname" . }}-workflow-backend
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:

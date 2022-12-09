@@ -80,7 +80,7 @@ retool-temporal-services-helm:
       numHistoryShards: 128
 
     # define resources for each temporal service -- these are sane starting points that allow
-    # for scaling to ~3 workflow workers above without hitting bottlenecks 
+    # for scaling to ~3 workflow workers without hitting bottlenecks 
     resources:
       limits:
         cpu: 500m
@@ -88,6 +88,7 @@ retool-temporal-services-helm:
       requests:
         cpu: 100m
         memory: 128Mi
+
   # Setting this value to true will spin up the temporal web UI, admintools,
   # along with prometheus and grafana clusters for debugging performance
   # TODO: define this in _helpers.tpl
@@ -336,6 +337,16 @@ workflows:
 
   # Labels for workflows worker pods
   labels: {}
+
+  # Resources for the workflow worker - these are sane inputs that bias towards stability
+  # Can adjust but may see OOM errors if memory too low for heavy workflow load
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 8192Mi
+    requests:
+      cpu: 1000m
+      memory: 4096Mi
 
 persistentVolumeClaim:
   # set to true to use pvc

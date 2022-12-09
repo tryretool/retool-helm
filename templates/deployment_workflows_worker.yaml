@@ -11,7 +11,7 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.workflows.replicaCount }}
   selector:
     matchLabels:
       retoolService: {{ template "retool.fullname" . }}-workflow-worker
@@ -28,6 +28,9 @@ spec:
 {{- end }}
 {{- if .Values.backend.annotations }}
 {{ toYaml .Values.backend.annotations | indent 8 }}
+{{- end }}
+{{- if .Values.workflows.annotations }}
+{{ toYaml .Values.workflows.annotations | indent 8 }}
 {{- end }}
       labels:
         retoolService: {{ template "retool.fullname" . }}-workflow-worker

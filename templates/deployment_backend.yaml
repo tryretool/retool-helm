@@ -85,7 +85,7 @@ spec:
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
           - name: WORKFLOW_BACKEND_HOST
-            value: http://retool-workflows-helm-workflow-backend
+            value: http://{{ template "retool.fullname" . }}-workflow-backend
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
