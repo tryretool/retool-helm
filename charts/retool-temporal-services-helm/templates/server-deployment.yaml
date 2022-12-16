@@ -103,6 +103,10 @@ spec:
               value: "{{ $.Values.elasticsearch.password }}"
             - name: SERVICES
               value: {{ $service }}
+            {{- if ne $service "frontend"}}
+            - name: TEMPORAL_CLI_ADDRESS
+              value: {{ include "temporal.fullname" $ }}-frontend:{{ include "temporal.frontend.grpcPort" $ }}
+            {{- end }}
             - name: TEMPORAL_STORE_PASSWORD
               valueFrom:
                 secretKeyRef:

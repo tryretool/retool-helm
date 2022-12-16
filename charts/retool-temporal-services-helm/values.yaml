@@ -20,7 +20,7 @@ server:
   enabled: true
   sidecarContainers:
   image:
-    repository: tryretool/oneoff
+    repository: tryretool/one-offs
     tag: retool-temporal
     pullPolicy: IfNotPresent
 

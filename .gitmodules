@@ -1,3 +1,0 @@
-[submodule "retool-temporal-services-helm"]
-	path = retool-temporal-services-helm
-	url = git@github.com:tryretool/retool-temporal-services-helm.git
