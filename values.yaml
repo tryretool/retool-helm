@@ -44,12 +44,12 @@ config:
     # passwordSecretKey:
 
 retool-temporal-services-helm:
-  # Defines image to be used for temporal server
-  image:
-    repository: tryretool/one-offs
-    tag: retool-temporal
-    pullPolicy: IfNotPresent
   server:
+    # Defines image to be used for temporal server
+    image:
+      repository: tryretool/one-offs
+      tag: retool-temporal
+      pullPolicy: IfNotPresent
     config:
       # the below values specify the database for temporal internals and workflow state
       # both can point to the same db, and even the same as retool main above, although throughput
