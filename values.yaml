@@ -46,7 +46,7 @@ config:
 retool-temporal-services-helm:
   # Defines image to be used for temporal server
   image:
-    repository: tryretool/oneoff
+    repository: tryretool/one-offs
     tag: retool-temporal
     pullPolicy: IfNotPresent
   server:

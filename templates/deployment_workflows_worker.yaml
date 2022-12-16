@@ -67,8 +67,6 @@ spec:
         env:
           - name: NODE_ENV
             value: production
-          - name: IS_ONPREM
-            value: "true"
           - name: NODE_OPTIONS
             value: --max_old_space_size=1024
           - name: SERVICE_TYPE
