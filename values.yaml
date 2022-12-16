@@ -110,8 +110,7 @@ retool-temporal-services-helm:
     enabled: false
 
 image:
-  # TODO: CHANGE TO ONE-OFF IMAGE
-  repository: "tryretool/backend"
+  repository: "tryretool/backend-workflow"
   # You need to pick a specific tag here, this chart will not make a decision for you
   tag: ""
   pullPolicy: "IfNotPresent"
