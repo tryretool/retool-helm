@@ -117,21 +117,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "temporal.persistence.secretName" (list $ "visibility") }}
                   key: {{ include "temporal.persistence.secretKey" (list $ "visibility") }}
-            - name: DEFAULT_NAMESPACE
-              value: workflows
-            - name: DB
-              value: postgresql
-            - name: POSTGRES_SEEDS
-              value: "{{ $.Values.server.config.persistence.default.sql.host }}"
-            - name: POSTGRES_USER
-              value: "{{ $.Values.server.config.persistence.default.sql.user }}"
-            - name: DB_PORT
-              value: "{{ $.Values.server.config.persistence.default.sql.port }}"
-            - name: POSTGRES_PWD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "temporal.persistence.secretName" (list $ "default") }}
-                  key: {{ include "temporal.persistence.secretKey" (list $ "default") }}
           {{- if $.Values.server.versionCheckDisabled }}
             - name: TEMPORAL_VERSION_CHECK_DISABLED
               value: "1"
@@ -156,7 +141,7 @@ spec:
             - name: dynamic-config
               mountPath: /etc/temporal/dynamic_config
             {{- if $.Values.server.additionalVolumeMounts }}
-            {{- toYaml $.Values.server.additionalVolumeMounts | nindent 12}}  
+            {{- toYaml $.Values.server.additionalVolumeMounts | nindent 12}}
             {{- end }}
           resources:
             {{- toYaml (default $.Values.server.resources $serviceValues.resources) | nindent 12 }}
@@ -179,7 +164,7 @@ spec:
             - key: dynamic_config.yaml
               path: dynamic_config.yaml
         {{- if $.Values.server.additionalVolumes }}
-        {{- toYaml $.Values.server.additionalVolumes | nindent 8}}  
+        {{- toYaml $.Values.server.additionalVolumes | nindent 8}}
         {{- end }}
       {{- with (default $.Values.server.nodeSelector $serviceValues.nodeSelector) }}
       nodeSelector:

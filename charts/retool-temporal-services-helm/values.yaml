@@ -391,6 +391,9 @@ grafana:
          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/worker-service-specific.json
          datasource: TemporalMetrics
 
+postgresql:
+  enabled: false
+
 cassandra:
   enabled: false
 
