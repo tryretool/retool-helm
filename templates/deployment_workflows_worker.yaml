@@ -15,7 +15,6 @@ spec:
   selector:
     matchLabels:
       retoolService: {{ template "retool.fullname" . }}-workflow-worker
-{{- include "retool.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -34,7 +33,6 @@ spec:
 {{- end }}
       labels:
         retoolService: {{ template "retool.fullname" . }}-workflow-worker
-{{- include "retool.selectorLabels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
