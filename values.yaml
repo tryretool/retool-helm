@@ -339,6 +339,12 @@ workflows:
   # Labels for workflows worker pods
   labels: {}
 
+  # Config for workflows worker pods. Node heap size limits can be overriden here
+  config: {}
+  # config: {
+  #   nodeOptions: --max_old_space_size=1024
+  # }
+
   # Resources for the workflow worker - these are sane inputs that bias towards stability
   # Can adjust but may see OOM errors if memory too low for heavy workflow load
   resources:
