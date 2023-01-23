@@ -1,5 +1,5 @@
 apiVersion: v2
-name: retool
+name: retool-with-workflows
 description: A Helm chart for Kubernetes
 type: application
 version: 4.11.7
