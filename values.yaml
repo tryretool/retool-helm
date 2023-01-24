@@ -90,6 +90,15 @@ retool-temporal-services-helm:
       requests:
         cpu: 100m
         memory: 128Mi
+    # example of setting service-specific resources, here we increase memory limit for history server
+    history:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 2Gi
+        requests:
+          cpu: 100m
+          memory: 128Mi
 
   # Setting this value to true will spin up the temporal web UI, admintools,
   # along with prometheus and grafana clusters for debugging performance
