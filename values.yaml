@@ -263,17 +263,17 @@ extraVolumeMounts: []
 
 extraVolumes: []
 
-resources: {}
+resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
   # - memory: 4096Mi
   # If you only have 1 replica, please double the above numbers.
-  # limits:
-  #   cpu: 4096m
-  #   memory: 8192Mi
-  # requests:
-  #   cpu: 2048m
-  #   memory: 4096Mi
+  limits:
+    cpu: 4096m
+    memory: 8192Mi
+  requests:
+    cpu: 2048m
+    memory: 4096Mi
 
 priorityClassName: ""
 
@@ -294,7 +294,7 @@ podAnnotations: {}
 
 # Increasing replica count will deploy a separate pod for backend and jobs
 # Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
-replicaCount: 1
+replicaCount: 2
 revisionHistoryLimit: 3
 
 # Optional pod disruption budget, for ensuring higher availability of the
