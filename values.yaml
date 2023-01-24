@@ -340,9 +340,15 @@ workflows:
   labels: {}
 
   # Config for workflows worker pods. Node heap size limits can be overriden here
+  # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
+  # provides observability into Workflows worker performance, particularly useful in high QPS use-cases
   config: {}
   # config: {
   #   nodeOptions: --max_old_space_size=1024
+  #   otelCollector: {
+  #     enabled: true
+  #     endpoint: http://$(HOST_IP):4317
+  #   }
   # }
 
   # Resources for the workflow worker - these are sane inputs that bias towards stability
