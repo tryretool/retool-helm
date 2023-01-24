@@ -66,7 +66,7 @@ spec:
           - name: NODE_ENV
             value: production
           - name: NODE_OPTIONS
-            value: {{.Values.workflows.config.nodeOptions | default "--max_old_space_size=1024" }}
+            value: {{(.Values.workflows.config).nodeOptions | default "--max_old_space_size=1024" }}
           - name: SERVICE_TYPE
             value: WORKFLOW_TEMPORAL_WORKER
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
@@ -76,7 +76,7 @@ spec:
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: retool-workflows-temporal-frontend
+            value: {{ template "retool.fullname" . }}-temporal-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
           - name: WORKFLOW_BACKEND_HOST
@@ -97,10 +97,10 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
-          {{- if and (.Values.workflows.config.otelCollector.enabled) (.Values.workflows.config.otelCollector.endpoint) }}
+          {{- if and (((.Values.workflows.config).otelCollector).enabled) (((.Values.workflows.config).otelCollector).endpoint) }}
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: {{ .Values.workflows.config.otelCollector.endpoint }}
-          {{- else if .Values.workflows.config.otelCollector.enabled }}
+             value: {{ ((.Values.workflows.config).otelCollector).endpoint }}
+          {{- else if ((.Values.workflows.config).otelCollector).enabled }}
           - name: HOST_IP
             valueFrom:
               fieldRef:

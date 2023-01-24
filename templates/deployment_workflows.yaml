@@ -68,7 +68,7 @@ spec:
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: retool-workflows-temporal-frontend
+            value: {{ template "retool.fullname" . }}-temporal-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
           - name: CLIENT_ID

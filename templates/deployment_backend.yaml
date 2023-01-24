@@ -81,7 +81,7 @@ spec:
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: retool-workflows-temporal-frontend
+            value: {{ template "retool.fullname" . }}-temporal-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
           - name: WORKFLOW_BACKEND_HOST

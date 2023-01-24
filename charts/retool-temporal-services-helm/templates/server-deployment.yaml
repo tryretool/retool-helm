@@ -103,6 +103,21 @@ spec:
               value: "{{ $.Values.elasticsearch.password }}"
             - name: SERVICES
               value: {{ $service }}
+            - name: DEFAULT_NAMESPACE
+              value: workflows
+            - name: DB
+              value: postgresql
+            - name: POSTGRES_HOST
+              value: "{{ $.Values.server.config.persistence.default.sql.host }}"
+            - name: POSTGRES_PORT
+              value: "{{ $.Values.server.config.persistence.default.sql.port }}"
+            - name: POSTGRES_USER
+              value: "{{ $.Values.server.config.persistence.default.sql.user }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ "default") }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ "default") }}
             {{- if ne $service "frontend"}}
             - name: TEMPORAL_CLI_ADDRESS
               value: {{ include "temporal.fullname" $ }}-frontend:{{ include "temporal.frontend.grpcPort" $ }}
