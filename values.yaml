@@ -66,6 +66,14 @@ retool-temporal-services-helm:
             # existingSecret:
             # secretKey is the key in the k8s secret
             # secretKey:
+            # options for SSL connections to database
+            # tls:
+            #   enabled: true
+            #   сaFile:
+            #   certFile:
+            #   keyFile:
+            #   enableHostVerification: false
+            #   serverName:
         visibility:
           sql:
             # host:
@@ -76,6 +84,14 @@ retool-temporal-services-helm:
             # existingSecret:
             # secretKey is the key in the k8s secret
             # secretKey:
+            # options for SSL connections to database
+            # tls:
+            #   enabled: true
+            #   сaFile:
+            #   certFile:
+            #   keyFile:
+            #   enableHostVerification: false
+            #   serverName:
 
       # use-cases with very high throughput demands (>10k workflow blocks/sec) can modify
       # below value to be higher, such as 512 or 1024

@@ -107,6 +107,16 @@ spec:
               value: workflows
             - name: DB
               value: postgresql
+            {{- if ($.Values.server.config.persistence.default.sql.tls).enabled }}
+            - name: SQL_TLS_ENABLED
+              value: "true"
+            - name: SQL_TLS
+              value: "true"
+            {{- end }}
+            {{- if and ($.Values.server.config.persistence.default.sql.tls).enabled (not ($.Values.server.config.persistence.default.sql.tls).enableHostVerification) }}
+            - name: SQL_TLS_DISABLE_HOST_VERIFICATION
+              value: "true"
+            {{- end }}
             - name: POSTGRES_HOST
               value: "{{ $.Values.server.config.persistence.default.sql.host }}"
             - name: POSTGRES_PORT
