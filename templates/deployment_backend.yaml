@@ -80,12 +80,14 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
+          {{- if .Values.workflows.enabled }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: {{ template "retool.fullname" . }}-temporal-frontend
+            value: {{ template "temporal.fullname" (index .Subcharts "retool-temporal-services-helm") }}-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:

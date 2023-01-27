@@ -68,7 +68,7 @@ spec:
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: {{ template "retool.fullname" . }}-temporal-frontend
+            value: {{ template "temporal.fullname" (index .Subcharts "retool-temporal-services-helm") }}-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
           - name: CLIENT_ID
