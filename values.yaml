@@ -60,6 +60,8 @@ retool-temporal-services-helm:
           sql:
             # host:
             # port:
+            # the dbname used for temporal
+            # db: temporal
             # user:
             # password:
             # secretName is the name of the secret where password is stored
@@ -78,6 +80,8 @@ retool-temporal-services-helm:
           sql:
             # host:
             # port:
+            # the dbname used for temporal visibility
+            # db: temporal_visibility
             # user:
             # password:
             # secretName is the name of the secret where password is stored
