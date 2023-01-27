@@ -107,13 +107,13 @@ spec:
               value: workflows
             - name: DB
               value: postgresql
-            {{- if $.Values.server.config.persistence.default.sql.db }}
+            {{- if $.Values.server.config.persistence.default.sql.database }}
             - name: DBNAME
-              value: "{{ $.Values.server.config.persistence.default.sql.db }}"
+              value: "{{ $.Values.server.config.persistence.default.sql.database }}"
             {{- end }}
-            {{- if $.Values.server.config.persistence.visibility.sql.db }}
+            {{- if $.Values.server.config.persistence.visibility.sql.database }}
             - name: VISIBILITY_DBNAME
-              value: "{{ $.Values.server.config.persistence.visibility.sql.db }}"
+              value: "{{ $.Values.server.config.persistence.visibility.sql.database }}"
             {{- end }}
             {{- if ($.Values.server.config.persistence.default.sql.tls).enabled }}
             - name: SQL_TLS_ENABLED
