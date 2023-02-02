@@ -1,5 +1,5 @@
-nameOverride: "retool-wf-temporal"
-# fullnameOverride: ""
+nameOverride: ""
+fullnameOverride: "retool-workflows-temporal"
 
 # Chart debug mode
 # (eg. disable helm hook delete policy)

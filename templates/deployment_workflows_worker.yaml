@@ -81,6 +81,8 @@ spec:
             value: "7233"
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.fullname" . }}-code-executor:3004
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE

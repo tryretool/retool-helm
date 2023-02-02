@@ -1,0 +1,164 @@
+{{- if .Values.codeExecutor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "retool.fullname" . }}-code-executor
+  labels:
+    retoolService: {{ template "retool.fullname" . }}-code-executor
+{{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ .Values.codeExecutor.replicaCount }}
+  selector:
+    matchLabels:
+      retoolService: {{ template "retool.fullname" . }}-workflow-worker
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/job: {{ template "retool.fullname" . }}-workflow-worker
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+      labels:
+        retoolService: {{ template "retool.fullname" . }}-workflow-worker
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if .Values.codeExecutor.labels }}
+{{ toYaml .Values.codeExecutor.labels | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ template "retool.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+{{- if .Values.initContainers }}
+      initContainers:
+{{- range $key, $value := .Values.initContainers }}
+      - name: "{{ $key }}"
+{{ toYaml $value | indent 8 }}
+{{- end }}
+{{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.codeExecutor.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - bash
+          - -c
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 {{ template "retool.postgresql.host" . }}:{{ template "retool.postgresql.port" . }}; ./docker_scripts/start_api.sh
+        {{- if .Values.commandline.args }}
+{{ toYaml .Values.commandline.args | indent 10 }}
+        {{- end }}
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: NODE_OPTIONS
+            value: {{(.Values.workflows.config).nodeOptions | default "--max_old_space_size=1024" }}
+        ports:
+        - containerPort: 3004
+          name: {{ template "retool.name" . }}
+          protocol: TCP
+{{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.path }}
+            port: 3004
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
+{{- end }}
+{{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.path }}
+            port: 3004
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+{{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        volumeMounts:
+        {{- range $configFile := (keys .Values.files) }}
+        - name: {{ template "retool.name" $ }}
+          mountPath: "/usr/share/retool/config/{{ $configFile }}"
+          subPath: {{ $configFile }}
+        {{- end }}
+{{- if .Values.extraVolumeMounts }}
+{{ toYaml .Values.extraVolumeMounts | indent 8 }}
+{{- end }}
+{{- with .Values.extraContainers }}
+{{ tpl . $ | indent 6 }}
+{{- end }}
+{{- range .Values.extraConfigMapMounts }}
+        - name: {{ .name }}
+          mountPath: {{ .mountPath }}
+          subPath: {{ .subPath }}
+{{- end }}
+    {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+    {{- end }}
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+{{- if .Values.securityContext.enabled }}
+      securityContext:
+        allowPrivilegeEscalation: true
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+{{- end }}
+      volumes:
+{{- range .Values.extraConfigMapMounts }}
+        - name: {{ .name }}
+          configMap:
+            name: {{ .configMap }}
+{{- end }}
+{{- if .Values.extraVolumes }}
+{{ toYaml .Values.extraVolumes | indent 8 }}
+{{- end }}
+---
+{{- if .Values.podDisruptionBudget }}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "retool.fullname" . }}
+spec:
+  {{ toYaml .Values.podDisruptionBudget }}
+  selector:
+    matchLabels:
+  {{- include "retool.selectorLabels" . | nindent 6 }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "retool.fullname" . }}-code-executor
+spec:
+  selector:
+    retoolService: {{ template "retool.fullname" . }}-code-executor
+  ports:
+  - protocol: TCP
+    port: 3004
+    targetPort: 3004
+    name: {{ template "retool.name" . }}
+  - protocol: TCP
+    port: 9090
+    targetPort: metrics
+    name: metrics
+{{- end }}

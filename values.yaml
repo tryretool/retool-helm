@@ -390,6 +390,21 @@ workflows:
       cpu: 1000m
       memory: 4096Mi
 
+codeExecutor:
+  replicaCount: 1
+  # Resources for the code executor service - these are sane inputs that bias towards stability
+  # Can adjust but may see OOM errors if memory too low for heavy code execution loads
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 8192Mi
+    requests:
+      cpu: 1000m
+      memory: 4096Mi
+
+  # Labels for code executor pods
+  labels: {}
+
 persistentVolumeClaim:
   # set to true to use pvc
   enabled: false

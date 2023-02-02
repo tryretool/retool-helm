@@ -87,6 +87,8 @@ spec:
             value: "7233"
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.fullname" . }}-code-executor:3004
           {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
