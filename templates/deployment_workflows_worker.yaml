@@ -79,6 +79,8 @@ spec:
             value: {{ template "temporal.fullname" (index .Subcharts "retool-temporal-services-helm") }}-frontend
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: "7233"
+          - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
+            value: "3005"
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
           - name: CLIENT_ID
@@ -192,12 +194,32 @@ spec:
         {{- end }}
         {{- end }}
         ports:
-        - containerPort: {{ .Values.service.internalPort }}
+        - containerPort: 3005
           name: {{ template "retool.name" . }}
           protocol: TCP
         - containerPort: 9090
           name: metrics
           protocol: TCP
+
+{{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.path }}
+            port: 80
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
+{{- end }}
+{{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.path }}
+            port: 80
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+{{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         volumeMounts:
@@ -267,8 +289,8 @@ spec:
     retoolService: {{ template "retool.fullname" . }}-workflow-worker
   ports:
   - protocol: TCP
-    port: {{ .Values.service.externalPort }}
-    targetPort: {{ .Values.service.internalPort }}
+    port: 80
+    targetPort: 3005
     name: {{ template "retool.name" . }}
   - protocol: TCP
     port: 9090
