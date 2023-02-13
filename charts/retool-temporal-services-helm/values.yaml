@@ -19,6 +19,10 @@ serviceAccount:
 server:
   enabled: true
   sidecarContainers:
+  # automatically sets up schema for temporal
+  # this requires using our custom image (tryretool/one-offs:retool-temporal)
+  # if disabled, can use temporalio/server:1.18.5 image for faster startup
+  autosetup: true
   image:
     repository: tryretool/one-offs
     tag: retool-temporal-1.1.1
@@ -230,7 +234,7 @@ admintools:
   enabled: false
   image:
     repository: temporalio/admin-tools
-    tag: 1.18.0
+    tag: 1.18.5
     pullPolicy: IfNotPresent
 
   service:

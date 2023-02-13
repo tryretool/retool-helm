@@ -52,6 +52,15 @@ spec:
         runAsUser: 1000 #temporal user
       {{- end }}
       initContainers:
+        {{- if and (ne $service  "frontend") $.Values.server.autosetup }}
+        - name: check-schema-setup
+          image:  "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          imagePullPolicy: "{{ $.Values.admintools.image.pullPolicy }}"
+          command: ['sh', '-c', 'until tctl cluster health | grep 'SERVING'; do echo waiting for temporal server to be serving; sleep 1; done;']
+          env:
+            - name: TEMPORAL_CLI_ADDRESS
+              value: "{{ include "temporal.fullname" $ }}-frontend:{{ include "temporal.frontend.grpcPort" $ }}"
+        {{- end }}
         {{- if $.Values.cassandra.enabled }}
         - name: check-cassandra-service
           image: busybox
@@ -73,7 +82,19 @@ spec:
         - name: check-elasticsearch-index
           image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
-          command: ['sh', '-c', 'until curl --silent --fail --user {{ $.Values.elasticsearch.username }}:{{ $.Values.elasticsearch.password }} {{ $.Values.elasticsearch.scheme }}://{{ $.Values.elasticsearch.host }}:{{ $.Values.elasticsearch.port }}/{{ $.Values.elasticsearch.visibilityIndex }} 2>&1 > /dev/null; do echo waiting for elasticsearch index to become ready; sleep 1; done;']
+          command: ['sh', '-c', 'until curl --silent --fail --user $(ES_USER):$(ES_PWD) {{ $.Values.elasticsearch.scheme }}://{{ $.Values.elasticsearch.host }}:{{ $.Values.elasticsearch.port }}/{{ $.Values.elasticsearch.visibilityIndex }} 2>&1 > /dev/null; do echo waiting for elasticsearch index to become ready; sleep 1; done;']
+          env:
+            - name: ES_USER
+              value: "{{ $.Values.elasticsearch.username }}"
+            - name: ES_PWD
+            {{- if ($.Values.elasticsearch).existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $.Values.elasticsearch.existingSecret }}"
+                  key: "{{ default "password" $.Values.elasticsearch.secretKey }}"
+            {{- else }}
+              value: "{{ $.Values.elasticsearch.password }}"
+            {{- end }}
         {{- end }}
       {{- end }}
       containers:
@@ -100,7 +121,14 @@ spec:
             - name: ES_USER
               value: "{{ $.Values.elasticsearch.username }}"
             - name: ES_PWD
+            {{- if ($.Values.elasticsearch).existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $.Values.elasticsearch.existingSecret }}"
+                  key: "{{ default "password" $.Values.elasticsearch.secretKey }}"
+            {{- else }}
               value: "{{ $.Values.elasticsearch.password }}"
+            {{- end }}
             - name: SERVICES
               value: {{ $service }}
             - name: DEFAULT_NAMESPACE

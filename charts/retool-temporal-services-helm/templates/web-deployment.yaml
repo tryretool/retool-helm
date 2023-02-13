@@ -43,8 +43,12 @@ spec:
             name: {{ include "temporal.componentname" (list . "web") }}-config
       containers:
         - name: {{ .Chart.Name }}-web
+          {{- if and .Values.web.image.repository .Values.web.image.tag }}
           image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}"
           imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          {{- else }}
+          image: {{ printf "%s/temporal-web" .Values.imagesDir | .Files.Get }}
+          {{- end }}
           env:
             - name: TEMPORAL_ADDRESS
               value: "{{ include "temporal.fullname" . }}-frontend.{{ .Release.Namespace }}.svc:{{ .Values.server.frontend.service.port }}"

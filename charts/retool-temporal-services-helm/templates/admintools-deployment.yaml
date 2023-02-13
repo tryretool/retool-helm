@@ -39,8 +39,12 @@ spec:
       {{ include "temporal.serviceAccount" . }}
       containers:
         - name: admin-tools
+          {{- if and .Values.admintools.image.repository .Values.admintools.image.tag }}
           image: "{{ .Values.admintools.image.repository }}:{{ .Values.admintools.image.tag }}"
           imagePullPolicy: {{ .Values.admintools.image.pullPolicy }}
+          {{- else }}
+          image: {{ printf "%s/temporal-admin-tools" .Values.imagesDir | .Files.Get }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 22
