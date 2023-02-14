@@ -139,7 +139,7 @@ retool-temporal-services-helm:
     enabled: false
 
 image:
-  repository: "tryretool/backend-workflow"
+  repository: "tryretool/backend"
   # You need to pick a specific tag here, this chart will not make a decision for you
   tag: ""
   pullPolicy: "IfNotPresent"
@@ -301,8 +301,8 @@ resources:
     cpu: 4096m
     memory: 8192Mi
   requests:
-    cpu: 2048m
-    memory: 4096Mi
+    cpu: 1024m
+    memory: 2048Mi
 
 priorityClassName: ""
 
@@ -323,7 +323,7 @@ podAnnotations: {}
 
 # Increasing replica count will deploy a separate pod for backend and jobs
 # Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
-replicaCount: 2
+replicaCount: 1
 revisionHistoryLimit: 3
 
 # Optional pod disruption budget, for ensuring higher availability of the
@@ -388,7 +388,7 @@ workflows:
       memory: 8192Mi
     requests:
       cpu: 1000m
-      memory: 4096Mi
+      memory: 2048Mi
 
 persistentVolumeClaim:
   # set to true to use pvc
