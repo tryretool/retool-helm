@@ -163,7 +163,7 @@ spec:
         {{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
-        {{- if and (regexMatch "^[0-9.]+$" .Values.image.tag) (semverCompare ">=2.110.0" .Values.image.tag) }}
+        {{- if and (regexMatch "^[0-9.]+" .Values.image.tag) (semverCompare ">=2.110.0" .Values.image.tag) }}
         livenessProbe:
           httpGet:
             path: /api/checkJobsRunnerHealth
