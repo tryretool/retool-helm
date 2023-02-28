@@ -60,7 +60,7 @@ spec:
           - name: NODE_ENV
             value: production
           - name: SERVICE_TYPE
-            value: DB_CONNECTOR,DB_CONNECTOR_SSH,WORKFLOW_BACKEND
+            value: DB_CONNECTOR,DB_SSH_CONNECTOR,WORKFLOW_BACKEND
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
