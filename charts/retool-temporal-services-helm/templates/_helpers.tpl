@@ -85,6 +85,10 @@ Source: https://stackoverflow.com/a/52024583/3027614
 {{- end -}}
 {{- end -}}
 
+{{- define "temporal.frontend.serviceName" -}}
+{{- print "temporal.api.workflowservice.v1.WorkflowService" -}}
+{{- end -}}
+
 {{- define "temporal.history.grpcPort" -}}
 {{- if $.Values.server.history.service.port -}}
 {{- $.Values.server.history.service.port -}}
@@ -101,6 +105,10 @@ Source: https://stackoverflow.com/a/52024583/3027614
 {{- end -}}
 {{- end -}}
 
+{{- define "temporal.history.serviceName" -}}
+{{- print "temporal.api.workflowservice.v1.HistoryService" -}}
+{{- end -}}
+
 {{- define "temporal.matching.grpcPort" -}}
 {{- if $.Values.server.matching.service.port -}}
 {{- $.Values.server.matching.service.port -}}
@@ -115,6 +123,10 @@ Source: https://stackoverflow.com/a/52024583/3027614
 {{- else -}}
 {{- 6935 -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "temporal.matching.serviceName" -}}
+{{- print "temporal.api.workflowservice.v1.MatchingService" -}}
 {{- end -}}
 
 {{- define "temporal.worker.grpcPort" -}}

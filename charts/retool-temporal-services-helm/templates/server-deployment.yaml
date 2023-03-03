@@ -189,7 +189,16 @@ spec:
             - name: metrics
               containerPort: 9090
               protocol: TCP
-          {{- if ne $service "worker"}}
+          {{- if and (ne $service "worker") $.Values.server.useLegacyHealthProbe }}
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:{{ include (printf "temporal.%s.grpcPort" $service) $ }}", "-service={{ include (printf "temporal.%s.serviceName" $service) $ }}"]
+            initialDelaySeconds: 5
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:{{ include (printf "temporal.%s.grpcPort" $service) $ }}", "-service={{ include (printf "temporal.%s.serviceName" $service) $ }}"]
+            initialDelaySeconds: 5
+          {{- else if and (ne $service "worker") (not $.Values.server.useLegacyHealthProbe) }}
           livenessProbe:
              initialDelaySeconds: 150
              tcpSocket:

@@ -50,6 +50,10 @@ retool-temporal-services-helm:
       repository: tryretool/one-offs
       tag: retool-temporal-1.1.1
       pullPolicy: IfNotPresent
+    # this configures grpc_health_probe (https://github.com/grpc-ecosystem/grpc-health-probe)
+    # for healthchecks instead of native k8s.
+    # Set this to true if deploying in a k8s cluster on version <1.24
+    useLegacyHealthProbe: false
     config:
       # the below values specify the database for temporal internals and workflow state
       # both can point to the same db, and even the same as retool main above, although throughput
