@@ -66,7 +66,7 @@ Modify `values.yaml`:
             name: protos 
 
         env:
-          PROTO_DIRECTORY_PATH=/retool_backend/protos
+          PROTO_DIRECTORY_PATH: /retool_backend/protos
 
 ### Ingress
 Modify `values.yaml`:
