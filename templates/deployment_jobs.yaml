@@ -163,6 +163,15 @@ spec:
         {{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
+        {{- if and (regexMatch "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" .Values.image.tag) (semverCompare ">=2.110.0-0" .Values.image.tag) }}
+        livenessProbe:
+          httpGet:
+            path: /api/checkJobsRunnerHealth
+            port: 3003
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 3
+        {{- end }}
         volumeMounts:
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
