@@ -114,7 +114,7 @@ spec:
               secretKeyRef:
           {{- if  .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
-                key: postgresql-password
+                key: postgres-password
           {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}
