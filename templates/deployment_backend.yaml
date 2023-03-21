@@ -117,10 +117,10 @@ spec:
           {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}
-                key: {{ .Values.config.postgresql.passwordSecretKey | default "postgres-password" }}
+                key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
-                key: postgres-password
+                key: postgresql-password
                 {{- end }}
           {{- end }}
           - name: CLIENT_SECRET

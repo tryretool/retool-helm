@@ -104,7 +104,7 @@ Set postgresql db
 */}}
 {{- define "retool.postgresql.db" -}}
 {{- if .Values.postgresql.enabled -}}
-{{- .Values.postgresql.postgresqlDatabase | quote -}}
+{{- .Values.postgresql.auth.database | quote -}}
 {{- else -}}
 {{- .Values.config.postgresql.db | quote -}}
 {{- end -}}
@@ -115,7 +115,7 @@ Set postgresql user
 */}}
 {{- define "retool.postgresql.user" -}}
 {{- if .Values.postgresql.enabled -}}
-{{- .Values.postgresql.postgresqlUsername | quote -}}
+{{- .Values.postgresql.auth.username | quote -}}
 {{- else -}}
 {{- .Values.config.postgresql.user | quote -}}
 {{- end -}}
