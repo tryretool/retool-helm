@@ -68,9 +68,11 @@ spec:
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: {{ template "temporal.fullname" (index .Subcharts "retool-temporal-services-helm") }}-frontend
+            value: {{ template "retool.temporal.host" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
-            value: "7233"
+            value: {{ template "retool.temporal.port" . }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
+            value: {{ template "retool.temporal.namespace" . }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
