@@ -120,3 +120,36 @@ Set postgresql user
 {{- .Values.config.postgresql.user | quote -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Set Temporal frontend host
+*/}}
+{{- define "retool.temporal.host" -}}
+{{- if (.Values.workflows.temporal).enabled -}}
+{{- .Values.workflows.temporal.host | quote -}}
+{{- else -}}
+{{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Set Temporal frontend port
+*/}}
+{{- define "retool.temporal.port" -}}
+{{- if (.Values.workflows.temporal).enabled -}}
+{{- .Values.workflows.temporal.port | quote -}}
+{{- else -}}
+{{- "7233" | quote -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Set Temporal namespace
+*/}}
+{{- define "retool.temporal.namespace" -}}
+{{- if (.Values.workflows.temporal).enabled -}}
+{{- .Values.workflows.temporal.namespace | quote -}}
+{{- else -}}
+{{- "workflows" | quote -}}
+{{- end -}}
+{{- end -}}

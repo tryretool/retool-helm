@@ -45,6 +45,8 @@ config:
 
 retool-temporal-services-helm:
   server:
+    # Disable this if using your own Temporal Cluster
+    enabled: true
     # Defines image to be used for temporal server
     image:
       repository: tryretool/one-offs
@@ -371,6 +373,19 @@ workflows:
 
   # Labels for workflows worker pods
   labels: {}
+
+  # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
+  # This allows configuring a Retool Workflows deployment that uses your own Temporal cluster
+  # instead of deploying a new one. Set enabled to true and add the config variables.
+  # NOTE: Temporal Frontend with required TLS or mTLS not currently supported
+  temporal:
+    enabled: false
+    # discoverable service name for the temporal frontend service
+    # host:
+    # discoverable service port for the temporal frontend service
+    # port:
+    # temporal namespace to use for Temporal Workflows related to Retool
+    # namespace:
 
   # Config for workflows worker pods. Node heap size limits can be overriden here
   # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
