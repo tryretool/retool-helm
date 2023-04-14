@@ -41,7 +41,7 @@ Guide](https://docs.retool.com/docs/setup-instructions).
 
 5. Now you're all ready to install Retool:
 
-        $ helm install my-retool retool/retool -f values.yaml
+        $ helm install my-retool retool/retool-wf -f values.yaml
 
 ## Additional Configuration
 
