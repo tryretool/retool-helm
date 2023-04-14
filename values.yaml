@@ -1,91 +1,117 @@
+## @param config.nameOverride Replaces the name of the chart when this is used to construct Kubernetes object names
+## @param config.fullnameOverride Completely replaces the generated name
 # nameOverride:
 # fullnameOverride:
 
+## @section Retool Config parameters
+## @param config.licenseKey The raw Retool license key
+## @param config.licenseKeySecretName The name of the secret where the Retool license key is stored (can be used instead of licenseKey)
+## @param config.licenseKeySecretKey The key in the k8s secret, default: license-key
+## @param config.useInsecureCookies  Whether to send authentication requests using insecure cookies. Set COOKIE_INSECURE to true if your Retool deployment uses a non-HTTPS URL or IP address
+## @param config.auth.google.clientId  A Google OAuth client app ID for OAuth-based authentication with Google (e.g., Google SSO or using a Google Sheets resource).
+## @param config.auth.google.clientSecret  A Google OAuth client app secret for OAuth-based authentication with Google (e.g., Google SSO or using a Google Sheets resource).
+## @param config.auth.google.clientSecretSecretName The name of the secret where the google client secret is stored (can be used instead of clientSecret)
+## @param config.auth.google.clientSecretSecretKey The key in the k8s secret, default: google-client-secret
+## @param config.auth.google.domain  Restrict users from logging in unless they use SSO for the specified domain. This value must match your email domain. Specify comma-separated values for multiple domains.
+## @param config.encryptionKey  Encrypts data stored in the PostgreSQL database (e.g., database credentials, SSH keys, etc). Make sure to keep track of this key in a location outside of your Retool instance(s).
+## @param config.encryptionKeySecretName The name of the secret where the encryption key is stored (can be used instead of encryptionKey)
+## @param config.encryptionKeySecretKey The key in the k8s secret, default: encryption-key
+## @param config.jwtSecret Secret token to sign requests for authentication with Retool's backend API server. If changed, all active user login sessions are invalidated.
+## @param config.jwtSecretSecretName The name of the secret where the jwt secret is stored (can be used instead of jwtSecret)
+## @param config.jwtSecretSecretKey The key in the k8s secret, default: jwt-secret
+
+## IMPORTANT: Incompatible with postgresql subchart. Please disable the subchart in order to use a managed or external postgres instance.
+## @param config.postgresql.host  Specifies the host or server name where the PostgreSQL database is located. This could be an IP address or a domain name.
+## @param config.postgresql.port  Specifies the port number on which the PostgreSQL server is listening for incoming connections. The default port for PostgreSQL is 5432.
+## @param config.postgresql.db  Specifies the name of the PostgreSQL database that the application wants to connect to.
+## @param config.postgresql.user  Specifies the username to be used to connect to the PostgreSQL database.
+## @param config.postgresql.password  Specifies the password associated with the username for connecting to the PostgreSQL database. This password is typically encrypted or hashed for security purposes.
+## @param config.postgresql.ssl_enabled Specifies whether SSL/TLS encryption is enabled for the PostgreSQL connection. SSL/TLS encryption is used to secure communication between the application and the database server.
+## @param config.postgresql.passwordSecretName the name of the secret where the pg password is stored (can be used instead of password)
+## @param config.postgresql.passwordSecretKey  the key in the k8s secret, default: postgresql-password
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
-  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
   # licenseKeySecretName:
-  # licenseKeySecretKey is the key in the k8s secret, default: license-key
   # licenseKeySecretKey:
   useInsecureCookies: false
   auth:
     google:
       clientId:
       clientSecret:
-      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
       # clientSecretSecretName:
-      # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
       # clientSecretSecretKey:
       domain:
   encryptionKey:
-  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:
-  # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
   # encryptionKeySecretKey:
   jwtSecret:
-  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret)
   # jwtSecretSecretName:
-  # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
   # jwtSecretSecretKey:
 
-  # IMPORTANT: Incompatible with postgresql subchart
-  # Please disable the subchart in order to use a managed or external postgres instance.
-  postgresql: {}
-    # Specify if postgresql subchart is disabled
+  # IMPORTANT: Incompatible with postgresql subchart. Please disable the subchart in order to use a managed or external postgres instance.
+  postgresql:
+    {}
     # host:
     # port:
     # db:
     # user:
     # password:
     # ssl_enabled:
-    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
     # passwordSecretName:
-    # passwordSecretKey is the key in the k8s secret, default: postgresql-password
     # passwordSecretKey:
 
+## @section image Retool image version
+## ref: https://hub.docker.com/r/tryretool/backend/tags
+## release notes: https://docs.retool.com/docs/self-hosted-release-notes
+## @param image.repository Retool image repository. You need to pick a specific tag here, this chart will not make a decision for you
+## @param image.tag Retool image tag
+## @param image.pullPolicy Retool image pull policy
 image:
   repository: "tryretool/backend"
-  # You need to pick a specific tag here, this chart will not make a decision for you
   tag: ""
   pullPolicy: "IfNotPresent"
 
+## @section commandline parameters
+## @param commandline.args Specify command line arguments to be passed to a container when it is started.
 commandline:
   args: []
 
+## @param env Specify envrionment variables to be passed to the container when it is started. These values should be key:value
+## Ref: https://docs.retool.com/reference/environment-variables-reference
 env: {}
 
-# Optionally specify additional environment variables to be populated from Kubernetes secrets.
-# Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
+## @param environmentSecrets Optionally specify additional environment variables to be populated from Kubernetes secrets.
+## ref: https://docs.retool.com/reference/environment-variables-reference
+## Useful for passing secret environment variables from Kubernetes secrets.
+## Ex:
+# - name: SCIM_AUTH_TOKEN
+#   secretKeyRef:
+#     name: retool-scim-auth-token
+#     key: auth-token
 environmentSecrets: []
-  # - name: SCIM_AUTH_TOKEN
-  #   secretKeyRef:
-  #     name: retool-scim-auth-token
-  #     key: auth-token
-  # - name: GITHUB_APP_PRIVATE_KEY
-  #   secretKeyRef:
-  #     name: retool-github-app-private-key
-  #     key: private-key
 
-# Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
-# Can also include environment secrets here instead of in environmentSecrets
+## @param environmentVariables Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
+## ref: https://docs.retool.com/reference/environment-variables-reference
+## Can also include environment secrets here instead of in environmentSecrets
+## Ex:
+#   - name: GITHUB_APP_PRIVATE_KEY
+#     valueFrom:
+#       secretKeyRef:
+#         name: retool-github-app-private-key
+#         key: private-key
+#   - name: POD_HOST_IP
+#     valueFrom:
+#       fieldRef:
+#         fieldPath: status.hostIP
 environmentVariables: []
-  #   - name: SCIM_AUTH_TOKEN
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: retool-scim-auth-token
-  #         key: auth-token
-  #   - name: GITHUB_APP_PRIVATE_KEY
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: retool-github-app-private-key
-  #         key: private-key
-  #   - name: POD_HOST_IP
-  #     valueFrom:
-  #       fieldRef:
-  #         fieldPath: status.hostIP
 
-# Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
-# These are mutually exclusive as both enable reading in environments variables via External Secrets.
+## @section externalSecrets Support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
+## These are mutually exclusive as both enable reading in environments variables via External Secrets.
+## @param externalSecrets.enabled  Specifies whether external secrets are enabled or not. If set to true, the chart will use external secrets to manage sensitive data.
+## @param externalSecrets.name Specifies the name of the external secret resource to use. This resource will contain the mappings between environment variables and secret keys.
+## @param externalSecrets.externalSecretsOperator.enabled Specifies whether to use the External Secrets Operator to manage external secrets. This operator provides a more modern and flexible way to manage external secrets compared to the legacy method.
+## @param externalSecrets.externalSecretsOperator.backendType Specifies the backend type for the External Secrets Operator. The backend type determines where the secrets are stored, such as in a Kubernetes Secret or an external secrets management system like AWS Secrets Manager.
+## @param externalSecrets.externalSecretsOperator.secretRef Specifies the reference to the external secret resource to use with the External Secrets Operator. This allows the operator to retrieve the secret mappings and create Kubernetes Secrets based on them.
 externalSecrets:
   # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
   # This mode only allows a single secret name to be provided.
@@ -98,17 +124,30 @@ externalSecrets:
     # Default set to AWS Secrets Manager.
     backendType: secretsManager
     # Array of name/path key/value pairs to use for the External Secrets Objects.
-    secretRef: []
+    secretRef:
+      []
       # - name: retool-config
       #   path: global-retool-config
       # - name: retool-db
       #   path: global-retool-db-config
 
+## @param files Configuration parameter that allows you to specify additional files to include in the chart's packaged release.
 files: {}
 
+## @section deployment
+## @param deployment.annotations Used to define annotations for the Kubernetes Deployment resource created by the chart.
 deployment:
   annotations: {}
 
+## @section service
+## @param service.type Specifies the type of Service to create, such as ClusterIP, NodePort, or LoadBalancer. The type determines how the Service is exposed to the network.
+## @param service.externalPort Specifies the port number to use for external traffic to the Service. This is the port that other services or clients use to access the Service.
+## @param service.internalPort Specifies the port number to use for internal traffic to the Service. This is the port that the Service uses to communicate with its associated Pods.
+## @param service.externalIPs Specifies a list of external IP addresses to assign to the Service. This is useful when you want to assign a static IP address to the Service.
+## @param service.annotations Specifies a map of annotations to attach to the Service resource. Annotations are used to add metadata to the resource that can be used by tools or scripts that interact with the resource.
+## @param service.labels Specifies a set of labels to apply to the Service resource. Labels are used to organize and filter resources in Kubernetes.
+## @param service.selector Specifies the label selector used to associate the Service with its associated Pods. The selector determines which Pods are included in the Service.
+## @param service.portName Specifies a name for the Service port. This can be useful when you want to refer to the port by a more descriptive name than the port number.
 service:
   type: ClusterIP
   externalPort: 3000
@@ -125,9 +164,16 @@ service:
   selector: {}
   # portName: service-port
 
+## @section ingress
+## @param ingress.enabled Specifies whether to create an Ingress resource or not. If set to true, the Ingress resource is created. If set to false, the Ingress resource is not created.
+## @param ingress.ingressClassName Specifies a set of labels to apply to the Ingress resource. Labels are used to organize and filter resources in Kubernetes. (For k8s 1.18+)
+## @param ingress.labels Specifies a set of labels to apply to the Ingress resource. Labels are used to organize and filter resources in Kubernetes.
+## @param ingress.annotations Specifies a map of annotations to attach to the Ingress resource. Annotations are used to add metadata to the resource that can be used by tools or scripts that interact with the resource.
+## @param ingress.hosts Specifies a list of hostnames to associate with the Ingress resource. Each hostname is associated with a set of rules that determine how traffic is routed to the appropriate Service or endpoint.
+## @param ingress.tls Specifies a list of TLS certificates to use for secure communication with the Ingress resource. Each TLS certificate is associated with a set of rules that determine how traffic is routed to the appropriate Service or endpoint.
+## @param ingress.pathType Specifies the path type to use for the Ingress resource. Path type determines how path-based routing is performed, and can be set to Exact, Prefix, or ImplementationSpecific.
 ingress:
   enabled: true
-  # For k8s 1.18+
   # ingressClassName:
   labels: {}
   annotations: {}
@@ -144,24 +190,33 @@ ingress:
   # servicePort: service-port
   pathType: ImplementationSpecific
 
+## @section postgresql
+## this uses the dockerized postgres subchart
+## We highly recommend you do NOT use this subchart as is to run Postgres in a container or your production instance of Retool; it is a default. Please use a managed Postgres,
+## or self-host more permanantly. Use enabled: false and set in config above to do so.
+## @param postgresql.enabled Specifies whether to enable the PostgreSQL subchart or not. If set to true, the subchart is enabled and a PostgreSQL instance is deployed as part of the chart. If set to false, the subchart is not enabled.
+## @param postgresql.ssl_enabled Specifies whether SSL should be enabled or not for PostgreSQL connections.
+## @param postgresql.auth.database Specifies the name of the database to be used.
+## @param postgresql.auth.username Specifies the username to be used for accessing the database.
+## @param postgresql.auth.postgresPassword Specifies the password to be used for accessing the database.
+## @param postgresql.service.port Specifies the port on which PostgreSQL should listen for connections.
+## @param postgresql.image.repository Specifies the Docker image repository to use for the PostgreSQL container.
+## @param postgresql.image.tag Specifies the Docker image tag to use for the PostgreSQL container.
+## @param postgresql.postgresqlDataDir Specifies the directory where PostgreSQL data is stored.
+## @param postgresql.primary.persistence.enabled Specifies whether to use persistent storage for PostgreSQL data.
+## @param postgresql.primary.persistence.mountPath Specifies the path where persistent storage is mounted.
 postgresql:
-  # We highly recommend you do NOT use this subchart as is to run Postgres in a container
-  # for your production instance of Retool; it is a default. Please use a managed Postgres,
-  # or self-host more permanantly. Use enabled: false and set in config above to do so.
   enabled: true
   ssl_enabled: false
   auth:
     database: hammerhead_production
     username: retool
-    password: retool
+    postgresPassword: retool
   service:
     port: 5432
-  # Use the offical docker image rather than bitnami/docker
-  # since Retool depends on the uuid-ossp extension
   image:
     repository: "postgres"
-    # 11 is a default, please use 13.4+
-    # see https://www.postgresql.org/support/versioning/
+    # 11 is a default, please use 13.4+ (see https://www.postgresql.org/support/versioning/)
     tag: "11"
   postgresqlDataDir: "/data/pgdata"
   primary:
@@ -169,15 +224,21 @@ postgresql:
       enabled: true
       mountPath: "/data/"
 
+## @section serviceAccount Specifies whether a service account should be created
+## @param serviceAccount.create Specifies whether to create a service account or not. If set to true, the service account is created. If set to false, the service account is not created.
+## @param serviceAccount.name The name of the service account to use. If not set and create is true, a name is generated using the fullname template. If set and create is false, the service account must be existing.
+## @param serviceAccount.annotations Specifies a map of annotations to attach to the service account. Annotations are used to add metadata to the resource that can be used by tools or scripts that interact with the resource.
 serviceAccount:
-  # Specifies whether a service account should be created
   create: true
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  # If set and create is false, the service account must be existing
   name:
   annotations: {}
 
+## @section livenessProbe
+## @param livenessProbe.enabled Specifies whether to enable liveness probe or not. If set to true, the liveness probe is enabled. If set to false, the liveness probe is disabled.
+## @param livenessProbe.path Specifies the HTTP endpoint to use for the liveness probe. This is the endpoint that Kubernetes will use to determine whether the container is still alive and should continue to receive traffic.
+## @param livenessProbe.initialDelaySeconds Specifies the number of seconds to wait before performing the first liveness probe. This delay allows time for the container to initialize and start accepting traffic.
+## @param livenessProbe.timeoutSeconds Specifies the number of seconds to wait for a response from the liveness probe endpoint. If a response is not received within this time, the container is considered to have failed the liveness probe.
+## @param livenessProbe.failureThreshold Specifies the number of consecutive failures that must occur before the container is considered to have failed the liveness probe. If the container fails the liveness probe this many times in a row, it will be restarted by Kubernetes.
 livenessProbe:
   enabled: true
   path: /api/checkHealth
@@ -185,6 +246,13 @@ livenessProbe:
   timeoutSeconds: 10
   failureThreshold: 3
 
+## @section readinessProbe
+## @param readinessProbe.enabled Specifies whether the Readiness Probe is enabled or not. If set to true, the Readiness Probe is enabled. If set to false, the Readiness Probe is disabled.
+## @param readinessProbe.path Specifies the HTTP endpoint to hit for the Readiness Probe. If the endpoint returns a successful HTTP response (i.e. a 200-level status code), the container is considered ready to serve traffic. If the endpoint returns an unsuccessful response (i.e. a non-200-level status code), the container is considered not ready to serve traffic.
+## @param readinessProbe.initialDelaySeconds Specifies the number of seconds to wait before starting the first probe. This can be useful if the container needs some time to initialize before it can start serving traffic.
+## @param readinessProbe.timeoutSeconds Specifies the number of seconds to wait for a response before considering the probe a failure.
+## @param readinessProbe.failureThreshold Specifies the number of consecutive failures required before the container is considered not ready to serve traffic.
+## @param readinessProbe.successThreshold Specifies the number of consecutive successes required before the container is considered ready to serve traffic again after a period of failure.
 readinessProbe:
   enabled: true
   path: /api/checkHealth
@@ -193,17 +261,25 @@ readinessProbe:
   periodSeconds: 10
   successThreshold: 5
 
+## @param extraContainers Specify list of additional containers for the Retool pods
 extraContainers: []
 
+## @param extraVolumeMounts Specify list of additional volumeMounts for the Retool pods
 extraVolumeMounts: []
 
+## @param extraVolumes Specify list of additional volumes for the Retool pods
 extraVolumes: []
 
+## @section resources
+## If you have more than 1 replica, the minimum recommended resources configuration is as follows:
+## - cpu: 2048m
+## - memory: 4096Mi
+## If you only have 1 replica, please double the above numbers.
+## @param resources.limits.cpu Specifies the maximum amount of CPU that the deployment can use. This is a hard limit that cannot be exceeded.
+## @param resources.limits.memory Specifies the maximum amount of memory that the deployment can use. This is a hard limit that cannot be exceeded.
+## @param resources.requests.cpu Specifies the minimum amount of CPU that the deployment requires to run.
+## @param resources.requests.memory Specifies the minimum amount of memory that the deployment requires to run.
 resources:
-  # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
-  # - cpu: 2048m
-  # - memory: 4096Mi
-  # If you only have 1 replica, please double the above numbers.
   limits:
     cpu: 4096m
     memory: 8192Mi
@@ -211,95 +287,123 @@ resources:
     cpu: 2048m
     memory: 4096Mi
 
+## @param priorityClassName Specify the name of a Kubernetes PriorityClass that will be assigned to the Pods created by the chart.
+## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 priorityClassName: ""
 
-# Affinity for pod assignment
-# Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## @param affinity Affinity for pod assignment
+## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 # affinity: {}
 
-# Tolerations for pod assignment
-# Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+## @param tolerations Tolerations for pod assignment
+## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 tolerations: []
 
-# Node labels for pod assignment
-# Ref: https://kubernetes.io/docs/user-guide/node-selection/
+## @param nodeSelector Node labels for pod assignment
+## Ref: https://kubernetes.io/docs/user-guide/node-selection/
 nodeSelector: {}
 
-# Common annotations for all pods (backend and job runner).
+## @param podAnnotations Common annotations for all pods (backend and job runner).
 podAnnotations: {}
 
-# Increasing replica count will deploy a separate pod for backend and jobs
-# Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
+## @param replicaCount The number of Retool backend replicas
+## Increasing replica count will deploy a separate pod for backend and jobs
+## Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
 replicaCount: 2
+
+## @param revisionHistoryLimit Specifies the maximum number of old ReplicaSets to retain for a Deployment.
 revisionHistoryLimit: 3
 
-# Optional pod disruption budget, for ensuring higher availability of the
-# Retool application.  Specify either minAvailable or maxUnavailable, as
-# either an integer pod count (1) or a string percentage ("50%").
-# Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-#
-# Example:
+## @section podDisruptionBudget
+## @param maxUnavailable Specifies the maximum number of replicas that can be unavailable during a Deployment or StatefulSet update.
+## Optional pod disruption budget, for ensuring higher availability of the
+## Retool application.  Specify either minAvailable or maxUnavailable, as
+## either an integer pod count (1) or a string percentage ("50%").
+## Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+##
 # podDisruptionBudget:
 #   maxUnavailable: 1
 
-# Common labels for all pods (backend and job runner) for pod assignment
+## @param podLabels Common labels for all pods (backend and job runner) for pod assignment
 podLabels: {}
 
+## @section jobRunner parameters
+## @param jobRunner.annotations Annotations for Retool job runner pods
+## @param jobRunner.labels Labels for Retool job runner pods
 jobRunner:
-  # Annotations for job runner pods
   annotations: {}
-
-  # Labels for job runner pods
   labels: {}
 
+## @section backend parameters
+## @param backend.annotations Annotations for Retool backend pods
+## @param backend.labels Labels for Retool backend pods
 backend:
-  # Annotations for backendpods
   annotations: {}
-
-  # Labels for backend pods
   labels: {}
 
+## @section persistentVolumeClaim parameters
+## @param persistentVolumeClaim.enabled Specifies whether to create a PVC resource or not. If set to true, the PVC resource is created. If set to false, the PVC resource is not created.
+## @param persistentVolumeClaim.existingClaim Specifies whether to use an existing PVC or create a new one. If set to true, the chart will use an existing PVC. If set to false, the chart will create a new PVC.
+## @param persistentVolumeClaim.annotations Specifies a set of annotations to apply to the PVC resource. Annotations are used to add metadata to the resource that can be used by tools or scripts that interact with the resource.
+## @param persistentVolumeClaim.accessModes Specifies the access modes to use for the PVC resource. Access modes determine how the PVC can be accessed by pods, and can be set to ReadWriteOnce, ReadWriteMany, or ReadOnlyMany.
+## @param persistentVolumeClaim.size Specifies the size of the PVC in bytes or with a unit suffix (e.g. 1Gi). This determines how much storage is allocated for the PVC.
+## @param persistentVolumeClaim.storageClass Specifies the name of the storage class to use for the PVC resource. Storage classes are used to define different classes of storage with different performance and cost characteristics.
+## If set to "-", storageClassName: "", which disables dynamic provisioning
+## If undefined (the default) or set to null, no storageClassName spec is
+##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+##   GKE, AWS & OpenStack)
+##
 persistentVolumeClaim:
-  # set to true to use pvc
   enabled: false
-  # set to true to use you own pvc
   existingClaim: false
   annotations: {}
-
   accessModes:
     - ReadWriteOnce
   size: "15Gi"
-  ## If defined, storageClassName: <storageClass>
-  ## If set to "-", storageClassName: "", which disables dynamic provisioning
-  ## If undefined (the default) or set to null, no storageClassName spec is
-  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-  ##   GKE, AWS & OpenStack)
-  ##
   # storageClass: "-"
 
-# default security context
+## @section securityContext
+## default security context
+## https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param securityContext.enabled Specifies whether to enable the security context for the containers or not. If set to true, the security context is enabled for the containers. If set to false, the security context is disabled.
+## @param securityContext.allowPrivilegeEscalation Specifies whether to allow privilege escalation for the containers or not. If set to true, the containers can escalate privileges. If set to false, the containers cannot escalate privileges.
+## @param securityContext.runAsUser Specifies the user ID to run the containers as. This is useful for setting a non-root user ID to run the containers for security reasons.
+## @param securityContext.fsGroup Specifies the group ID that owns the files created by the containers. This is useful for setting a non-root group ID for security reasons.
 securityContext:
   enabled: false
   allowPrivilegeEscalation: false
   runAsUser: 1000
   fsGroup: 2000
 
+## @param extraConfigMapMounts An array of objects, where each object specifies the ConfigMap to mount and the corresponding volume mount path
 extraConfigMapMounts: []
 
+## @param initContainers Adds additional init containers to the Retool pods
+## Ex:
+## initContainers:
+##   - name: redis
+##     image: redis-image
+##     ports:
+##       - name: redis-port
+##         containerPort: 1234
 initContainers: {}
 
+## @param extraManifests Adds additional Kubernetes objects to the cluster
+## Ex:
+## extraManifests:
+##  - apiVersion: cloud.google.com/v1beta1
+##    kind: BackendConfig
+##    metadata:
+##      name: "{{ .Release.Name }}-testing"
+##    spec:
+##      securityPolicy:
+##        name: "my-gcp-cloud-armor-policy"
 extraManifests: []
-# extraManifests:
-#  - apiVersion: cloud.google.com/v1beta1
-#    kind: BackendConfig
-#    metadata:
-#      name: "{{ .Release.Name }}-testing"
-#    spec:
-#      securityPolicy:
-#        name: "my-gcp-cloud-armor-policy"
 
-# Support for AWS Security groups for pods
-# Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
+## @section securityGroupPolicy Support for AWS Security groups for pods
+## Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
+## @param securityGroupPolicy.enabled Specifies whether to enable Security Groups for pods or not. If set to true, pods created by the chart will be assigned to a security group. If set to false, pods will not be assigned to a security group.
+## @param securityGroupPolicy.groupIds Specifies a list of security group IDs to assign to pods created by the chart. Security groups are used to control inbound and outbound traffic to and from pods.
 securityGroupPolicy:
   enabled: false
   groupIds: []
