@@ -262,10 +262,9 @@ backend:
 persistentVolumeClaim:
   # set to true to use pvc
   enabled: false
-  # set to true to use you own pvc
-  existingClaim: false
+  # set to the name of the existing pvc
+  existingClaim: ""
   annotations: {}
-
   accessModes:
     - ReadWriteOnce
   size: "15Gi"
@@ -275,7 +274,8 @@ persistentVolumeClaim:
   ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
   ##   GKE, AWS & OpenStack)
   ##
-  # storageClass: "-"
+  storageClass: ""
+  mountPath: /retool_backend/pv-data
 
 # default security context
 securityContext:
