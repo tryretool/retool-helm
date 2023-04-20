@@ -1,0 +1,28 @@
+{{- if and .Values.persistentVolumeClaim.enabled (not .Values.persistentVolumeClaim.existingClaim) }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "retool.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+{{- if .Values.persistentVolumeClaim.annotations }}
+  annotations:
+{{ toYaml .Values.persistentVolumeClaim.annotations | indent 4 }}
+{{- end }}
+spec:
+  {{- if .Values.persistentVolumeClaim.storageClass }}
+  {{- if (eq "-" .Values.persistentVolumeClaim.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.persistentVolumeClaim.storageClass }}"
+{{- end }}
+{{- end }}
+  {{- if not (empty .Values.persistentVolumeClaim.accessModes) }}
+  accessModes:
+  {{- range .Values.persistentVolumeClaim.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistentVolumeClaim.size | quote  }}
+{{- end }}
