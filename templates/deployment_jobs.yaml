@@ -5,9 +5,14 @@ metadata:
   name: {{ template "retool.fullname" . }}-jobs-runner
   labels:
 {{- include "retool.labels" . | nindent 4 }}
-{{- if .Values.deployment.annotations }}
+{{- if or .Values.deployment.annotations .Values.deployment.autoRollDeployments }}
   annotations:
+{{- if .Values.deployment.annotations }}
 {{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+  {{- if .Values.deployment.autoRollDeployments }}
+    rollme: {{ randAlphaNum 5 | quote }}
+  {{- end }}
 {{- end }}
 spec:
   replicas: 1

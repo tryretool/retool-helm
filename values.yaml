@@ -107,6 +107,7 @@ externalSecrets:
 files: {}
 
 deployment:
+  autoRollDeployments: false
   annotations: {}
 
 service:
