@@ -70,7 +70,7 @@ retool-temporal-services-helm:
             # database: temporal
             # user:
             # password:
-            # secretName is the name of the secret where password is stored
+            # existingSecret is the name of the secret where password is stored
             # existingSecret:
             # secretKey is the key in the k8s secret
             # secretKey:
@@ -90,7 +90,7 @@ retool-temporal-services-helm:
             # database: temporal_visibility
             # user:
             # password:
-            # secretName is the name of the secret where password is stored
+            # existingSecret is the name of the secret where password is stored
             # existingSecret:
             # secretKey is the key in the k8s secret
             # secretKey:
@@ -378,8 +378,9 @@ workflows:
   # This allows configuring a Retool Workflows deployment that uses your own Temporal cluster
   # instead of deploying a new one. Set enabled to true and add the config variables.
   # NOTE: Temporal Frontend with required TLS or mTLS not currently supported
-  temporal:
-    enabled: false
+  temporal: {}
+    # set enabled to true if using a pre-existing temporal cluster
+    # enabled: false
     # discoverable service name for the temporal frontend service
     # host:
     # discoverable service port for the temporal frontend service
