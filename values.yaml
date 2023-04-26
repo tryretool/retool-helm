@@ -280,9 +280,7 @@ persistentVolumeClaim:
 # default security context
 securityContext:
   enabled: false
-  allowPrivilegeEscalation: false
-  runAsUser: 1000
-  fsGroup: 2000
+  runAsUser: 0
 
 extraConfigMapMounts: []
 
