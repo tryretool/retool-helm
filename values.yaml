@@ -152,8 +152,8 @@ postgresql:
   ssl_enabled: false
   auth:
     database: hammerhead_production
-    username: retool
-    password: retool
+    username: postgres
+    postgresPassword: retool
   service:
     port: 5432
   # Use the offical docker image rather than bitnami/docker
