@@ -164,10 +164,9 @@ postgresql:
     # see https://www.postgresql.org/support/versioning/
     tag: "11"
   postgresqlDataDir: "/data/pgdata"
-  primary:
-    persistence:
-      enabled: true
-      mountPath: "/data/"
+  persistence:
+    enabled: true
+    mountPath: "/data/"
 
 serviceAccount:
   # Specifies whether a service account should be created
