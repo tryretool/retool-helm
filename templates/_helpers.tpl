@@ -102,11 +102,11 @@ Set postgresql port
 {{/*
 Set postgresql db
 */}}
-{{- define "retool.postgresql.db" -}}
+{{- define "retool.postgresql.database" -}}
 {{- if .Values.postgresql.enabled -}}
 {{- .Values.postgresql.auth.database | quote -}}
 {{- else -}}
-{{- .Values.config.postgresql.db | quote -}}
+{{- .Values.config.postgresql.database | quote -}}
 {{- end -}}
 {{- end -}}
 
