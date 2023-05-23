@@ -1,0 +1,305 @@
+# nameOverride:
+# fullnameOverride:
+
+config:
+  licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
+  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
+  # licenseKeySecretName:
+  # licenseKeySecretKey is the key in the k8s secret, default: license-key
+  # licenseKeySecretKey:
+  useInsecureCookies: false
+  auth:
+    google:
+      clientId:
+      clientSecret:
+      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
+      # clientSecretSecretName:
+      # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
+      # clientSecretSecretKey:
+      domain:
+  encryptionKey: '0000000000'
+  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
+  # encryptionKeySecretName:
+  # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
+  # encryptionKeySecretKey:
+  jwtSecret: '0000000000'
+  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret)
+  # jwtSecretSecretName:
+  # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
+  # jwtSecretSecretKey:
+
+  # IMPORTANT: Incompatible with postgresql subchart
+  # Please disable the subchart in order to use a managed or external postgres instance.
+  postgresql: {}
+    # Specify if postgresql subchart is disabled
+    # host:
+    # port:
+    # db:
+    # user:
+    # password:
+    # ssl_enabled:
+    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
+    # passwordSecretName:
+    # passwordSecretKey is the key in the k8s secret, default: postgresql-password
+    # passwordSecretKey:
+
+image:
+  repository: "tryretool/backend"
+  # You need to pick a specific tag here, this chart will not make a decision for you
+  tag: ""
+  pullPolicy: "IfNotPresent"
+
+commandline:
+  args: []
+
+env: {}
+
+# Optionally specify additional environment variables to be populated from Kubernetes secrets.
+# Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
+environmentSecrets: []
+  # - name: SCIM_AUTH_TOKEN
+  #   secretKeyRef:
+  #     name: retool-scim-auth-token
+  #     key: auth-token
+  # - name: GITHUB_APP_PRIVATE_KEY
+  #   secretKeyRef:
+  #     name: retool-github-app-private-key
+  #     key: private-key
+
+# Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
+# Can also include environment secrets here instead of in environmentSecrets
+environmentVariables: []
+  #   - name: SCIM_AUTH_TOKEN
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: retool-scim-auth-token
+  #         key: auth-token
+  #   - name: GITHUB_APP_PRIVATE_KEY
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: retool-github-app-private-key
+  #         key: private-key
+  #   - name: POD_HOST_IP
+  #     valueFrom:
+  #       fieldRef:
+  #         fieldPath: status.hostIP
+
+# Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
+# These are mutually exclusive as both enable reading in environments variables via External Secrets.
+externalSecrets:
+  # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
+  # This mode only allows a single secret name to be provided.
+  enabled: false
+  name: retool-config
+  # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
+  externalSecretsOperator:
+    enabled: false
+    # External Secrets Operator Backend Types: https://github.com/external-secrets/external-secrets#supported-backends
+    # Default set to AWS Secrets Manager.
+    backendType: secretsManager
+    # Array of name/path key/value pairs to use for the External Secrets Objects.
+    secretRef: []
+      # - name: retool-config
+      #   path: global-retool-config
+      # - name: retool-db
+      #   path: global-retool-db-config
+
+files: {}
+
+deployment:
+  annotations: {}
+
+service:
+  type: ClusterIP
+  externalPort: 3000
+  internalPort: 3000
+  # externalIPs:
+  # - 192.168.0.1
+  #
+  ## LoadBalancer IP if service.type is LoadBalancer
+  # loadBalancerIP: 10.2.2.2
+  annotations: {}
+  labels: {}
+  ## Limit load balancer source ips to list of CIDRs (where available)
+  # loadBalancerSourceRanges: []
+  selector: {}
+  # portName: service-port
+
+ingress:
+  enabled: true
+  # For k8s 1.18+
+  # ingressClassName:
+  labels: {}
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  hosts:
+  # - host: retool.example.com
+  #   paths:
+  #     - path: /
+  tls:
+  # - secretName: retool.example.com
+  #   hosts:
+  #     - retool.example.com
+  # servicePort: service-port
+  pathType: ImplementationSpecific
+
+postgresql:
+  # We highly recommend you do NOT use this subchart as is to run Postgres in a container
+  # for your production instance of Retool; it is a default. Please use a managed Postgres,
+  # or self-host more permanantly. Use enabled: false and set in config above to do so.
+  enabled: true
+  ssl_enabled: false
+  auth:
+    database: hammerhead_production
+    username: postgres
+    postgresPassword: retool
+  service:
+    port: 5432
+  # Use the offical docker image rather than bitnami/docker
+  # since Retool depends on the uuid-ossp extension
+  image:
+    repository: "postgres"
+    # 11 is a default, please use 13.4+
+    # see https://www.postgresql.org/support/versioning/
+    tag: "11"
+  postgresqlDataDir: "/data/pgdata"
+  primary:
+    persistence:
+      enabled: true
+      mountPath: "/data/"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  # If set and create is false, the service account must be existing
+  name:
+  annotations: {}
+
+livenessProbe:
+  enabled: true
+  path: /api/checkHealth
+  initialDelaySeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  path: /api/checkHealth
+  initialDelaySeconds: 30
+  timeoutSeconds: 10
+  periodSeconds: 10
+  successThreshold: 5
+
+extraContainers: []
+
+extraVolumeMounts: []
+
+extraVolumes: []
+
+resources:
+  # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
+  # - cpu: 2048m
+  # - memory: 4096Mi
+  # If you only have 1 replica, please double the above numbers.
+  limits:
+    cpu: 4096m
+    memory: 8192Mi
+  requests:
+    cpu: 2048m
+    memory: 4096Mi
+
+priorityClassName: ""
+
+# Affinity for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+# affinity: {}
+
+# Tolerations for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+tolerations: []
+
+# Node labels for pod assignment
+# Ref: https://kubernetes.io/docs/user-guide/node-selection/
+nodeSelector: {}
+
+# Common annotations for all pods (backend and job runner).
+podAnnotations: {}
+
+# Increasing replica count will deploy a separate pod for backend and jobs
+# Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
+replicaCount: 2
+revisionHistoryLimit: 3
+
+# Optional pod disruption budget, for ensuring higher availability of the
+# Retool application.  Specify either minAvailable or maxUnavailable, as
+# either an integer pod count (1) or a string percentage ("50%").
+# Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+#
+# Example:
+# podDisruptionBudget:
+#   maxUnavailable: 1
+
+# Common labels for all pods (backend and job runner) for pod assignment
+podLabels: {}
+
+jobRunner:
+  # Annotations for job runner pods
+  annotations: {}
+
+  # Labels for job runner pods
+  labels: {}
+
+backend:
+  # Annotations for backendpods
+  annotations: {}
+
+  # Labels for backend pods
+  labels: {}
+
+persistentVolumeClaim:
+  # set to true to use pvc
+  enabled: false
+  # set to the name of the existing pvc
+  existingClaim: ""
+  annotations: {}
+  accessModes:
+    - ReadWriteOnce
+  size: "15Gi"
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: ""
+  mountPath: /retool_backend/pv-data
+
+# default security context
+securityContext:
+  enabled: false
+  allowPrivilegeEscalation: false
+  runAsUser: 1000
+  fsGroup: 2000
+
+extraConfigMapMounts: []
+
+initContainers: {}
+
+extraManifests: []
+# extraManifests:
+#  - apiVersion: cloud.google.com/v1beta1
+#    kind: BackendConfig
+#    metadata:
+#      name: "{{ .Release.Name }}-testing"
+#    spec:
+#      securityPolicy:
+#        name: "my-gcp-cloud-armor-policy"
+
+# Support for AWS Security groups for pods
+# Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
+securityGroupPolicy:
+  enabled: false
+  groupIds: []
