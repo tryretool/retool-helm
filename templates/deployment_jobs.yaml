@@ -73,7 +73,7 @@ spec:
           - name: POSTGRES_PORT
             value: {{ template "retool.postgresql.port" . }}
           - name: POSTGRES_DB
-            value: {{ template "retool.postgresql.db" . }}
+            value: {{ template "retool.postgresql.database" . }}
           - name: POSTGRES_USER
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
