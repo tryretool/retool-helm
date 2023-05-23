@@ -208,8 +208,8 @@ resources:
     cpu: 4096m
     memory: 8192Mi
   requests:
-    cpu: 1024m
-    memory: 2048Mi
+    cpu: 256m
+    memory: 1024Mi
 
 priorityClassName: ""
 
