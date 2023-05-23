@@ -131,12 +131,12 @@ ingress:
   # ingressClassName:
   labels: {}
   annotations: {}
-  # kubernetes.io/ingress.class: nginx
+  kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
   hosts:
-  # - host: retool.example.com
-  #   paths:
-  #     - path: /
+  - host: retool.example.com
+    paths:
+      - path: /
   tls:
   # - secretName: retool.example.com
   #   hosts:
@@ -208,8 +208,8 @@ resources:
     cpu: 4096m
     memory: 8192Mi
   requests:
-    cpu: 2048m
-    memory: 4096Mi
+    cpu: 1024m
+    memory: 2048Mi
 
 priorityClassName: ""
 
@@ -230,7 +230,7 @@ podAnnotations: {}
 
 # Increasing replica count will deploy a separate pod for backend and jobs
 # Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
-replicaCount: 2
+replicaCount: 1
 revisionHistoryLimit: 3
 
 # Optional pod disruption budget, for ensuring higher availability of the
