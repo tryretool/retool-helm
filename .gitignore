@@ -1,1 +1,4 @@
+charts/*/charts
 .prettierignore
+
+kubeconform

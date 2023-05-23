@@ -46,7 +46,7 @@ config:
 image:
   repository: "tryretool/backend"
   # You need to pick a specific tag here, this chart will not make a decision for you
-  tag: ""
+  tag: "latest"
   pullPolicy: "IfNotPresent"
 
 commandline:
