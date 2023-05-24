@@ -5,8 +5,8 @@ name: Lint and Test Charts
 
 on:
   pull_request:
-    # paths:
-    #   - "charts/**"
+    paths:
+      - "charts/**"
 
 jobs:
   changed:
@@ -81,16 +81,13 @@ jobs:
       matrix:
         # When changing versions here, check that the version exists at:
         # https://github.com/yannh/kubernetes-json-schema
-        # The original source at:
-        # https://github.com/instrumenta/kubernetes-json-schema is no
-        # longer updated
         k8s:
-          # - v1.14.10 (deprecated with kind 1.16)
-          - v1.16.15
-          - v1.18.20
-          - v1.22.9
+          - v1.26.5
+          - v1.25.2
           - v1.24.2
-          # v1.25.2 (when agent 7.40 is out)
+          - v1.22.9
+          - v1.18.20
+          - v1.16.15
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -111,12 +108,14 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
+        # Only keep a couple because they take ~5 min each to run :(
         k8s:
-          - v1.16.15
-          - v1.18.20
+          - v1.26.4
+          # - v1.25.2
+          # - v1.24.2
           - v1.22.9
-          - v1.24.2
-          - v1.25.2
+          # - v1.18.20
+          # - v1.16.15
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -126,9 +125,6 @@ jobs:
         uses: helm/kind-action@v1.5.0
         with:
           node_image: kindest/node:${{ matrix.k8s }}
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: 3.7
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (install)

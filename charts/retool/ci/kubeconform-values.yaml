@@ -267,7 +267,7 @@ persistentVolumeClaim:
   annotations: {}
   accessModes:
     - ReadWriteOnce
-  size: "15Gi"
+  size: "1Gi"
   ## If defined, storageClassName: <storageClass>
   ## If set to "-", storageClassName: "", which disables dynamic provisioning
   ## If undefined (the default) or set to null, no storageClassName spec is

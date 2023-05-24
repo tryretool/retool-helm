@@ -3,8 +3,6 @@ target-branch: main
 chart-dirs:
   - charts
 chart-repos:
-  # - datadog=https://helm.datadoghq.com
-  # - kube-state-metrics=https://prometheus-community.github.io/helm-charts
   - retool=https://charts.retool.com
   - bitnami=https://charts.bitnami.com/bitnami
 helm-extra-args: --timeout 300s
