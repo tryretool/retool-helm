@@ -153,7 +153,8 @@ postgresql:
   auth:
     database: hammerhead_production
     username: postgres
-    password: retool
+    password: retool # You'll need to set both this and postgresPassword to the same value
+    postgresPassword: retool
   service:
     port: 5432
   # Use the offical docker image rather than bitnami/docker
