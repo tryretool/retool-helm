@@ -182,15 +182,16 @@ livenessProbe:
   enabled: true
   path: /api/checkHealth
   initialDelaySeconds: 30
-  timeoutSeconds: 10
+  timeoutSeconds: 30
+  periodSeconds: 1
   failureThreshold: 3
 
 readinessProbe:
   enabled: true
   path: /api/checkHealth
   initialDelaySeconds: 30
-  timeoutSeconds: 10
-  periodSeconds: 10
+  timeoutSeconds: 30
+  periodSeconds: 5
   successThreshold: 5
 
 extraContainers: []
@@ -267,7 +268,7 @@ persistentVolumeClaim:
   annotations: {}
   accessModes:
     - ReadWriteOnce
-  size: "1Gi"
+  size: "3Gi"
   ## If defined, storageClassName: <storageClass>
   ## If set to "-", storageClassName: "", which disables dynamic provisioning
   ## If undefined (the default) or set to null, no storageClassName spec is
