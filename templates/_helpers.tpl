@@ -105,7 +105,7 @@ Set postgresql db
 {{- define "retool.postgresql.database" -}}
 {{- if .Values.postgresql.enabled -}}
 {{- .Values.postgresql.auth.database | quote -}}
-{{- elseif .Values.config.postgresql.db -}}
+{{- else if .Values.config.postgresql.db -}}
 {{- .Values.config.postgresql.db | quote -}}
 {{- else -}}
 {{- .Values.config.postgresql.database | quote -}}
