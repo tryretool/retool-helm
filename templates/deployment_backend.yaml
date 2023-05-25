@@ -107,6 +107,9 @@ spec:
                 key: "temporal-tls-key"
               {{- end }}
           {{- end }}
+          {{- if .Values.codeExecutor.enabled }}
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.fullname" . }}-code-executor
           {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY

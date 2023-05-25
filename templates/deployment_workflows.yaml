@@ -109,6 +109,10 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          {{- if .Values.codeExecutor.enabled }}
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.fullname" . }}-code-executor
+          {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:

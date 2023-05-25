@@ -108,7 +108,7 @@ retool-temporal-services-helm:
       numHistoryShards: 128
 
     # define resources for each temporal service -- these are sane starting points that allow
-    # for scaling to ~3 workflow workers without hitting bottlenecks 
+    # for scaling to ~3 workflow workers without hitting bottlenecks
     resources:
       limits:
         cpu: 500m
@@ -364,7 +364,7 @@ workflows:
   # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
   # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
   # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
-  
+
   # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
   # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
   replicaCount: 1
@@ -397,7 +397,7 @@ workflows:
     # sslKeySecretName:
     # sslKeySecretKey
 
-  # Config for workflows worker pods. Node heap size limits can be overriden here
+  # Config for workflows worker pods. Node heap size limits can be overridden here
   # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
   # provides observability into Workflows worker performance, particularly useful in high QPS use-cases
   config: {}
@@ -418,6 +418,41 @@ workflows:
     requests:
       cpu: 1000m
       memory: 2048Mi
+
+codeExecutor:
+  # Enable this for Python support and running code more securely within a separate
+  # sandboxed environment
+  enabled: false
+
+  replicaCount: 1
+
+  # Annotations for code executor pods
+  annotations: {}
+
+  # Labels for code executor pods
+  labels: {}
+
+  # Config for code executor. Node heap size limits can be overridden here
+  config: {}
+  # config: {
+  #   nodeOptions: --max_old_space_size=1024
+  # }
+
+  # Resources for the code executor. Most common issues will be seen with CPU usage as this will
+  # most likely be CPU bound. Adjust the CPU if latency increases under load.
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+    requests:
+      cpu: 1000m
+      memory: 1024Mi
+
+  image:
+    repository: tryretool/code-executor-service
+    tag:
+    pullPolicy: IfNotPresent
+
 
 persistentVolumeClaim:
   # set to true to use pvc

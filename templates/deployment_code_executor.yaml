@@ -1,0 +1,137 @@
+{{- if .Values.codeExecutor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "retool.fullname" . }}-code-executor
+  labels:
+    retoolService: {{ template "retool.fullname" . }}-code-executor
+{{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ .Values.codeExecutor.replicaCount }}
+  selector:
+    matchLabels:
+      retoolService: {{ template "retool.fullname" . }}-code-executor
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/job: {{ template "retool.fullname" . }}-code-executor
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+{{- if .Values.codeExecutor.annotations }}
+{{ toYaml .Values.codeExecutor.annotations | indent 8 }}
+{{- end }}
+      labels:
+        retoolService: {{ template "retool.fullname" . }}-code-executor
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if .Values.codeExecutor.labels }}
+{{ toYaml .Values.codeExecutor.labels | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ template "retool.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+{{- if .Values.initContainers }}
+      initContainers:
+{{- range $key, $value := .Values.initContainers }}
+      - name: "{{ $key }}"
+{{ toYaml $value | indent 8 }}
+{{- end }}
+{{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.codeExecutor.image.repository }}:{{ required "Please set a value for .Values.codeExecutor.image.tag" .Values.codeExecutor.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          privileged: true
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: NODE_OPTIONS
+            value: {{(.Values.codeExecutor.config).nodeOptions | default "--max_old_space_size=1024" }}
+          {{- range $key, $value := .Values.env }}
+          - name: "{{ $key }}"
+            value: "{{ $value }}"
+          {{- end }}
+          {{- range .Values.environmentSecrets }}
+          - name: {{ .name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretKeyRef.name }}
+                key: {{ .secretKeyRef.key }}
+          {{- end }}
+          {{- with .Values.environmentVariables }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
+        ports:
+        - containerPort: 3004
+          name: {{ template "retool.name" . }}
+          protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
+{{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.path }}
+            port: 3004
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
+{{- end }}
+{{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.path }}
+            port: 3004
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+{{- end }}
+        resources:
+{{ toYaml .Values.codeExecutor.resources | indent 10 }}
+{{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+{{- end }}
+---
+{{- if .Values.podDisruptionBudget }}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "retool.fullname" . }}
+spec:
+  {{ toYaml .Values.podDisruptionBudget }}
+  selector:
+    matchLabels:
+  {{- include "retool.selectorLabels" . | nindent 6 }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "retool.fullname" . }}-code-executor
+spec:
+  selector:
+    retoolService: {{ template "retool.fullname" . }}-code-executor
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3004
+    name: {{ template "retool.name" . }}
+  - protocol: TCP
+    port: 9090
+    targetPort: metrics
+    name: metrics
+{{- end }}

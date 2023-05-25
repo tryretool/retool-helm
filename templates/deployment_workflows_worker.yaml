@@ -119,6 +119,10 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
+          {{- if .Values.codeExecutor.enabled }}
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.fullname" . }}-code-executor
+          {{- end }}
           {{- if and (((.Values.workflows.config).otelCollector).enabled) (((.Values.workflows.config).otelCollector).endpoint) }}
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
              value: {{ ((.Values.workflows.config).otelCollector).endpoint }}
