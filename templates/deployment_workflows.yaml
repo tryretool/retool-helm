@@ -73,6 +73,24 @@ spec:
             value: {{ template "retool.temporal.port" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
             value: {{ template "retool.temporal.namespace" . }}
+          {{- if (.Values.workflows.temporal).sslEnabled }}
+          - name: WORKFLOW_TEMPORAL_TLS_ENABLED
+            value: "true"
+          {{- if (and (.Values.workflows.temporal).sslCert (.Values.workflows.temporal).sslKey) }}
+          - name: WORKFLOW_TEMPORAL_TLS_CRT
+            value: {{ .Values.workflows.temporal.sslCert }}
+          - name: WORKFLOW_TEMPORAL_TLS_KEY
+            valueFrom:
+              secretKeyRef:
+              {{- if (.Values.workflows.temporal).sslKeySecretName }}
+                name: {{ .Values.workflows.temporal.sslKeySecretName }}
+                key: {{ .Values.workflows.temporal.sslKeySecretKey | default "temporal-tls-key" }}
+              {{- else }}
+                name: {{ template "retool.fullname" . }}
+                key: "temporal-tls-key"
+              {{- end }}
+          {{- end }}
+          {{- end }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE

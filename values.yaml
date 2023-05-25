@@ -387,6 +387,15 @@ workflows:
     # port:
     # temporal namespace to use for Temporal Workflows related to Retool
     # namespace:
+    # whether to use TLS/SSL when connecting to Temporal
+    # sslEnabled: false
+    # base64 encoded string of TLS/SSL client certificate to use for mTLS
+    # sslCert:
+    # base64 encoded string of TLS/SSL client certificate secret key to use for mTLS
+    # sslKey:
+    # recommended alternative to sslKey. Name and key of k8s secret containing base64 encoded sslKey
+    # sslKeySecretName:
+    # sslKeySecretKey
 
   # Config for workflows worker pods. Node heap size limits can be overriden here
   # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
