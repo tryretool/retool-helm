@@ -160,13 +160,12 @@ postgresql:
   # since Retool depends on the uuid-ossp extension
   image:
     repository: "postgres"
-    # 11 is a default, please use 13.4+
-    # see https://www.postgresql.org/support/versioning/
-    tag: "11"
+    tag: "13"
   postgresqlDataDir: "/data/pgdata"
-  persistence:
-    enabled: true
-    mountPath: "/data/"
+  primary: 
+    persistence:
+      enabled: true
+      mountPath: "/data/"
 
 serviceAccount:
   # Specifies whether a service account should be created
