@@ -192,6 +192,15 @@ readinessProbe:
   periodSeconds: 10
   successThreshold: 5
 
+# To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
+startupProbe:
+  enabled: false
+  path: /api/checkHealth
+  initialDelaySeconds: 60
+  timeoutSeconds: 10
+  periodSeconds: 10
+  successThreshold: 5
+
 extraContainers: []
 
 extraVolumeMounts: []
