@@ -1,0 +1,140 @@
+name: Lint and Test Charts
+
+# This file shamelessly ripped from datadog's helm chart setup
+# https://github.com/DataDog/helm-charts/blob/main/.github/workflows/ci.yaml
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+
+jobs:
+  changed:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.list-changed.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Helm
+        uses: azure/setup-helm@v3.5
+        with:
+          version: v3.6.3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.3.1
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        env:
+          CT_DEBUG: "false"
+        run: |
+          changed=$(ct list-changed --config .github/ct.yaml)
+          if [[ -n "$changed" ]]; then
+            echo -n "Charts changed:"
+            echo "$changed"
+            echo "::set-output name=changed::$changed"
+          else
+            echo "PR without any chart changes - failing"
+            exit 1
+          fi
+
+  lint-chart:
+    runs-on: ubuntu-latest
+    needs:
+      - changed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.3.1
+      - name: Run chart-testing (lint)
+        run: ct lint --config .github/ct.yaml
+
+  # We don't use helm-docs yet, can set this up later
+  #
+  # lint-docs:
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - changed
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Run helm-docs
+  #       run: .github/helm-docs.sh
+
+  kubeconform-chart:
+    runs-on: ubuntu-latest
+    needs:
+      - changed
+    strategy:
+      matrix:
+        # When changing versions here, check that the version exists at:
+        # https://github.com/yannh/kubernetes-json-schema
+        k8s:
+          - v1.26.5
+          - v1.25.2
+          - v1.24.2
+          - v1.22.9
+          - v1.18.20
+          - v1.16.15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Run kubeconform
+        env:
+          KUBERNETES_VERSION: ${{ matrix.k8s }}
+          CHANGED_CHARTS: ${{needs.changed.outputs.charts}}
+        run: .github/kubeconform.sh
+
+  install-chart:
+    name: install-chart
+    runs-on: ubuntu-20.04
+    needs:
+      - lint-chart
+      - kubeconform-chart
+    strategy:
+      max-parallel: 1
+      matrix:
+        # Only keep a couple because they take ~5 min each to run :(
+        k8s:
+          - v1.26.4
+          # - v1.25.2
+          # - v1.24.2
+          - v1.22.9
+          # - v1.18.20
+          # - v1.16.15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create kind ${{ matrix.k8s }} cluster
+        uses: helm/kind-action@v1.5.0
+        with:
+          node_image: kindest/node:${{ matrix.k8s }}
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.3.1
+      - name: Run chart-testing (install)
+        run: ct install --config .github/ct.yaml
+
+  pr-validated:
+    name: pr-validated
+    runs-on: ubuntu-latest
+    needs:
+      - install-chart
+    steps:
+      - name: validate
+        run: echo "PR OK"
