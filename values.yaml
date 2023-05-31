@@ -162,7 +162,7 @@ postgresql:
     repository: "postgres"
     tag: "13"
   postgresqlDataDir: "/data/pgdata"
-  primary: 
+  primary:
     persistence:
       enabled: true
       mountPath: "/data/"
