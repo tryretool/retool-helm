@@ -153,16 +153,14 @@ postgresql:
   auth:
     database: hammerhead_production
     username: postgres
-    postgresPassword: retool
+    password: retool
   service:
     port: 5432
   # Use the offical docker image rather than bitnami/docker
   # since Retool depends on the uuid-ossp extension
   image:
     repository: "postgres"
-    # 11 is a default, please use 13.4+
-    # see https://www.postgresql.org/support/versioning/
-    tag: "11"
+    tag: "13"
   postgresqlDataDir: "/data/pgdata"
   primary:
     persistence:
