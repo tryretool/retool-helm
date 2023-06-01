@@ -106,6 +106,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES
+              value: 'true'
             - name: ENABLE_ES
               value: "{{ or $.Values.elasticsearch.enabled $.Values.elasticsearch.external }}"
             - name: ES_SEEDS
