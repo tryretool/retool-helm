@@ -153,3 +153,10 @@ Set Temporal namespace
 {{- "workflows" | quote -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Set code executor service name
+*/}}
+{{- define "retool.codeExecutor.name" -}}
+{{ template "retool.fullname" . }}-code-executor
+{{- end -}}
