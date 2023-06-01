@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-code-executor
+  name: {{ template "retool.code-executor.name" . }}
   labels:
-    retoolService: {{ template "retool.fullname" . }}-code-executor
+    retoolService: {{ template "retool.code-executor.name" . }}
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
@@ -14,12 +14,12 @@ spec:
   replicas: {{ .Values.codeExecutor.replicaCount }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-code-executor
+      retoolService: {{ template "retool.code-executor.name" . }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
-        prometheus.io/job: {{ template "retool.fullname" . }}-code-executor
+        prometheus.io/job: {{ template "retool.code-executor.name" . }}
         prometheus.io/scrape: 'true'
         prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
@@ -29,7 +29,7 @@ spec:
 {{ toYaml .Values.codeExecutor.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.fullname" . }}-code-executor
+        retoolService: {{ template "retool.code-executor.name" . }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -106,25 +106,13 @@ spec:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
 {{- end }}
 ---
-{{- if .Values.podDisruptionBudget }}
-apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ template "retool.fullname" . }}
-spec:
-  {{ toYaml .Values.podDisruptionBudget }}
-  selector:
-    matchLabels:
-  {{- include "retool.selectorLabels" . | nindent 6 }}
-{{- end }}
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.fullname" . }}-code-executor
+  name: {{ template "retool.code-executor.name" . }}
 spec:
   selector:
-    retoolService: {{ template "retool.fullname" . }}-code-executor
+    retoolService: {{ template "retool.code-executor.name" . }}
   ports:
   - protocol: TCP
     port: 80
