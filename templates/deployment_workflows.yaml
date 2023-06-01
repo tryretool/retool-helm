@@ -111,7 +111,7 @@ spec:
             value: http://{{ template "retool.fullname" . }}-workflow-backend
           {{- if .Values.codeExecutor.enabled }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.code-executor.name" . }}
+            value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY

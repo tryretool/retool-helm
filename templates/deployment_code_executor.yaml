@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.code-executor.name" . }}
+  name: {{ template "retool.codeExecutor.name" . }}
   labels:
-    retoolService: {{ template "retool.code-executor.name" . }}
+    retoolService: {{ template "retool.codeExecutor.name" . }}
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
@@ -14,12 +14,12 @@ spec:
   replicas: {{ .Values.codeExecutor.replicaCount }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.code-executor.name" . }}
+      retoolService: {{ template "retool.codeExecutor.name" . }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
-        prometheus.io/job: {{ template "retool.code-executor.name" . }}
+        prometheus.io/job: {{ template "retool.codeExecutor.name" . }}
         prometheus.io/scrape: 'true'
         prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
@@ -29,7 +29,7 @@ spec:
 {{ toYaml .Values.codeExecutor.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.code-executor.name" . }}
+        retoolService: {{ template "retool.codeExecutor.name" . }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -109,10 +109,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.code-executor.name" . }}
+  name: {{ template "retool.codeExecutor.name" . }}
 spec:
   selector:
-    retoolService: {{ template "retool.code-executor.name" . }}
+    retoolService: {{ template "retool.codeExecutor.name" . }}
   ports:
   - protocol: TCP
     port: 80
