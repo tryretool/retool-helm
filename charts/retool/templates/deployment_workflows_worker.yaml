@@ -136,6 +136,9 @@ spec:
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- if and (((.Values.workflows.config).otelCollector).enabled) (((.Values.workflows.config).otelCollector).endpoint) }}
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
              value: {{ ((.Values.workflows.config).otelCollector).endpoint }}

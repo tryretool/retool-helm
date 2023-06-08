@@ -636,3 +636,69 @@ hostAliases: {}
 #     hostnames:
 #     - test.com
 #     - anothertest.com
+
+telemetry:
+
+  # When enabled, will collect metrics and logs from the other pods in the
+  # chart. These will be forwarded to Retool for proactive monitoring and bug
+  # identification when `telemetry.sendToRetool.enabled = true`, and can also
+  # optionally be sent to a user-managed destination via
+  # `telemetry.customVectorConfig`.
+  enabled: false
+
+  sendToRetool:
+
+    # Only relevant when `telemetry.enabled = true`. When enabled, telemetry
+    # from pods in this chart will be forwarded to Retool for proactive
+    # monitoring and bug identification.
+    enabled: true
+
+    # Should not be changed except for chart testing.
+    address: "https://telemetry.retool.com:443"
+
+  image:
+
+    repository: "tryretool/telemetry"
+
+    # Default to same as top level `image.tag`.
+    tag: null
+
+    pullPolicy: 'IfNotPresent'
+
+  resources:
+    requests:
+      cpu: 128m
+      memory: 128Mi
+    limits:
+      cpu: 256m
+      memory: 256Mi
+
+  # When present, any vector config here gets added to the telemetry pod (via a
+  # created configmap) and added to the internal [vector](https://vector.dev/)
+  # instance which runs inside. This can enable adding additional user-specified
+  # sinks for collected telemetry data.
+  #
+  # See [vector sinks
+  # documentation](https://vector.dev/docs/reference/configuration/sinks/) for
+  # more details.
+  customVectorConfig: {}
+
+  # When present, any grafana-agent config here gets added to the telemetry pod
+  # (via a created configmap) and added to the internal
+  # [grafana-agent](https://grafana.com/docs/agent/latest/) instance which runs
+  # inside. This can enable adding additional user-specified sources of extra
+  # telemetry data.
+  #
+  # The internal grafana-agent runs in Flow mode, so the config here must use
+  # river syntax. See [grafana-agent Flow mode
+  # documentation](https://grafana.com/docs/agent/latest/flow/) for more
+  # details.
+  customGrafanaAgentConfig:
+
+  serviceAccount:
+    create: true
+    name:
+    automountToken: true
+
+  rbac:
+    create: true

@@ -1,0 +1,74 @@
+{{- if .Values.telemetry.enabled }}
+
+{{- if .Values.telemetry.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "retool.telemetry.serviceAccountName" . | quote }}
+  labels:
+    {{- include "retool.telemetry.labels" . | nindent 4 }}
+  {{- with .Values.telemetry.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: {{ .Values.telemetry.serviceAccount.automountToken }}
+{{- end }}
+
+
+{{- if .Values.telemetry.rbac.create }}
+---
+{{/*
+Permissions to use Kubernetes API.
+Requires that RBAC authorization is enabled.
+*/}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "retool.telemetry.fullname" . }}
+  labels:
+    {{- include "retool.telemetry.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+      - nodes/metrics
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+{{/*
+# PodSecurityPolicy was deprecated in k8s v1.21 and removed in v1.25
+{{- if and .Values.psp.create (.Capabilities.APIVersions.Has "policy/v1beta1") }}
+  - apiGroups:
+      - policy
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+    resourceNames:
+      - {{ include "telemetry.fullname" . }}
+{{- end }}
+*/}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "retool.telemetry.fullname" . }}
+  labels:
+    {{- include "retool.telemetry.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "retool.telemetry.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "retool.telemetry.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+
+{{- end }}
