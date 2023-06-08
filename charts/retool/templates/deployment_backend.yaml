@@ -140,6 +140,19 @@ spec:
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
+
+          {{- if .Values.vector.enabled }}
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: STATSD_HOST
+            # valueFrom:
+            #   fieldRef:
+            #     fieldPath: status.hostIP
+            value: {{ printf "%s.%s" (include "retool.vector.fullname" .) .Release.Namespace | quote }}
+          - name: STATSD_PORT
+            value: "9125"
+          {{- end }}
+
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
@@ -244,6 +257,7 @@ spec:
             port: {{ .Values.service.internalPort }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
 {{- end }}
 {{- if .Values.readinessProbe.enabled }}

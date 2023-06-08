@@ -1,0 +1,234 @@
+{{- if .Values.vector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-vector
+  labels:
+    {{- include "retool.vector.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "retool.vector.selectorLabels" . | nindent 6 }}
+      vector.dev/exclude: "true"
+  template:
+    metadata:
+      labels:
+        {{- include "retool.vector.selectorLabels" . | nindent 8 }}
+        vector.dev/exclude: "true"
+    spec:
+      serviceAccountName: {{ include "retool.vector.serviceAccountName" . }}
+      containers:
+      - name: vector
+        image: '{{ .Values.vector.image.repository }}:{{ .Values.vector.image.tag | default .Values.image.tag }}'
+        imagePullPolicy: {{ .Values.vector.image.pullPolicy }}
+        command: ['retool-telemetry']
+        resources:
+          {{ toYaml .Values.vector.resources | nindent 10 }}
+        env:
+          - name: VECTOR_SELF_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: VECTOR_SELF_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: VECTOR_SELF_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: PROCFS_ROOT
+            value: "/host/proc"
+          - name: SYSFS_ROOT
+            value: "/host/sys"
+          {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.config.licenseKeySecretName }}
+                name: {{ .Values.config.licenseKeySecretName }}
+                key: {{ .Values.config.licenseKeySecretKey | default "license-key" }}
+                {{- else }}
+                name: {{ template "retool.fullname" . }}
+                key: license-key
+                {{- end }}
+          {{- end }}
+          - name: RTEL_DEPLOYMENT_MODE
+            value: 'kubernetes-helm'
+          - name: RTEL_HELM_RELEASE_NAME
+            value: {{ .Release.Name | quote }}
+          - name: RTEL_KUBE_NAMESPACE
+            value: {{ .Release.Namespace | quote }}
+          - name: RTEL_KUBE_LABEL_SELECTOR
+            value: {{ include "retool.vector.logSourcePodLabels" . | quote }}
+          - name: RTEL_SEND_TO_RETOOL
+            value: {{ .Values.vector.sendToRetool.enabled | quote }}
+        {{- if .Values.externalSecrets.enabled }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.externalSecrets.name }}
+        {{- end }}
+        {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
+        envFrom:
+        {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
+        - secretRef:
+            name: {{ .name }}
+        {{- end }}
+        {{- end }}
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.vector.customConfig | dig "data_dir" "/vector-data-dir" | quote }}
+          {{- if .Values.vector.customConfig -}}
+          - name: config
+            mountPath: "/etc/vector-static/"
+            readOnly: true
+          {{- end }}
+          - name: var-log
+            mountPath: "/var/log/"
+            readOnly: true
+          - name: var-lib
+            mountPath: "/var/lib"
+            readOnly: true
+          - name: procfs
+            mountPath: "/host/proc"
+            readOnly: true
+          - name: sysfs
+            mountPath: "/host/sys"
+            readOnly: true
+        ports:
+          - containerPort: 9125
+            # hostPort: 9125
+            name: statsd-udp
+            protocol: UDP
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: 100Mi
+        {{- if .Values.vector.customConfig -}}
+        - name: config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ .Release.Name }}-vector
+        {{- end }}
+        - name: var-log
+          hostPath:
+            path: "/var/log/"
+        - name: var-lib
+          hostPath:
+            path: "/var/lib/"
+        - name: procfs
+          hostPath:
+            path: "/proc"
+        - name: sysfs
+          hostPath:
+            path: "/sys"
+
+
+{{- if .Values.vector.customConfig -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-vector
+  labels:
+    {{- include "retool.vector.labels" . | nindent 4 }}
+data:
+  vector.yaml: |
+{{ tpl (toYaml .Values.vector.customConfig) . | indent 4 }}
+
+{{- end }}
+
+
+{{- if .Values.vector.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  # name: {{ .Release.Name }}-vector
+  name: {{ include "retool.vector.serviceAccountName" . | quote }}
+  labels:
+    {{- include "retool.vector.labels" . | nindent 4 }}
+  {{- with .Values.vector.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: {{ .Values.vector.serviceAccount.automountToken }}
+{{- end }}
+
+
+{{- if .Values.vector.rbac.create }}
+---
+{{/*
+Permissions to use Kubernetes API.
+Requires that RBAC authorization is enabled.
+*/}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "retool.vector.fullname" . }}
+  labels:
+    {{- include "retool.vector.labels" . | nindent 4 }}
+rules:
+  # TODO: scope permissions to just this chart's stuff
+  # https://medium.com/rahasak/kubernetes-role-base-access-control-with-service-account-e4c65e3f25cc
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+{{/*
+# PodSecurityPolicy was deprecated in k8s v1.21 and removed in v1.25
+{{- if and .Values.psp.create (.Capabilities.APIVersions.Has "policy/v1beta1") }}
+  - apiGroups:
+      - policy
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+    resourceNames:
+      - {{ include "vector.fullname" . }}
+{{- end }}
+*/}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "retool.vector.fullname" . }}
+  labels:
+    {{- include "retool.vector.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "retool.vector.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "retool.vector.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.vector.fullname" . }}
+  labels:
+    {{- include "retool.vector.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: statsd-udp
+      port: 9125
+      protocol: UDP
+  selector:
+    {{- include "retool.vector.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+
+
+{{- end }}

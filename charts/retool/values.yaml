@@ -604,3 +604,27 @@ hostAliases: {}
 #     hostnames:
 #     - test.com
 #     - anothertest.com
+
+vector:
+  enabled: false
+  sendToRetool:
+    enabled: true
+    address: "https://telemetry.retool.com:443"
+  image:
+    repository: "tryretool/telemetry"
+    tag: null # default to same as .image.tag
+    pullPolicy: 'IfNotPresent'
+  resources:
+    requests:
+      cpu: 128m
+      memory: 128Mi
+    limits:
+      cpu: 256m
+      memory: 256Mi
+  customConfig: {}
+  serviceAccount:
+    create: true
+    name:
+    automountToken: true
+  rbac:
+    create: true

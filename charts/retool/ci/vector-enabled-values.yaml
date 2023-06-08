@@ -1,0 +1,112 @@
+# ================================================
+# === boilerplate to get a bootable deployment ===
+# ================================================
+config:
+  encryptionKey: '000000000'
+  jwtSecret: '000000000'
+
+  # licenseKey: 'SSOP-ABCD1234' # not real
+  # licenseKey: '7c710e21-5e6f-42fc-a3d7-0945c0c3c9e1' # local licensing db seed
+  licenseKey: 'SSOP_26f8b3dc-ff33-474f-916e-d881ad24e0e3' # ra@retool.com ssop
+
+image:
+  tag: 'latest'
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+  limits:
+    cpu: 1000m
+    memory: 4096Mi
+
+workflows:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1024Mi
+    limits:
+      cpu: 1000m
+      memory: 2048Mi
+
+env:
+  NUM_WORKERS: '1'
+  # NODE_DEBUG: 'module'
+
+ingress:
+  kubernetes.io/ingress.class: nginx
+  hosts:
+  - host: retool.example.com
+    paths:
+      - path: /
+
+livenessProbe:
+  timeoutSeconds: 60
+  periodSeconds: 2
+  failureThreshold: 60
+readinessProbe:
+  timeoutSeconds: 30
+  periodSeconds: 5
+
+replicaCount: 1
+
+persistentVolumeClaim:
+  size: '3Gi'
+# ================================================
+
+# === New vector stuff ===
+vector:
+  enabled: true
+  image:
+    repository: 'telemetry'
+    tag: 'ra-dev-1'
+  sendToRetool:
+    enabled: true
+    address: "https://telemetry.retool.com:443"
+  # TODO: some of the below should be baked into the defaults later
+  customConfig:
+    {}
+    # sinks:
+      # stdout:
+      #   type: console
+      #   inputs:
+      #     - pod_logs
+      #     - statsd_udp
+      #     # - host_metrics
+      #   encoding:
+      #     codec: json
+      # vector_relay:
+      #   type: vector
+      #   inputs:
+      #     - pod_logs
+      #     - statsd_udp
+      #     # - host_metrics
+      #   address: "vector-relay.services:6000"
+      # http_relay:
+      #   type: http
+      #   inputs:
+      #     - pod_logs
+      #     # - statsd_udp
+      #     # - host_metrics
+      #   uri: "http://vector-relay.services:7000/events"
+      #   encoding:
+      #     codec: native
+      # retool_telemetry:
+      #   type: vector
+      #   inputs:
+      #     - pod_logs
+      #     - statsd_udp
+      #   address: "https://telemetry.retool-qa.com:443"
+      #   version: "2"
+      #   batch:
+      #     max_bytes: 1048576 # 10Mi
+      #   compression: true
+      #   request:
+      #     concurrency: "adaptive"
+      #     timeout_secs: 50
+        # tls:
+        #   enabled: true
+        #   alpn_protocols: ["h2"]
+        #   crt_file: '/etc/vector-credentials/client_${name}.crt'
+        #   key_file: '/etc/vector-credentials/client_${name}.key'
+# ========================

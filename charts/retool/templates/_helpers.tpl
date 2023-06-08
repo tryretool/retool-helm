@@ -47,12 +47,14 @@ helm.sh/chart: {{ include "retool.chart" . }}
 {{ include "retool.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- else }}
+app.kubernetes.io/version: {{ .Chart.Version | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Selector labels. Note changes here should also reflect in "retool.vector.logSourcePodLabels".
 */}}
 {{- define "retool.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "retool.name" . }}
