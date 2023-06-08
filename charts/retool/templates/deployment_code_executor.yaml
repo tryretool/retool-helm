@@ -70,6 +70,9 @@ spec:
             value: production
           - name: NODE_OPTIONS
             value: {{(.Values.codeExecutor.config).nodeOptions | default "--max_old_space_size=1024" }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
             value: "{{ $value }}"

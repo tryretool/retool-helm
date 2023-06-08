@@ -85,6 +85,9 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
