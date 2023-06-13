@@ -4,6 +4,6 @@ dependencies:
   version: 12.1.5
 - name: retool-temporal-services-helm
   repository: ""
-  version: 1.1.0
-digest: sha256:514f2d06b45daaf3d99af32ab04cf3a829915030ed69dd9728a30cc035407cd8
-generated: "2023-05-25T17:30:24.155698-07:00"
+  version: 1.1.2
+digest: sha256:7688ffe4798821d84571fa330088735ce26ab9969e2336de4d7af91a9198fef5
+generated: "2023-06-13T12:56:55.026569-07:00"
