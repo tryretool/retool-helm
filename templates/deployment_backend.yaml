@@ -82,7 +82,7 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           {{- if .Values.config.dbConnectorTimeout }}
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
-            value: {{ .Values.config.dbConnectorTimeout }}
+            value: {{ .Values.config.dbConnectorTimeout | quote }}
           {{- end }}
           {{- if .Values.workflows.enabled }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
