@@ -64,7 +64,13 @@ spec:
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+          {{- if .Values.workflows.dbConnectorTimeout }}
+            value: {{ .Values.workflows.dbConnectorTimeout | quote}}
+          {{- else if .Values.config.dbConnectorTimeout }}
+            value: {{ .Values.config.dbConnectorTimeout | quote}}
+          {{- else }}
             value: "5400000"
+          {{- end }}
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST

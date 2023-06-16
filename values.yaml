@@ -8,6 +8,8 @@ config:
   # licenseKeySecretKey is the key in the k8s secret, default: license-key
   # licenseKeySecretKey:
   useInsecureCookies: false
+  # dbConnectorTimeout overrides the maximum timeout for queries, in ms
+  # dbConnectorTimeout: 120000
   auth:
     google:
       clientId:
@@ -368,6 +370,12 @@ workflows:
   # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
   # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
   replicaCount: 1
+
+  # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
+  # If this value is not set but backend.dbConnectorTimeout is, we will set workflows pod timeouts
+  # to .Values.config.dbConnectorTimeout
+  # dbConnectorTimeout: 120000
+
   # Annotations for workflows worker pods
   annotations: {}
 
