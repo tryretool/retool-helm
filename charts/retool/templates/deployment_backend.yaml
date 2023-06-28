@@ -241,7 +241,7 @@ spec:
 {{- end }}
 ---
 {{- if .Values.podDisruptionBudget }}
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: {{ template "retool.fullname" . }}
