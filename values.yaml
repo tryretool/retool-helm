@@ -52,7 +52,7 @@ retool-temporal-services-helm:
     # Defines image to be used for temporal server
     image:
       repository: tryretool/one-offs
-      tag: retool-temporal-1.1.3
+      tag: retool-temporal-1.1.4
       pullPolicy: IfNotPresent
     # this configures grpc_health_probe (https://github.com/grpc-ecosystem/grpc-health-probe)
     # for healthchecks instead of native k8s.
@@ -417,6 +417,9 @@ workflows:
   # Config for workflows worker pods. Node heap size limits can be overridden here
   # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
   # provides observability into Workflows worker performance, particularly useful in high QPS use-cases
+  # environmentVariables will only be set on the workflows worker
+  # only change the CONCURRENT_*_LIMIT values if you have higher load usecases and deploy
+  # code_executor. Otherwise, the worker may OOM if the Workflows blocks use too much memory.
   config: {}
   # config: {
   #   nodeOptions: --max_old_space_size=1024
@@ -424,6 +427,11 @@ workflows:
   #     enabled: true
   #     endpoint: http://$(HOST_IP):4317
   #   }
+  #   environmentVariables: []
+  #   - name: WORKFLOW_TEMPORAL_CONCURRENT_TASKS_LIMIT
+  #     value: "100"
+  #   - name: WORKFLOW_TEMPORAL_CONCURRENT_ACTIVITIES_LIMIT
+  #     value: "100"
   # }
 
   # Resources for the workflow worker - these are sane inputs that bias towards stability
