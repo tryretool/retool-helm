@@ -222,7 +222,18 @@ priorityClassName: ""
 
 # Affinity for pod assignment
 # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-# affinity: {}
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: "app.kubernetes.io/name"
+            operator: In
+            values:
+            - retool
+        topologyKey: "kubernetes.io/hostname"
 
 # Tolerations for pod assignment
 # Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
