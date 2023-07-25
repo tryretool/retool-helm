@@ -194,6 +194,10 @@ externalSecrets:
   # This mode only allows a single secret name to be provided.
   enabled: false
   name: retool-config
+  # Array of secrets to be use as env variables. (Optional)
+  secrets: []
+    # - name: retool-config
+    # - name: retool-db
   # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
   externalSecretsOperator:
     enabled: false
