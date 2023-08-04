@@ -154,6 +154,9 @@ postgresql:
     database: hammerhead_production
     username: postgres
     password: retool
+    # Uncomment this if setting `username` to `postgres`. If this field is not set, a random password
+    # will be generated and used. And you might run into password mismatch issues when re-installing the chart.
+    # postgresPassword: retool
   service:
     port: 5432
   # Use the offical docker image rather than bitnami/docker
