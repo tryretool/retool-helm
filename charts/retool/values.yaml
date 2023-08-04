@@ -154,8 +154,7 @@ postgresql:
     database: hammerhead_production
     username: postgres
     password: retool
-    # Uncomment this if setting `username` to `postgres`. If this field is not set, a random password
-    # will be generated and used. And you might run into password mismatch issues when re-installing the chart.
+    # IMPORTANT: When setting username to `postgres` a random password will be generated unless the postgresPassword field is uncommented
     # postgresPassword: retool
   service:
     port: 5432
