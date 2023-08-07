@@ -113,7 +113,13 @@ spec:
               secretKeyRef:
           {{- if  .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
+                # `postgres` is the default admin username for postgres in the subchart we use, so it needs the admin password
+                # if a different username is picked, then it needs the custom password instead.
+                {{- if eq .Values.postgresql.auth.username "postgres" }}
                 key: postgres-password
+                {{- else }}
+                key: password
+                {{- end }}
           {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}

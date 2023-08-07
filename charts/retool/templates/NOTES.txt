@@ -20,3 +20,13 @@
   echo "Visit http://127.0.0.1:8080 to use your application"
   kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
 {{- end }}
+
+{{- if and .Values.postgresql.enabled (and (not .Values.postgresql.auth.postgresPassword) (eq .Values.postgresql.auth.username "postgres")) }}
+***************************************************************************
+Warning: Using in-cluster postgresql setup. `.Values.postgresql.auth.username username` is set to the default admin username "postgres", but the admin password field `.Values.postgresql.auth.postgresPassword` is not set, so a random password is generated and used. This wouldn't affect your usage, but if you choose to uninstall and reinstall this helm chart, please make sure you remove the existing PersistentVolumeClaim backing the in-cluster postgresql by running:
+  kubectl --namespace {{ .Release.Namespace }} delete pvc/data-{{ include "retool.fullname" . }}-postgresql-0
+Alternatively, you can fetch the randomly generated password and set the value in `.Values.postgresql.auth.postgresPassword` to make sure it never changes unexpectedly:
+  echo $(kubectl --namespace {{ .Release.Namespace }} get secret/{{ include "retool.fullname" . }}-postgresql -o jsonpath='{.data.postgres-password}' | base64 -d)
+We highly recommend you do NOT use this subchart as is to run Postgres in a container for your production instance of Retool. It is only suitable for proof-of-concepts. Please use a managed Postgres, or self-host more permanantly.
+***************************************************************************
+{{- end }} 
