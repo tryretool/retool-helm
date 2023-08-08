@@ -79,6 +79,7 @@ spec:
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
+          {{- if and (not .Values.env.RETOOL_LOAD_FILE_SECRETS) (not .Values.env.LICENSE_KEY_FILE) }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:
@@ -89,6 +90,8 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: license-key
                 {{- end }}
+          {{- end }}
+          {{- if and (not .Values.env.RETOOL_LOAD_FILE_SECRETS) (not .Values.env.JWT_SECRET_FILE) }}
           - name: JWT_SECRET
             valueFrom:
               secretKeyRef:
@@ -99,6 +102,8 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: jwt-secret
                 {{- end }}
+          {{- end }}
+          {{- if and (not .Values.env.RETOOL_LOAD_FILE_SECRETS) (not .Values.env.ENCRYPTION_KEY_FILE) }}
           - name: ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
@@ -109,6 +114,8 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: encryption-key
                 {{- end }}
+          {{- end }}
+          {{- if and (not .Values.env.RETOOL_LOAD_FILE_SECRETS) (not .Values.env.POSTGRES_PASSWORD_FILE) }}
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
@@ -124,6 +131,8 @@ spec:
                 key: postgresql-password
                 {{- end }}
           {{- end }}
+          {{- end }}
+          {{- if and (not .Values.env.RETOOL_LOAD_FILE_SECRETS) (not .Values.env.GOOGLE_CLIENT_SECRET_FILE) }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -134,6 +143,7 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: google-client-secret
                 {{- end }}
+          {{- end }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
