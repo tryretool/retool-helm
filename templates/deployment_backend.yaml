@@ -84,13 +84,15 @@ spec:
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
             value: {{ .Values.config.dbConnectorTimeout | quote }}
           {{- end }}
-          {{- if .Values.workflows.enabled }}
+          {{- if and (.Values.workflows.enabled) (or (.Values.retool-temporal-services-helm.enabled) (.Values.workflows.temporal.enabled)) }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: {{ template "retool.temporal.port" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
             value: {{ template "retool.temporal.namespace" . }}
+          {{- end }}
+          {{- if (.Values.workflows.enabled) }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
           {{- end }}

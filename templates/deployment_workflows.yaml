@@ -73,12 +73,14 @@ spec:
           {{- end }}
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
+          {{- if or (.Values.retool-temporal-services-helm.enabled) (.Values.workflows.temporal.enabled) }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
             value: {{ template "retool.temporal.port" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
             value: {{ template "retool.temporal.namespace" . }}
+          {{- end }}
           {{- if (.Values.workflows.temporal).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"
