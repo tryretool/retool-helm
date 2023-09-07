@@ -2,5 +2,8 @@ dependencies:
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 12.1.5
-digest: sha256:8607eadb8d79b34833608ccbb74e2d45be7ce35545eb8815254d6bed42854f6f
-generated: "2023-03-20T13:18:05.170549-07:00"
+- name: retool-temporal-services
+  repository: file://charts/retool-temporal-services
+  version: 1.1.2
+digest: sha256:cecbb7462ef8b0ff15688682529370d24b9de882685ae4d4590920dec7378f65
+generated: "2023-09-07T15:42:09.292301-04:00"
