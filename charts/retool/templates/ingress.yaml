@@ -49,6 +49,9 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
+          {{- with .extraPaths }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
           {{- range .paths }}
           - path: {{ .path }}
             {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
