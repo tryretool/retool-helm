@@ -19,7 +19,7 @@ config:
       # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
       # clientSecretSecretKey:
       domain:
-  encryptionKey:
+  encryptionKey: 'foobar'
   # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:
   # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
@@ -48,7 +48,7 @@ config:
 image:
   repository: "tryretool/backend"
   # You need to pick a specific tag here, this chart will not make a decision for you
-  tag: ""
+  tag: "3.6.10"
   pullPolicy: "IfNotPresent"
 
 commandline:
@@ -140,9 +140,9 @@ ingress:
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
   hosts:
-  # - host: retool.example.com
-  #   paths:
-  #     - path: /
+  - host: retool.example.com
+    paths:
+      - path: /
   tls:
   # - secretName: retool.example.com
   #   hosts:
@@ -303,7 +303,7 @@ workflows:
   # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
   # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
 
-  # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
+  # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services-helm/values.yaml)
   # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
   replicaCount: 1
 
@@ -318,7 +318,7 @@ workflows:
   # Labels for workflows worker pods
   labels: {}
 
-  # IMPORTANT: Incompatible with retool-temporal-services subchart
+  # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
   # This allows configuring a Retool Workflows deployment that uses your own Temporal cluster
   # instead of deploying a new one. Set enabled to true and add the config variables.
   # NOTE: Temporal Frontend with required TLS or mTLS not currently supported
@@ -374,7 +374,7 @@ workflows:
 codeExecutor:
   # Enable this for Python support and running code more securely within a separate
   # sandboxed environment
-  enabled: false
+  enabled: true
 
   replicaCount: 1
 
@@ -402,12 +402,12 @@ codeExecutor:
 
   image:
     repository: tryretool/code-executor-service
-    tag:
+    tag: '1.1.0'
     pullPolicy: IfNotPresent
 
-retool-temporal-services:
+retool-temporal-services-helm:
   # Disable this if using your own Temporal Cluster
-  enabled: false
+  enabled: true
   server:
     # Defines image to be used for temporal server
     image:

@@ -101,7 +101,8 @@ jobs:
 
   install-chart:
     name: install-chart
-    runs-on: ubuntu-20.04
+    runs-on:
+      group: retool-helm-kind-runners
     needs:
       - lint-chart
       - kubeconform-chart

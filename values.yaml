@@ -303,7 +303,7 @@ workflows:
   # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
   # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
 
-  # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services/values.yaml)
+  # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services-helm/values.yaml)
   # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
   replicaCount: 1
 
@@ -318,7 +318,7 @@ workflows:
   # Labels for workflows worker pods
   labels: {}
 
-  # IMPORTANT: Incompatible with retool-temporal-services subchart
+  # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
   # This allows configuring a Retool Workflows deployment that uses your own Temporal cluster
   # instead of deploying a new one. Set enabled to true and add the config variables.
   # NOTE: Temporal Frontend with required TLS or mTLS not currently supported
@@ -405,7 +405,7 @@ codeExecutor:
     tag:
     pullPolicy: IfNotPresent
 
-retool-temporal-services:
+retool-temporal-services-helm:
   # Disable this if using your own Temporal Cluster
   enabled: false
   server:

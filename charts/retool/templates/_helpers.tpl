@@ -130,7 +130,7 @@ Set Temporal frontend host
 {{- if (.Values.workflows.temporal).enabled -}}
 {{- .Values.workflows.temporal.host | quote -}}
 {{- else -}}
-{{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services")) "frontend" -}}
+{{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" -}}
 {{- end -}}
 {{- end -}}
 

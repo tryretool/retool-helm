@@ -1,6 +1,6 @@
 apiVersion: v2
 
-name: retool-temporal-services
+name: retool-temporal-services-helm
 
 description: A Helm chart for Temporal server for Retool Workflows.
 
