@@ -19,7 +19,7 @@ config:
       # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
       # clientSecretSecretKey:
       domain:
-  encryptionKey: 'foobar'
+  encryptionKey:
   # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:
   # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
@@ -48,7 +48,7 @@ config:
 image:
   repository: "tryretool/backend"
   # You need to pick a specific tag here, this chart will not make a decision for you
-  tag: "3.6.10"
+  tag: ""
   pullPolicy: "IfNotPresent"
 
 commandline:
@@ -140,9 +140,9 @@ ingress:
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
   hosts:
-  - host: retool.example.com
-    paths:
-      - path: /
+  # - host: retool.example.com
+  #   paths:
+  #     - path: /
   tls:
   # - secretName: retool.example.com
   #   hosts:
@@ -374,7 +374,7 @@ workflows:
 codeExecutor:
   # Enable this for Python support and running code more securely within a separate
   # sandboxed environment
-  enabled: true
+  enabled: false
 
   replicaCount: 1
 
@@ -402,12 +402,12 @@ codeExecutor:
 
   image:
     repository: tryretool/code-executor-service
-    tag: '1.1.0'
+    tag:
     pullPolicy: IfNotPresent
 
 retool-temporal-services-helm:
   # Disable this if using your own Temporal Cluster
-  enabled: true
+  enabled: false
   server:
     # Defines image to be used for temporal server
     image:
