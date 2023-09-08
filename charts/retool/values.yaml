@@ -406,7 +406,7 @@ codeExecutor:
     pullPolicy: IfNotPresent
 
 retool-temporal-services-helm:
-  # Disable this if using your own Temporal Cluster
+  # Enable to spin up a new Temporal Cluster alongside Retool
   enabled: false
   server:
     # Defines image to be used for temporal server
