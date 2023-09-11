@@ -8,6 +8,8 @@ config:
   # licenseKeySecretKey is the key in the k8s secret, default: license-key
   # licenseKeySecretKey:
   useInsecureCookies: false
+  # Timeout for queries, in ms.
+  # dbConnectorTimeout: 120000
   auth:
     google:
       clientId:
@@ -91,6 +93,10 @@ externalSecrets:
   # This mode only allows a single secret name to be provided.
   enabled: false
   name: retool-config
+  # Array of secrets to be use as env variables. (Optional)
+  secrets: []
+    # - name: retool-config
+    # - name: retool-db
   # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
   externalSecretsOperator:
     enabled: false
@@ -143,11 +149,22 @@ ingress:
   #     - retool.example.com
   # servicePort: service-port
   pathType: ImplementationSpecific
+  # For supporting other ingress controllers that require customizing the .backend.service.name and .backend.service.port.name,
+  # like AWS ALB extraPaths allows that customization, and it takes precedence in the list of paths of for the host,
+  # this is in order to allow a rule like ssl-redirect from port 80-->443 to be first ( otherwise there wouldn't be a redirect )
+  #   extraPaths:
+  #     - path: /*
+  #       backend:
+  #         service:
+  #           name: ssl-redirect
+  #           port:
+  #             name: use-annotation
+  #       pathType: ImplementationSpecific
 
 postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
-  # or self-host more permanantly. Use enabled: false and set in config above to do so.
+  # or self-host more permanently. Use enabled: false and set in config above to do so.
   enabled: true
   ssl_enabled: false
   auth:
@@ -278,6 +295,216 @@ backend:
 
   # Labels for backend pods
   labels: {}
+
+workflows:
+  enabled: true
+
+  # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
+  # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
+  # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
+
+  # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services-helm/values.yaml)
+  # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
+  replicaCount: 1
+
+  # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
+  # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
+  # to .Values.config.dbConnectorTimeout
+  # dbConnectorTimeout: 120000
+
+  # Annotations for workflows worker pods
+  annotations: {}
+
+  # Labels for workflows worker pods
+  labels: {}
+
+  # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
+  # This allows configuring a Retool Workflows deployment that uses your own Temporal cluster
+  # instead of deploying a new one. Set enabled to true and add the config variables.
+  # NOTE: Temporal Frontend with required TLS or mTLS not currently supported
+  temporal:
+    # set enabled to true if using a pre-existing temporal cluster
+    enabled: false
+    # discoverable service name for the temporal frontend service
+    # host:
+    # discoverable service port for the temporal frontend service
+    # port:
+    # temporal namespace to use for Temporal Workflows related to Retool
+    # namespace:
+    # whether to use TLS/SSL when connecting to Temporal
+    # sslEnabled: false
+    # base64 encoded string of TLS/SSL client certificate to use for mTLS
+    # sslCert:
+    # base64 encoded string of TLS/SSL client certificate secret key to use for mTLS
+    # sslKey:
+    # recommended alternative to sslKey. Name and key of k8s secret containing base64 encoded sslKey
+    # sslKeySecretName:
+    # sslKeySecretKey
+
+  # Config for workflows worker pods. Node heap size limits can be overridden here
+  # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
+  # provides observability into Workflows worker performance, particularly useful in high QPS use-cases
+  # environmentVariables will only be set on the workflows worker
+  # only change the CONCURRENT_*_LIMIT values if you have higher load usecases and deploy
+  # code_executor. Otherwise, the worker may OOM if the Workflows blocks use too much memory.
+  config: {}
+  # config: {
+  #   nodeOptions: --max_old_space_size=1024
+  #   otelCollector: {
+  #     enabled: true
+  #     endpoint: http://$(HOST_IP):4317
+  #   }
+  #   environmentVariables: []
+  #   - name: WORKFLOW_TEMPORAL_CONCURRENT_TASKS_LIMIT
+  #     value: "100"
+  #   - name: WORKFLOW_TEMPORAL_CONCURRENT_ACTIVITIES_LIMIT
+  #     value: "100"
+  # }
+
+  # Resources for the workflow worker - these are sane inputs that bias towards stability
+  # Can adjust but may see OOM errors if memory too low for heavy workflow load
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 8192Mi
+    requests:
+      cpu: 1000m
+      memory: 2048Mi
+
+codeExecutor:
+  # Enable this for Python support and running code more securely within a separate
+  # sandboxed environment
+  enabled: false
+
+  replicaCount: 1
+
+  # Annotations for code executor pods
+  annotations: {}
+
+  # Labels for code executor pods
+  labels: {}
+
+  # Config for code executor. Node heap size limits can be overridden here
+  config: {}
+  # config: {
+  #   nodeOptions: --max_old_space_size=1024
+  # }
+
+  # Resources for the code executor. Most common issues will be seen with CPU usage as this will
+  # most likely be CPU bound. Adjust the CPU if latency increases under load.
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+    requests:
+      cpu: 1000m
+      memory: 1024Mi
+
+  image:
+    repository: tryretool/code-executor-service
+    tag:
+    pullPolicy: IfNotPresent
+
+retool-temporal-services-helm:
+  # Enable to spin up a new Temporal Cluster alongside Retool
+  enabled: false
+  server:
+    # Defines image to be used for temporal server
+    image:
+      repository: tryretool/one-offs
+      tag: retool-temporal-1.1.3
+      pullPolicy: IfNotPresent
+    # this configures grpc_health_probe (https://github.com/grpc-ecosystem/grpc-health-probe)
+    # for healthchecks instead of native k8s.
+    # Set this to true if deploying in a k8s cluster on version <1.24
+    useLegacyHealthProbe: false
+    config:
+      # the below values specify the database for temporal internals and workflow state
+      # both can point to the same db, and even the same as retool main above, although throughput
+      # will be limited. We strongly suggest using two total DBs: one for retool-main and one
+      # for default and visibility below
+      persistence:
+        default:
+          sql:
+            # host:
+            # port:
+            # the dbname used for temporal
+            # database: temporal
+            # user:
+            # password:
+            # existingSecret is the name of the secret where password is stored
+            # existingSecret:
+            # secretKey is the key in the k8s secret
+            # secretKey:
+            # options for SSL connections to database
+            # tls:
+            #   enabled: true
+            #   сaFile:
+            #   certFile:
+            #   keyFile:
+            #   enableHostVerification: false
+            #   serverName:
+        visibility:
+          sql:
+            # host:
+            # port:
+            # the dbname used for temporal visibility
+            # database: temporal_visibility
+            # user:
+            # password:
+            # existingSecret is the name of the secret where password is stored
+            # existingSecret:
+            # secretKey is the key in the k8s secret
+            # secretKey:
+            # options for SSL connections to database
+            # tls:
+            #   enabled: true
+            #   сaFile:
+            #   certFile:
+            #   keyFile:
+            #   enableHostVerification: false
+            #   serverName:
+
+      # use-cases with very high throughput demands (>10k workflow blocks/sec) can modify
+      # below value to be higher, such as 512 or 1024
+      numHistoryShards: 128
+
+    # define resources for each temporal service -- these are sane starting points that allow
+    # for scaling to ~3 workflow workers without hitting bottlenecks
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1024Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    # example of setting service-specific resources, here we increase memory limit for history server
+    history:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 2Gi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+  # Setting this value to true will spin up the temporal web UI, admintools,
+  # along with prometheus and grafana clusters for debugging performance
+  # TODO: define this in _helpers.tpl
+  # visibilityDebugMode: false
+  # DEBUGGING: below pods can be used for debugging and watching metrics
+  # launches prometheus pods and listeners on temporal services and worker
+  prometheus:
+    enabled: false
+  # launches a grafana pod with helpful workflows executor metrics and graphs
+  grafana:
+    enabled: false
+  # launches the temporal web UI, which allows you to see which workflows are currently running
+  web:
+    enabled: false
+  # launches the temporal admintools pod, which allows you to manage your cluster, e.g. terminate workflows
+  admintools:
+    enabled: false
 
 persistentVolumeClaim:
   # set to true to use pvc

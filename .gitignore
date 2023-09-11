@@ -1,4 +1,4 @@
-charts/*/charts
+charts/**/*.tgz
 .prettierignore
 
 kubeconform

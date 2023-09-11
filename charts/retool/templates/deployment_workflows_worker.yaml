@@ -1,35 +1,43 @@
+{{- if .Values.workflows.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ template "retool.fullname" . }}-workflow-worker
   labels:
+    retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.workflows.replicaCount }}
   selector:
     matchLabels:
-{{- include "retool.selectorLabels" . | nindent 6 }}
+      retoolService: {{ template "retool.fullname" . }}-workflow-worker
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
+        prometheus.io/job: {{ template "retool.fullname" . }}-workflow-worker
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
 {{- if .Values.backend.annotations }}
 {{ toYaml .Values.backend.annotations | indent 8 }}
 {{- end }}
+{{- if .Values.workflows.annotations }}
+{{ toYaml .Values.workflows.annotations | indent 8 }}
+{{- end }}
       labels:
-{{- include "retool.selectorLabels" . | nindent 8 }}
+        retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
-{{- if .Values.backend.labels }}
-{{ toYaml .Values.backend.labels | indent 8 }}
+{{- if .Values.workflows.labels }}
+{{ toYaml .Values.workflows.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
@@ -57,13 +65,52 @@ spec:
         env:
           - name: NODE_ENV
             value: production
-          {{- if gt (int (toString (.Values.replicaCount))) 1 }}
+          - name: NODE_OPTIONS
+            value: {{(.Values.workflows.config).nodeOptions | default "--max_old_space_size=1024" }}
           - name: SERVICE_TYPE
-            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+            value: WORKFLOW_TEMPORAL_WORKER
+          - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+            value: "100"
+          - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+          {{- if .Values.workflows.dbConnectorTimeout }}
+            value: {{ .Values.workflows.dbConnectorTimeout | quote}}
+          {{- else if .Values.config.dbConnectorTimeout }}
+            value: {{ .Values.config.dbConnectorTimeout | quote}}
           {{- else }}
-          - name: SERVICE_TYPE
-            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JOBS_RUNNER
+            value: "5400000"
           {{- end }}
+          - name: DISABLE_DATABASE_MIGRATIONS
+            value: "true"
+          {{- if or (index .Values "retool-temporal-services-helm" "enabled") (.Values.workflows.temporal.enabled) }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
+            value: {{ template "retool.temporal.host" . }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
+            value: {{ template "retool.temporal.port" . }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
+            value: {{ template "retool.temporal.namespace" . }}
+          {{- end }}
+          {{- if (.Values.workflows.temporal).sslEnabled }}
+          - name: WORKFLOW_TEMPORAL_TLS_ENABLED
+            value: "true"
+          {{- if (and (.Values.workflows.temporal).sslCert (.Values.workflows.temporal).sslKey) }}
+          - name: WORKFLOW_TEMPORAL_TLS_CRT
+            value: {{ .Values.workflows.temporal.sslCert }}
+          - name: WORKFLOW_TEMPORAL_TLS_KEY
+            valueFrom:
+              secretKeyRef:
+              {{- if (.Values.workflows.temporal).sslKeySecretName }}
+                name: {{ .Values.workflows.temporal.sslKeySecretName }}
+                key: {{ .Values.workflows.temporal.sslKeySecretKey | default "temporal-tls-key" }}
+              {{- else }}
+                name: {{ template "retool.fullname" . }}
+                key: "temporal-tls-key"
+              {{- end }}
+          {{- end }}
+          {{- end }}
+          - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
+            value: "3005"
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://{{ template "retool.fullname" . }}-workflow-backend
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
@@ -80,43 +127,20 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
-          {{- if .Values.config.dbConnectorTimeout }}	
-          - name: DBCONNECTOR_QUERY_TIMEOUT_MS	
-            value: {{ .Values.config.dbConnectorTimeout | quote }}	
+          {{- if .Values.codeExecutor.enabled }}
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
-          {{- if and (.Values.workflows.enabled) (or (index .Values "retool-temporal-services-helm" "enabled") (.Values.workflows.temporal.enabled)) }}	
-          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST	
-            value: {{ template "retool.temporal.host" . }}	
-          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT	
-            value: {{ template "retool.temporal.port" . }}	
-          - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE	
-            value: {{ template "retool.temporal.namespace" . }}	
-          {{- end }}	
-          {{- if (.Values.workflows.enabled) }}	
-          - name: WORKFLOW_BACKEND_HOST	
-            value: http://{{ template "retool.fullname" . }}-workflow-backend	
-          {{- end }}	
-          {{- if (.Values.workflows.temporal).sslEnabled }}	
-          - name: WORKFLOW_TEMPORAL_TLS_ENABLED	
-            value: "true"	
-          {{- if (and (.Values.workflows.temporal).sslCert (.Values.workflows.temporal).sslKey) }}	
-          - name: WORKFLOW_TEMPORAL_TLS_CRT	
-            value: {{ .Values.workflows.temporal.sslCert }}	
-          - name: WORKFLOW_TEMPORAL_TLS_KEY	
-            valueFrom:	
-              secretKeyRef:	
-              {{- if (.Values.workflows.temporal).sslKeySecretName }}	
-                name: {{ .Values.workflows.temporal.sslKeySecretName }}	
-                key: {{ .Values.workflows.temporal.sslKeySecretKey | default "temporal-tls-key" }}	
-              {{- else }}	
-                name: {{ template "retool.fullname" . }}	
-                key: "temporal-tls-key"	
-              {{- end }}	
-          {{- end }}	
-          {{- end }}	
-          {{- if .Values.codeExecutor.enabled }}	
-          - name: CODE_EXECUTOR_INGRESS_DOMAIN	
-            value: http://{{ template "retool.codeExecutor.name" . }}	
+          {{- if and (((.Values.workflows.config).otelCollector).enabled) (((.Values.workflows.config).otelCollector).endpoint) }}
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+             value: {{ ((.Values.workflows.config).otelCollector).endpoint }}
+          {{- else if ((.Values.workflows.config).otelCollector).enabled }}
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "http://$(HOST_IP):4317"
           {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
@@ -154,13 +178,7 @@ spec:
               secretKeyRef:
           {{- if  .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
-                # `postgres` is the default admin username for postgres in the subchart we use, so it needs the admin password
-                # if a different username is picked, then it needs the custom password instead.
-                {{- if eq .Values.postgresql.auth.username "postgres" }}
                 key: postgres-password
-                {{- else }}
-                key: password
-                {{- end }}
           {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}
@@ -195,13 +213,16 @@ spec:
           {{- with .Values.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
+          {{- with .Values.workflows.config.environmentVariables }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
         {{- if .Values.externalSecrets.enabled }}
         envFrom:
         - secretRef:
             name: {{ .Values.externalSecrets.name }}
-        {{- range .Values.externalSecrets.secrets }}	
-        - secretRef:	
-            name: {{ .name }}	
+        {{- range .Values.externalSecrets.secrets }}
+        - secretRef:
+            name: {{ .name }}
         {{- end }}
         {{- end }}
         {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
@@ -212,14 +233,18 @@ spec:
         {{- end }}
         {{- end }}
         ports:
-        - containerPort: {{ .Values.service.internalPort }}
+        - containerPort: 3005
           name: {{ template "retool.name" . }}
           protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
+
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
             path: {{ .Values.livenessProbe.path }}
-            port: {{ .Values.service.internalPort }}
+            port: 3005
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
@@ -228,33 +253,19 @@ spec:
         readinessProbe:
           httpGet:
             path: {{ .Values.readinessProbe.path }}
-            port: {{ .Values.service.internalPort }}
+            port: 3005
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
-{{- if .Values.startupProbe.enabled }}
-        startupProbe:
-          httpGet:
-            path: {{ .Values.startupProbe.path }}
-            port: {{ .Values.service.internalPort }}
-          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
-          successThreshold: {{ .Values.startupProbe.successThreshold }}
-          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-{{- end }}
         resources:
-{{ toYaml .Values.resources | indent 10 }}
+{{ toYaml .Values.workflows.resources | indent 10 }}
         volumeMounts:
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
           mountPath: "/usr/share/retool/config/{{ $configFile }}"
           subPath: {{ $configFile }}
-        {{- end }}
-        {{if and .Values.persistentVolumeClaim.enabled .Values.persistentVolumeClaim.mountPath }}
-        - name: retool-pv
-          mountPath: {{ .Values.persistentVolumeClaim.mountPath }}
         {{- end }}
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
@@ -292,11 +303,6 @@ spec:
           configMap:
             name: {{ .configMap }}
 {{- end }}
-        {{- if .Values.persistentVolumeClaim.enabled }}
-        - name: retool-pv
-          persistentVolumeClaim:
-            claimName: {{ default (include "retool.fullname" .) .Values.persistentVolumeClaim.existingClaim }}
-        {{- end }}
 {{- if .Values.extraVolumes }}
 {{ toYaml .Values.extraVolumes | indent 8 }}
 {{- end }}
@@ -315,4 +321,22 @@ spec:
   selector:
     matchLabels:
   {{- include "retool.selectorLabels" . | nindent 6 }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "retool.fullname" . }}-workflow-worker
+spec:
+  selector:
+    retoolService: {{ template "retool.fullname" . }}-workflow-worker
+  ports:
+  - protocol: TCP
+    port: 3005
+    targetPort: 3005
+    name: {{ template "retool.name" . }}
+  - protocol: TCP
+    port: 9090
+    targetPort: metrics
+    name: metrics
 {{- end }}

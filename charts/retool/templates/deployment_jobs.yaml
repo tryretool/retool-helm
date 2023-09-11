@@ -153,6 +153,10 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.externalSecrets.name }}
+        {{- range .Values.externalSecrets.secrets }}	
+        - secretRef:	
+            name: {{ .name }}	
+        {{- end }}
         {{- end }}
         {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
         envFrom:
