@@ -66,8 +66,6 @@ spec:
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
-          - name: RESTRICTED_DOMAIN
-            value: {{ default "" .Values.config.auth.google.domain }}
           - name: POSTGRES_HOST
             value: {{ template "retool.postgresql.host" . }}
           - name: POSTGRES_PORT
