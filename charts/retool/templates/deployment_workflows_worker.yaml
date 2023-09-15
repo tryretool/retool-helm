@@ -1,4 +1,4 @@
-{{- if .Values.workflows.enabled }}
+{{- if ((include "retool.workflows.enabled" .) | include "strToBool") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
