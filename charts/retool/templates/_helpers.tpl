@@ -127,7 +127,7 @@ Set postgresql user
 Set Workflows enabled
 */}}
 {{- define "retool.workflows.enabled" -}}
-{{- if or (.Values.workflows.enabled true) (eq .Values.workflows.enabled false) -}}
+{{- if or (eq .Values.workflows.enabled true) (eq .Values.workflows.enabled false) -}}
   {{- .Values.workflows.enabled | default false }}
 {{- else }}
   {{- semverCompare ">= 3.6.11" .Values.image.tag }}
