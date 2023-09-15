@@ -125,30 +125,27 @@ Set postgresql user
 
 {{/*
 Set Workflows enabled
+Usage: (include "retool.workflows.enabled" .)
 */}}
 {{- define "retool.workflows.enabled" -}}
+{{- $output := "" -}}
 {{- if or (eq .Values.workflows.enabled true) (eq .Values.workflows.enabled false) -}}
-  {{- .Values.workflows.enabled | default false }}
+  {{- if eq .Values.workflows.enabled true -}}
+    {{- $output = "1" -}}
+  {{- else }}
+    {{- $output = "" -}}
+  {{- end -}}
 {{- else if empty .Values.image.tag }}
-  {{- false }}
+  {{- $output = "" -}}
 {{- else if eq .Values.image.tag "latest" }}
-  {{- true }}
+  {{- $output = "1" -}}
+{{- else if semverCompare ">= 3.6.11" .Values.image.tag }}
+  {{- $output = "1" -}}
 {{- else }}
-  {{- semverCompare ">= 3.6.11" .Values.image.tag }}
+  {{- $output = "" -}}
 {{- end }}
+{{ $output }}
 {{- end }}
-
-{{/*
-Custom template function to cast a string to a boolean.
-Usage: {{ toBool .SomeString }}
-*/}}
-{{- define "strToBool" -}}
-    {{- $output := "" -}}
-    {{- if (eq . "true") -}}
-        {{- $output = "1" -}}
-    {{- end -}}
-    {{ $output }}
-{{- end -}}
 
 {{/*
 Set Temporal frontend host
