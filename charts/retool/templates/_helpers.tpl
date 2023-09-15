@@ -132,20 +132,20 @@ Usage: (include "retool.workflows.enabled" .)
 {{- if or (eq .Values.workflows.enabled true) (eq .Values.workflows.enabled false) -}}
   {{- if eq .Values.workflows.enabled true -}}
     {{- $output = "1" -}}
-  {{- else }}
+  {{- else -}}
     {{- $output = "" -}}
   {{- end -}}
-{{- else if empty .Values.image.tag }}
+{{- else if empty .Values.image.tag -}}
   {{- $output = "" -}}
-{{- else if eq .Values.image.tag "latest" }}
+{{- else if eq .Values.image.tag "latest" -}}
   {{- $output = "1" -}}
-{{- else if semverCompare ">= 3.6.11" .Values.image.tag }}
+{{- else if semverCompare ">= 3.6.11" .Values.image.tag -}}
   {{- $output = "1" -}}
-{{- else }}
+{{- else -}}
   {{- $output = "" -}}
-{{- end }}
-{{ $output }}
-{{- end }}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
 
 {{/*
 Set Temporal frontend host
