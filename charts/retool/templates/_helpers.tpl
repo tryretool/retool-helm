@@ -129,6 +129,10 @@ Set Workflows enabled
 {{- define "retool.workflows.enabled" -}}
 {{- if or (eq .Values.workflows.enabled true) (eq .Values.workflows.enabled false) -}}
   {{- .Values.workflows.enabled | default false }}
+{{- else if empty .Values.image.tag }}
+  {{- false }}
+{{- else if eq .Values.image.tag "latest" }}
+  {{- true }}
 {{- else }}
   {{- semverCompare ">= 3.6.11" .Values.image.tag }}
 {{- end }}
