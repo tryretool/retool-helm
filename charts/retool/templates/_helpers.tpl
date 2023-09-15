@@ -124,6 +124,30 @@ Set postgresql user
 {{- end -}}
 
 {{/*
+Set Workflows enabled
+Usage: (include "retool.workflows.enabled" .)
+*/}}
+{{- define "retool.workflows.enabled" -}}
+{{- $output := "" -}}
+{{- if or (eq .Values.workflows.enabled true) (eq .Values.workflows.enabled false) -}}
+  {{- if eq .Values.workflows.enabled true -}}
+    {{- $output = "1" -}}
+  {{- else -}}
+    {{- $output = "" -}}
+  {{- end -}}
+{{- else if empty .Values.image.tag -}}
+  {{- $output = "" -}}
+{{- else if eq .Values.image.tag "latest" -}}
+  {{- $output = "1" -}}
+{{- else if semverCompare ">= 3.6.11" .Values.image.tag -}}
+  {{- $output = "1" -}}
+{{- else -}}
+  {{- $output = "" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
 Set Temporal frontend host
 */}}
 {{- define "retool.temporal.host" -}}
