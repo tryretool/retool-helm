@@ -490,6 +490,11 @@ retool-temporal-services-helm:
           cpu: 100m
           memory: 128Mi
 
+  # Set environment variables for temporal pods, e.g. skipping DB creation step at startup
+  # environmentVariables:
+  #   - name: SKIP_DB_CREATE
+  #     value: "true"
+
   # Setting this value to true will spin up the temporal web UI, admintools,
   # along with prometheus and grafana clusters for debugging performance
   # TODO: define this in _helpers.tpl
