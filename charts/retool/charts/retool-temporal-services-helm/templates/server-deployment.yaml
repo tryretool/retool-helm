@@ -184,6 +184,9 @@ spec:
             - name: TEMPORAL_VERSION_CHECK_DISABLED
               value: "1"
           {{- end }}
+          {{- with $.Values.environmentVariables }}
+{{ toYaml . | indent 12 }}
+          {{- end }}
           ports:
             - name: rpc
               containerPort: {{ include (printf "temporal.%s.grpcPort" $service) $ }}
