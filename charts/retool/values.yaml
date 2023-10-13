@@ -557,3 +557,10 @@ extraManifests: []
 securityGroupPolicy:
   enabled: false
   groupIds: []
+
+# Override any host aliases here if needed
+# hostAliases:
+#   - ip: 1.1.1.1
+#   hostnames:
+#   - example.com
+#   - exampletwo.com
