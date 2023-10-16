@@ -557,3 +557,11 @@ extraManifests: []
 securityGroupPolicy:
   enabled: false
   groupIds: []
+
+hostAliases: {}
+# Support hostAliases on the backend deployment
+# hostAliases:
+#   - ip: 1.1.1.1
+#     hostnames:
+#     - test.com
+#     - anothertest.com
