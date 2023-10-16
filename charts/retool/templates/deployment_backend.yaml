@@ -36,22 +36,16 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
       {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+{{ toYaml . | indent 8 }}
+      {{- end }} 
 {{- if .Values.initContainers }}
       initContainers:
 {{- range $key, $value := .Values.initContainers }}
       - name: "{{ $key }}"
 {{ toYaml $value | indent 8 }}
 {{- end }}
-{{- end }}
-{{- if (hasKey .Values.hostAliases)}}
-      hostAliases:
-      {{- range .Values.hostAliases -}}
-        - ip: {{ .ip }}
-          hostnames:
-          {{- range .hostnames}}
-           - {{ . }}
-          {{- end }}
-      {{- end }}
 {{- end }}
       containers:
       - name: {{ .Chart.Name }}

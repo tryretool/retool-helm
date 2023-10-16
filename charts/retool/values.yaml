@@ -558,9 +558,9 @@ securityGroupPolicy:
   enabled: false
   groupIds: []
 
-# Override any host aliases here if needed
+hostAliases: {}
 # hostAliases:
 #   - ip: 1.1.1.1
-#   hostnames:
-#   - example.com
-#   - exampletwo.com
+#     hostnames:
+#     - test.com
+#     - anothertest.com  
