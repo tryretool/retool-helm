@@ -260,7 +260,8 @@ tolerations: []
 
 # Node labels for pod assignment
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
-nodeSelector: {}
+nodeSelector:
+  kubernetes.io/arch: amd64
 
 # Common annotations for all pods (backend and job runner).
 podAnnotations: {}
