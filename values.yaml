@@ -424,7 +424,7 @@ internalWorker:
   #     value: "bar"
   # }
   # Resources for the internal worker - these are sane inputs that bias towards stability
-  # Can adjust but may see OOM errors if memory too low for heavy workflow load
+  # Can adjust but may see OOM errors if memory too low for heavy load
   resources:
     limits:
       cpu: 2000m
