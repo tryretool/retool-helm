@@ -29,4 +29,6 @@ Alternatively, you can fetch the randomly generated password and set the value i
   echo $(kubectl --namespace {{ .Release.Namespace }} get secret/{{ include "retool.fullname" . }}-postgresql -o jsonpath='{.data.postgres-password}' | base64 -d)
 We highly recommend you do NOT use this subchart as is to run Postgres in a container for your production instance of Retool. It is only suitable for proof-of-concepts. Please use a managed Postgres, or self-host more permanantly.
 ***************************************************************************
-{{- end }} 
+{{- end }}
+
+{{- include "retool.validationRules" . }}

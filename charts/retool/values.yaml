@@ -316,6 +316,12 @@ ui:
   # Labels for ui pods
   labels: {}
 
+dbconnector:
+  java:
+    # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
+    # This feature is not ready for production use; please check with the Retool team before enablement.
+    enabled: false
+
 workflows:
   # enabled by default from Chart version 6.0.2 and Retool image 3.6.11 onwards
   # explicitly set other fields as needed
@@ -399,11 +405,37 @@ workflows:
       cpu: 1000m
       memory: 2048Mi
 
-dbconnector:
-  java:
-    # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
-    # This feature is not ready for production use; please check with the Retool team before enablement.
-    enabled: false
+internalWorker:
+  # Enable for internal workers for Temporal-powered Retool Vectors
+  enabled: false
+  # Config for internal worker pods. Node heap size limits can be overridden here
+  # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
+  # provides observability into worker performance, particularly useful in high QPS use-cases
+  # environmentVariables will only be set on the worker
+  config: {}
+  # config: {
+  #   nodeOptions: --max_old_space_size=1024
+  #   otelCollector: {
+  #     enabled: true
+  #     endpoint: http://$(HOST_IP):4317
+  #   }
+  #   environmentVariables: []
+  #   - name: FOO
+  #     value: "bar"
+  # }
+  # Resources for the internal worker - these are sane inputs that bias towards stability
+  # Can adjust but may see OOM errors if memory too low for heavy workflow load
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 8192Mi
+    requests:
+      cpu: 1000m
+      memory: 2048Mi
+  # Timeout for queries, in ms. This will set the timeout for internal worker-related pods only
+  # If this value is not set but config.dbConnectorTimeout is, we will set internal worker pod timeouts
+  # to .Values.config.dbConnectorTimeout
+  # dbConnectorTimeout: 120000
 
 codeExecutor:
   # enabled by default from Chart version 6.0.15 and Retool image 3.20.15 onwards
