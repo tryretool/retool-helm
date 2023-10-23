@@ -302,3 +302,6 @@ extraManifests: []
 securityGroupPolicy:
   enabled: false
   groupIds: []
+
+internalWorker:
+  enabled: true
