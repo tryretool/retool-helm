@@ -231,7 +231,7 @@ spec:
         {{- end }}
         {{- end }}
         ports:
-        - containerPort: 3005
+        - containerPort: 3015
           name: {{ template "retool.name" . }}
           protocol: TCP
         - containerPort: 9090
@@ -242,7 +242,7 @@ spec:
         livenessProbe:
           httpGet:
             path: {{ .Values.livenessProbe.path }}
-            port: 3005
+            port: 3015
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
@@ -251,7 +251,7 @@ spec:
         readinessProbe:
           httpGet:
             path: {{ .Values.readinessProbe.path }}
-            port: 3005
+            port: 3015
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
@@ -330,8 +330,8 @@ spec:
     retoolService: {{ template "retool.fullname" . }}-internal-worker
   ports:
   - protocol: TCP
-    port: 3005
-    targetPort: 3005
+    port: 3015
+    targetPort: 3015
     name: {{ template "retool.name" . }}
   - protocol: TCP
     port: 9090
