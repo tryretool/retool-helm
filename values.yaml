@@ -408,6 +408,9 @@ workflows:
 internalWorker:
   # Enable for internal workers for Temporal-powered Retool Vectors
   enabled: false
+
+  replicaCount: 1
+
   # Config for internal worker pods. Node heap size limits can be overridden here
   # otelCollector can be set to an OpenTelemetry Collector in your k8s cluster. This will configure Temporal metrics collection which
   # provides observability into worker performance, particularly useful in high QPS use-cases
