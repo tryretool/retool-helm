@@ -1,4 +1,4 @@
-{{- if gt (int (toString (.Values.replicaCount))) 1 }}
+{{- if include "retool.jobRunner.enabled" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

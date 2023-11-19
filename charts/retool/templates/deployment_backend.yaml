@@ -61,7 +61,7 @@ spec:
         env:
           - name: NODE_ENV
             value: production
-          {{- if gt (int (toString (.Values.replicaCount))) 1 }}
+          {{- if include "retool.jobRunner.enabled" . }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
           {{- else }}
