@@ -290,10 +290,17 @@ jobRunner:
   labels: {}
 
 backend:
-  # Annotations for backendpods
+  # Annotations for backend pods
   annotations: {}
 
   # Labels for backend pods
+  labels: {}
+
+ui:
+  # Annotations for ui pods
+  annotations: {}
+
+  # Labels for ui pods
   labels: {}
 
 workflows:
