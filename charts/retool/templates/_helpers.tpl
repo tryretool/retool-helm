@@ -124,6 +124,18 @@ Set postgresql user
 {{- end -}}
 
 {{/*
+Set Jobs Runner enabled
+Usage: (include "retool.jobRunner.enabled" .)
+*/}}
+{{- define "retool.jobRunner.enabled" -}}
+{{- $output := "" -}}
+{{- if or (gt (int (toString (.Values.replicaCount))) 1) (eq .Values.jobRunner.enabled true) }}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
 Set Workflows enabled
 Usage: (include "retool.workflows.enabled" .)
 */}}
