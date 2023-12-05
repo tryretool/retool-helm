@@ -59,8 +59,13 @@ spec:
         env:
           - name: NODE_ENV
             value: production
+          {{ if "$.Values.dbconnector.java.enabled" }}
           - name: SERVICE_TYPE
-            value: DB_CONNECTOR,DB_SSH_CONNECTOR,WORKFLOW_BACKEND
+            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
+          {{ else }}
+          - name: SERVICE_TYPE
+            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          {{ end }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS

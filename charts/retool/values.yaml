@@ -392,6 +392,12 @@ workflows:
       cpu: 1000m
       memory: 2048Mi
 
+dbconnector:
+  java:
+    # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
+    # This feature is not ready for production use; please check with the Retool team before enablement.
+    enabled: false
+
 codeExecutor:
   # Enable this for Python support and running code more securely within a separate
   # sandboxed environment
