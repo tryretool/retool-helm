@@ -32,7 +32,8 @@ config:
 
   # IMPORTANT: Incompatible with postgresql subchart
   # Please disable the subchart in order to use a managed or external postgres instance.
-  postgresql: {}
+  postgresql:
+    {}
     # Specify if postgresql subchart is disabled
     # host:
     # port:
@@ -58,7 +59,8 @@ env: {}
 
 # Optionally specify additional environment variables to be populated from Kubernetes secrets.
 # Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
-environmentSecrets: []
+environmentSecrets:
+  []
   # - name: SCIM_AUTH_TOKEN
   #   secretKeyRef:
   #     name: retool-scim-auth-token
@@ -70,7 +72,8 @@ environmentSecrets: []
 
 # Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
 # Can also include environment secrets here instead of in environmentSecrets
-environmentVariables: []
+environmentVariables:
+  []
   #   - name: SCIM_AUTH_TOKEN
   #     valueFrom:
   #       secretKeyRef:
@@ -94,7 +97,8 @@ externalSecrets:
   enabled: false
   name: retool-config
   # Array of secrets to be use as env variables. (Optional)
-  secrets: []
+  secrets:
+    []
     # - name: retool-config
     # - name: retool-db
   # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
@@ -104,7 +108,8 @@ externalSecrets:
     # Default set to AWS Secrets Manager.
     backendType: secretsManager
     # Array of name/path key/value pairs to use for the External Secrets Objects.
-    secretRef: []
+    secretRef:
+      []
       # - name: retool-config
       #   path: global-retool-config
       # - name: retool-db
@@ -244,15 +249,15 @@ priorityClassName: ""
 affinity:
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 100
-      podAffinityTerm:
-        labelSelector:
-          matchExpressions:
-          - key: "app.kubernetes.io/name"
-            operator: In
-            values:
-            - retool
-        topologyKey: "kubernetes.io/hostname"
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: In
+                values:
+                  - retool
+          topologyKey: "kubernetes.io/hostname"
 
 # Tolerations for pod assignment
 # Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -265,9 +270,6 @@ nodeSelector: {}
 # Common annotations for all pods (backend and job runner).
 podAnnotations: {}
 
-# Increasing replica count will deploy a separate pod for backend and jobs
-# Example: with 3 replicas, you will end up with 3 backends + 1 jobs pod
-replicaCount: 2
 revisionHistoryLimit: 3
 
 # Optional pod disruption budget, for ensuring higher availability of the
@@ -282,7 +284,18 @@ revisionHistoryLimit: 3
 # Common labels for all pods (backend and job runner) for pod assignment
 podLabels: {}
 
+# Increasing replica count will deploy a separate pod for backend and jobs
+# Example 1: with 1 replicas, you will end up with 1 combined backend and jobs pod (unless jobRunner.enabled is true, see below)
+# Example 2: with 2 replicas, you will end up with 2 backends + 1 jobs pod
+# Example 3: with 3 replicas, you will end up with 3 backends + 1 jobs pod
+replicaCount: 2
+
 jobRunner:
+  # explicitly enable this pod if exactly 1 api backend container and
+  # 1 jobs runner container is desired. otherwise a replicaCount of 2
+  # will already launch a job runner pod
+  # enabled: true
+
   # Annotations for job runner pods
   annotations: {}
 
@@ -385,6 +398,12 @@ workflows:
     requests:
       cpu: 1000m
       memory: 2048Mi
+
+dbconnector:
+  java:
+    # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
+    # This feature is not ready for production use; please check with the Retool team before enablement.
+    enabled: false
 
 codeExecutor:
   # Enable this for Python support and running code more securely within a separate
