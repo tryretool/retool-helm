@@ -141,7 +141,12 @@ Usage: (include "retool.workflows.enabled" .)
 */}}
 {{- define "retool.workflows.enabled" -}}
 {{- $output := "" -}}
-{{- if or (eq (toString (default "" .Values.workflows.enabled)) "true") (eq (toString (default "" .Values.workflows.enabled)) "false") -}}
+{{- if or 
+    (eq (toString (default "" .Values.workflows.enabled)) "true")
+    (eq .Values.workflows.enabled true) 
+    (eq (toString (default "" .Values.workflows.enabled)) "false") 
+    (eq .Values.workflows.enabled false) 
+-}}
   {{- if eq .Values.workflows.enabled true -}}
     {{- $output = "1" -}}
   {{- else -}}
