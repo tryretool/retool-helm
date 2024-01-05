@@ -1,0 +1,25 @@
+{{- if include "retool.networkPolicy.enabled" . }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: retool-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels: {{- include "retool.selectorLabels" . | nindent 6 }}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  {{- range .Values.networkPolicy.cidrs.ingress }}
+  - from:
+    - ipBlock:
+        cidr: {{ . }}
+  {{- end }}
+  egress:
+  {{- range .Values.networkPolicy.cidrs.egress }}
+  - to:
+    - ipBlock:
+        cidr: {{ . }}
+  {{- end }}
+{{- end }}

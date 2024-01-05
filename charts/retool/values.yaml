@@ -597,3 +597,12 @@ hostAliases: {}
 #     hostnames:
 #     - test.com
 #     - anothertest.com
+
+networkPolicy:
+  enabled: false
+  cidrs:
+    ingress:
+      # 169.254.0.0/16 is the link-local address, which should be enabled for security reasons unless you have a specific reason not to
+      - 169.254.0.0/16
+    egress:
+      - 169.254.0.0/16
