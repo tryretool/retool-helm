@@ -423,6 +423,8 @@ codeExecutor:
   # config: {
   #   nodeOptions: --max_old_space_size=1024
   # }
+  volumes: {}
+  volumeMounts: {}
 
   # Resources for the code executor. Most common issues will be seen with CPU usage as this will
   # most likely be CPU bound. Adjust the CPU if latency increases under load.

@@ -101,6 +101,14 @@ spec:
 {{- end }}
         resources:
 {{ toYaml .Values.codeExecutor.resources | indent 10 }}
+        volumeMounts:
+{{- if .Values.codeExecutor.volumeMounts }}
+{{ toYaml .Values.codeExecutor.volumeMounts | indent 10 }}
+{{- end }}
+      volumes:
+{{- if .Values.codeExecutor.volumes }}
+{{ toYaml .Values.codeExecutor.volumes | indent 8 }}
+{{- end }}
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
