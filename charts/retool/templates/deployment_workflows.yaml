@@ -59,7 +59,7 @@ spec:
         env:
           - name: NODE_ENV
             value: production
-          {{ if "$.Values.dbconnector.java.enabled" }}
+          {{ if $.Values.dbconnector.java.enabled }}
           - name: SERVICE_TYPE
             value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
           {{ else }}
