@@ -68,7 +68,7 @@ spec:
           - name: NODE_ENV
             value: production
           {{- if include "retool.jobRunner.enabled" . }}
-          {{ if "$.Values.dbconnector.java.enabled" }}
+          {{ if $.Values.dbconnector.java.enabled }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
           {{ else }}
@@ -76,7 +76,7 @@ spec:
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
           {{ end }}
           {{- else }}
-          {{ if "$.Values.dbconnector.java.enabled" }}
+          {{ if $.Values.dbconnector.java.enabled }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR,JOBS_RUNNER
           {{ else }}
