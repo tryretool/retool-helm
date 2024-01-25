@@ -1,8 +1,8 @@
-{{- if include "retool.jobRunner.enabled" . }}
+{{- if include "retool.jobsRunner.enabled" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-jobs-runner
+  name: {{ template "retool.jobsRunner.name" . }}
   labels:
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
@@ -13,7 +13,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+      app.kubernetes.io/name: {{ template "retool.jobsRunner.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
@@ -26,7 +26,7 @@ spec:
 {{ toYaml .Values.jobRunner.annotations | indent 8 }}
 {{- end }}
       labels:
-        app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+        app.kubernetes.io/name: {{ template "retool.jobsRunner.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
