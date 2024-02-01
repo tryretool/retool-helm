@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ template "retool.backend.name" . }}
   labels:
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
@@ -112,7 +112,7 @@ spec:
           {{- end }}
           {{- if include "retool.workflows.enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ template "retool.fullname" . }}-workflow-backend
+            value: http://{{ template "retool.workflowsBackend.name" . }}
           {{- end }}
           {{- if (.Values.workflows.temporal).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
@@ -327,7 +327,7 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ template "retool.backend.name" . }}
 spec:
   {{ toYaml .Values.podDisruptionBudget }}
   selector:
