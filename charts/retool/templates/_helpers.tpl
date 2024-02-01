@@ -34,7 +34,7 @@ Set service names
   {{- default (include "retool.fullname" .) .Values.backend.name -}}
 {{- end -}}
 
-{{- define "retool.jobsRunner.name" -}}
+{{- define "retool.jobRunner.name" -}}
   {{- default (printf "%s-jobs-runner" (include "retool.fullname" .)) .Values.jobRunner.name -}}
 {{- end -}}
 
@@ -156,6 +156,7 @@ Usage: (include "retool.jobsRunner.enabled" .)
 {{- if or (gt (int (toString (.Values.replicaCount))) 1) (default false .Values.jobRunner.enabled) }}
   {{- $output = "1" -}}
 {{- end -}}
+# {{ printf "retool.jobsRunner.enabled result: %s" $output | quote }}
 {{- $output -}}
 {{- end -}}
 
