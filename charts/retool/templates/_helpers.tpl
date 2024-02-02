@@ -24,30 +24,6 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Set service names
-*/}}
-{{- define "retool.codeExecutor.name" -}}
-  {{- default (printf "%s-code-executor" (include "retool.fullname" .)) .Values.codeExecutor.name -}}
-{{- end -}}
-
-{{- define "retool.backend.name" -}}
-  {{- default (include "retool.fullname" .) .Values.backend.name -}}
-{{- end -}}
-
-{{- define "retool.jobRunner.name" -}}
-  {{- default (printf "%s-jobs-runner" (include "retool.fullname" .)) .Values.jobRunner.name -}}
-{{- end -}}
-
-{{- define "retool.workflowsWorker.name" -}}
-  {{- default (printf "%s-workflow-worker" (include "retool.fullname" .)) .Values.workflows.worker.name -}}
-{{- end -}}
-
-{{- define "retool.workflowsBackend.name" -}}
-  {{- default (printf "%s-workflow-backend" (include "retool.fullname" .)) .Values.workflows.backend.name -}}
-{{- end -}}
-
-
-{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "retool.chart" -}}
@@ -221,3 +197,9 @@ Set Temporal namespace
 {{- end -}}
 {{- end -}}
 
+{{/*
+Set code executor service name
+*/}}
+{{- define "retool.codeExecutor.name" -}}
+{{ template "retool.fullname" . }}-code-executor
+{{- end -}}

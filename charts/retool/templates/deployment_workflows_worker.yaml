@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.workflowsWorker.name" . }}
+  name: {{ template "retool.fullname" . }}-workflow-worker
   labels:
-    retoolService: {{ template "retool.workflowsWorker.name" . }}
+    retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
@@ -14,12 +14,12 @@ spec:
   replicas: {{ (.Values.workflows.worker).replicaCount | default (.Values.workflows.replicaCount | default 1) }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.workflowsWorker.name" . }}
+      retoolService: {{ template "retool.fullname" . }}-workflow-worker
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
-        prometheus.io/job: {{ template "retool.workflowsWorker.name" . }}
+        prometheus.io/job: {{ template "retool.fullname" . }}-workflow-worker
         prometheus.io/scrape: 'true'
         prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
@@ -32,7 +32,7 @@ spec:
 {{ toYaml .Values.workflows.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.workflowsWorker.name" . }}
+        retoolService: {{ template "retool.fullname" . }}-workflow-worker
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -110,7 +110,7 @@ spec:
           - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
             value: "3005"
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ template "retool.workflowsBackend.name" . }}
+            value: http://{{ template "retool.fullname" . }}-workflow-backend
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
@@ -324,10 +324,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.workflowsWorker.name" . }}
+  name: {{ template "retool.fullname" . }}-workflow-worker
 spec:
   selector:
-    retoolService: {{ template "retool.workflowsWorker.name" . }}
+    retoolService: {{ template "retool.fullname" . }}-workflow-worker
   ports:
   - protocol: TCP
     port: 3005
