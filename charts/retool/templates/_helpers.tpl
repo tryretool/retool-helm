@@ -177,6 +177,8 @@ Usage: (include "retool.codeExecutor.enabled" .)
   {{- else -}}
     {{- $output = "" -}}
   {{- end -}}
+{{- else if empty (include "retool.codeExecutor.image.tag" .) -}}
+  {{- $output = "" -}}
 {{- else if semverCompare ">= 3.20.15" (include "retool.codeExecutor.image.tag" .) -}}
   {{- $output = "1" -}}
 {{- else -}}
@@ -234,8 +236,10 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- if .Values.codeExecutor.image.tag -}}
   {{- .Values.codeExecutor.image.tag -}}
 {{- else if .Values.image.tag  -}}
-  {{- if eq .Values.image.tag "latest" -}}
-    {{- fail "If using image.tag=latest (not recommended), explicitly set codeExecutor.image.tag" }}
+  {{- if and (eq .Values.image.tag "latest") (eq (toString .Values.codeExecutor.enabled) "true") -}}
+    {{- fail "If using image.tag=latest (not recommended, select an explicit tag instead) and enabling codeExecutor, explicitly set codeExecutor.image.tag" }}
+  {{- else if (eq .Values.image.tag "latest") -}}
+    {{- "" -}}
   {{- else if semverCompare ">= 3.20.15" .Values.image.tag -}}
     {{- .Values.image.tag -}}
   {{- else -}}
