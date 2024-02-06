@@ -132,7 +132,7 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
-          {{- if .Values.codeExecutor.enabled }}
+          {{- if include "retool.codeExecutor.enabled" . }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
