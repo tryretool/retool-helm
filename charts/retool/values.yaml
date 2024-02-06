@@ -439,7 +439,8 @@ codeExecutor:
 
   image:
     repository: tryretool/code-executor-service
-    tag:
+    # defaults to image.tag if >= 3.20.15, otherwise defaults to 1.1.0; explicitly set to override.
+    # tag:
     pullPolicy: IfNotPresent
 
 retool-temporal-services-helm:

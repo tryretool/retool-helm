@@ -177,15 +177,14 @@ Usage: (include "retool.codeExecutor.enabled" .)
   {{- else -}}
     {{- $output = "" -}}
   {{- end -}}
-{{- else if empty .Values.codeExecutor.image.tag -}}
-  {{- $output = "" -}}
-{{- else if semverCompare ">= 3.20.15" .Values.codeExecutor.image.tag -}}
+{{- else if semverCompare ">= 3.20.15" (include "retool.codeExecutor.image.tag" .) -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
 {{- end -}}
 {{- $output -}}
 {{- end -}}
+
 
 {{/*
 Set Temporal frontend host
@@ -225,4 +224,24 @@ Set code executor service name
 */}}
 {{- define "retool.codeExecutor.name" -}}
 {{ template "retool.fullname" . }}-code-executor
+{{- end -}}
+
+{{/*
+Set code executor image tag
+Usage: (template "retool.codeExecutor.image.tag" .)
+*/}}
+{{- define "retool.codeExecutor.image.tag" -}}
+{{- if .Values.codeExecutor.image.tag -}}
+  {{- .Values.codeExecutor.image.tag -}}
+{{- else if .Values.image.tag  -}}
+  {{- if eq .Values.image.tag "latest" -}}
+    {{- fail "If using image.tag=latest (not recommended), explicitly set codeExecutor.image.tag" }}
+  {{- else if semverCompare ">= 3.20.15" .Values.image.tag -}}
+    {{- .Values.image.tag -}}
+  {{- else -}}
+    {{- "1.1.0" -}}
+  {{- end -}}
+{{- else -}}
+  {{- fail "Please set a value for .Values.image.tag" }}
+{{- end -}}
 {{- end -}}
