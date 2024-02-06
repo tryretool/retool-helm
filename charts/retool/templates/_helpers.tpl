@@ -141,11 +141,11 @@ Usage: (include "retool.workflows.enabled" .)
 */}}
 {{- define "retool.workflows.enabled" -}}
 {{- $output := "" -}}
-{{- if or 
+{{- if or
     (eq (toString (default "" .Values.workflows.enabled)) "true")
-    (eq .Values.workflows.enabled true) 
-    (eq (toString (default "" .Values.workflows.enabled)) "false") 
-    (eq .Values.workflows.enabled false) 
+    (eq .Values.workflows.enabled true)
+    (eq (toString (default "" .Values.workflows.enabled)) "false")
+    (eq .Values.workflows.enabled false)
 -}}
   {{- if eq .Values.workflows.enabled true -}}
     {{- $output = "1" -}}
@@ -157,6 +157,35 @@ Usage: (include "retool.workflows.enabled" .)
 {{- else if eq .Values.image.tag "latest" -}}
   {{- $output = "1" -}}
 {{- else if semverCompare ">= 3.6.11" .Values.image.tag -}}
+  {{- $output = "1" -}}
+{{- else -}}
+  {{- $output = "" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Set Code Executor enabled
+Usage: (include "retool.codeExecutor.enabled" .)
+*/}}
+{{- define "retool.codeExecutor.enabled" -}}
+{{- $output := "" -}}
+{{- if or
+    (eq (toString (default "" .Values.codeExecutor.enabled)) "true")
+    (eq .Values.codeExecutor.enabled true)
+    (eq (toString (default "" .Values.codeExecutor.enabled)) "false")
+    (eq .Values.codeExecutor.enabled false)
+-}}
+  {{- if
+    (eq .Values.codeExecutor.enabled true)
+  -}}
+    {{- $output = "1" -}}
+  {{- else -}}
+    {{- $output = "" -}}
+  {{- end -}}
+{{- else if empty .Values.codeExecutor.image.tag -}}
+  {{- $output = "" -}}
+{{- else if semverCompare ">= 3.20.15" .Values.codeExecutor.image.tag -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
