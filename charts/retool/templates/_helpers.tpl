@@ -30,6 +30,15 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+
+{{- define "retool.deploymentTemplateType" -}}
+{{- "k8s-helm" | quote -}}
+{{- end -}}
+
+{{- define "retool.deploymentTemplateVersion" -}}
+{{- .Chart.Version | quote -}}
+{{- end -}}
+
 {{/*
 Common labels
 */}}
