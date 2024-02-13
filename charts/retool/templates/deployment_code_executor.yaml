@@ -113,6 +113,10 @@ spec:
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
 {{- end }}
+{{- if .Values.codeExecutor.affinity }}
+      affinity:
+{{ toYaml .Values.codeExecutor.affinity | indent 8 }}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

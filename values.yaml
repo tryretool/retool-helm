@@ -427,6 +427,9 @@ codeExecutor:
   volumes: {}
   volumeMounts: {}
 
+  # Config affinity and anti-affinity rules for the code executor pods
+  affinity: {}
+
   # Resources for the code executor. Most common issues will be seen with CPU usage as this will
   # most likely be CPU bound. Adjust the CPU if latency increases under load.
   resources:
