@@ -55,6 +55,10 @@ spec:
         securityContext:
           privileged: true
         env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: {{ template "retool.deploymentTemplateType" . }}
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
           - name: NODE_OPTIONS
