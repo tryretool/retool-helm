@@ -212,14 +212,14 @@ spec:
         {{- end }}
         {{- end }}
         ports:
-        - containerPort: {{ .Values.service.internalPort }}
-          name: {{ template "retool.name" . }}
+        - containerPort: {{ .Values.deploymentWorkflowsService.internalPort }}
+          name: {{ .Values.deploymentWorkflowsService.portName }}
           protocol: TCP
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
             path: {{ .Values.livenessProbe.path }}
-            port: {{ .Values.service.internalPort }}
+            port: {{ .Values.deploymentWorkflowsService.internalPort }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
@@ -228,7 +228,7 @@ spec:
         readinessProbe:
           httpGet:
             path: {{ .Values.readinessProbe.path }}
-            port: {{ .Values.service.internalPort }}
+            port: {{ .Values.deploymentWorkflowsService.internalPort }}
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
@@ -309,5 +309,6 @@ spec:
   ports:
   - protocol: TCP
     port: 80
-    targetPort: {{ .Values.service.internalPort }}
+    targetPort: {{ .Values.deploymentWorkflowsService.internalPort }}
+    name: {{ .Values.deploymentWorkflowsService.portName }}
 {{- end }}

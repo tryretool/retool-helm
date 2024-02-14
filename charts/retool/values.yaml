@@ -136,6 +136,16 @@ service:
   selector: {}
   # portName: service-port
 
+deploymentWorkflowsService:
+  internalPort: 3000
+  portName: http-workflow-backend
+
+deploymentWorkflowsWorkerService:
+  portName: http-workflow-worker
+
+deploymentWorkflowsWorkerMetricService:
+  portName: http-metrics
+
 ingress:
   enabled: true
   # For k8s 1.18+
@@ -442,6 +452,10 @@ codeExecutor:
     # defaults to image.tag if >= 3.20.15, otherwise defaults to 1.1.0; explicitly set to override.
     # tag:
     pullPolicy: IfNotPresent
+
+  service:
+    executorPortName: http-code-executor
+    metricsPortName: http-metrics
 
 retool-temporal-services-helm:
   # Enable to spin up a new Temporal Cluster alongside Retool

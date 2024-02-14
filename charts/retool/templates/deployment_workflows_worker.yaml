@@ -232,10 +232,10 @@ spec:
         {{- end }}
         ports:
         - containerPort: 3005
-          name: {{ template "retool.name" . }}
+          name: {{ .Values.deploymentWorkflowsWorkerService.portName }}
           protocol: TCP
         - containerPort: 9090
-          name: metrics
+          name: {{ .Values.deploymentWorkflowsWorkerMetricsService.portName }}
           protocol: TCP
 
 {{- if .Values.livenessProbe.enabled }}
@@ -332,9 +332,9 @@ spec:
   - protocol: TCP
     port: 3005
     targetPort: 3005
-    name: {{ template "retool.name" . }}
+    name: {{ .Values.deploymentWorkflowsWorkerService.portName }}
   - protocol: TCP
     port: 9090
-    targetPort: metrics
-    name: metrics
+    targetPort: {{ .Values.deploymentWorkflowsWorkerMetricsService.portName }}
+    name: {{ .Values.deploymentWorkflowsWorkerMetricsService.portName }}
 {{- end }}

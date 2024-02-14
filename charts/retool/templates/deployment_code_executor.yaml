@@ -75,10 +75,10 @@ spec:
           {{- end }}
         ports:
         - containerPort: 3004
-          name: {{ template "retool.name" . }}
+          name: {{ .Values.codeExecutor.service.executorPortName }}
           protocol: TCP
         - containerPort: 9090
-          name: metrics
+          name: {{ .Values.codeExecutor.service.metricsPortName }}
           protocol: TCP
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
@@ -125,9 +125,9 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: 3004
-    name: {{ template "retool.name" . }}
+    name: {{ .Values.codeExecutor.service.executorPortName }}
   - protocol: TCP
     port: 9090
-    targetPort: metrics
-    name: metrics
+    targetPort: {{ .Values.codeExecutor.service.metricsPortName }}
+    name: {{ .Values.codeExecutor.service.metricsPortName }}
 {{- end }}
