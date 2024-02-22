@@ -54,7 +54,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           {{ if .Values.codeExecutor.securityContext }}
-          {{ toYaml .Values.codeExecutor.securityContext }}
+{{ toYaml .Values.codeExecutor.securityContext | indent 10 }}
           {{ else }}
           privileged: true
           {{ end }}
