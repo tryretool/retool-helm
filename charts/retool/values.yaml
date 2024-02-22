@@ -440,6 +440,12 @@ codeExecutor:
       cpu: 1000m
       memory: 1024Mi
 
+  # code executor uses nsjail to sandbox code execution. nsjail requires privileged container access.
+  # If your deployment does not support privileged access, you can set `privileged` to false to not
+  # use nsjail. Without nsjail, all code is run without sandboxing within your deployment.
+  securityContext:
+    privileged: true
+
   image:
     repository: tryretool/code-executor-service
     # defaults to image.tag if >= 3.20.15, otherwise defaults to 1.1.0; explicitly set to override.

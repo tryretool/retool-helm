@@ -53,7 +53,11 @@ spec:
         image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
+          {{ if .Values.codeExecutor.securityContext }}
+{{ toYaml .Values.codeExecutor.securityContext | indent 10 }}
+          {{ else }}
           privileged: true
+          {{ end }}
         env:
           - name: DEPLOYMENT_TEMPLATE_TYPE
             value: {{ template "retool.deploymentTemplateType" . }}
