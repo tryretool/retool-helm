@@ -406,7 +406,7 @@ workflows:
       memory: 2048Mi
 
 internalWorker:
-  # Enable for internal workers for Temporal-powered Retool Vectors
+  # Enable for internal workers for Temporal-powered Retool features (e.g. Vectors)
   enabled: false
 
   replicaCount: 1
