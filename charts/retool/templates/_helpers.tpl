@@ -270,6 +270,7 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- else -}}
   {{- fail "Please set a value for .Values.image.tag" }}
 {{- end -}}
+{{- end -}}
 
 {{/*
 Set Worker enabled
