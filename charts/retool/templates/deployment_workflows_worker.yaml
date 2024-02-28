@@ -236,10 +236,14 @@ spec:
         {{- end }}
         ports:
         - containerPort: 3005
+          {{ if .Values.workflows.worker.portName }}
+          name: {{ .Values.workflows.worker.portName }}
+          {{ else }}
           name: {{ template "retool.name" . }}
+          {{ end }}
           protocol: TCP
         - containerPort: 9090
-          name: metrics
+          name: {{ .Values.workflows.worker.metricsPortName | default "metrics" }}
           protocol: TCP
 
 {{- if .Values.livenessProbe.enabled }}
@@ -336,9 +340,13 @@ spec:
   - protocol: TCP
     port: 3005
     targetPort: 3005
+    {{ if .Values.workflows.worker.portName }}
+    name: {{ .Values.workflows.worker.portName }}
+    {{ else }}
     name: {{ template "retool.name" . }}
+    {{ end }}
   - protocol: TCP
     port: 9090
-    targetPort: metrics
-    name: metrics
+    targetPort: {{ .Values.workflows.worker.metricsPortName | default "metrics" }}
+    name: {{ .Values.workflows.worker.metricsPortName | default "metrics" }}
 {{- end }}
