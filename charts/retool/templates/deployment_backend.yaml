@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
   name: {{ template "retool.fullname" . }}
   labels:
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.selectorLabels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -27,7 +28,9 @@ spec:
 {{ toYaml .Values.ui.annotations | indent 8 }}
 {{- end }}
       labels:
-{{- include "retool.selectorLabels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
+        {{- include "retool.selectorLabels" . | nindent 8 }}
+        telemetry.retool.com/service-name: main-backend
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
