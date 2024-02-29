@@ -2,10 +2,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-workflow-backend
+  name: {{ include "retool.workflowBackend.name" . }}
   labels:
-    retoolService: {{ template "retool.fullname" . }}-workflow-backend
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.workflowBackend.selectorLabels" . | nindent 4 }}
+    {{- include "retool.workflowBackend.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -14,7 +15,7 @@ spec:
   replicas: {{ (.Values.workflows.backend).replicaCount | default 1 }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-workflow-backend
+      {{- include "retool.workflowBackend.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -26,7 +27,9 @@ spec:
 {{ toYaml .Values.backend.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.fullname" . }}-workflow-backend
+        {{- include "retool.workflowBackend.selectorLabels" . | nindent 8 }}
+        {{- include "retool.workflowBackend.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -123,7 +126,7 @@ spec:
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ template "retool.fullname" . }}-workflow-backend
+            value: http://{{ include "retool.workflowBackend.name" . }}
           {{- if .Values.codeExecutor.enabled }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
@@ -294,22 +297,21 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ include "retool.workflowBackend.name" . }}
 spec:
   {{ toYaml .Values.podDisruptionBudget }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-workflow-backend
-  {{- include "retool.selectorLabels" . | nindent 6 }}
+      {{- include "retool.workflowBackend.selectorLabels" . | nindent 6 }}
 {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.fullname" . }}-workflow-backend
+  name: {{ include "retool.workflowBackend.name" . }}
 spec:
   selector:
-    retoolService: {{ template "retool.fullname" . }}-workflow-backend
+    {{- include "retool.workflowBackend.selectorLabels" . | nindent 4 }}
   ports:
   - protocol: TCP
     port: 80

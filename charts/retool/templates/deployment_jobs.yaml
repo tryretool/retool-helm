@@ -4,7 +4,10 @@ kind: Deployment
 metadata:
   name: {{ template "retool.fullname" . }}-jobs-runner
   labels:
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    telemetry.retool.com/service-name: jobs-runner
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -26,8 +29,10 @@ spec:
 {{ toYaml .Values.jobRunner.annotations | indent 8 }}
 {{- end }}
       labels:
+        {{- include "retool.labels" . | nindent 8 }}
         app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
         app.kubernetes.io/instance: {{ .Release.Name }}
+        telemetry.retool.com/service-name: jobs-runner
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
