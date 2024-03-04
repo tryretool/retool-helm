@@ -52,7 +52,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: code-executor
         image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
