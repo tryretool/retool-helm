@@ -19,9 +19,6 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/job: {{ template "retool.codeExecutor.name" . }}
-        prometheus.io/scrape: 'true'
-        prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
