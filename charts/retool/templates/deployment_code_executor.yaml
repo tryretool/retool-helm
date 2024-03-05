@@ -18,10 +18,6 @@ spec:
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
-      annotations:
-        prometheus.io/job: {{ template "retool.codeExecutor.name" . }}
-        prometheus.io/scrape: 'true'
-        prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
@@ -83,10 +79,11 @@ spec:
           {{- end }}
         ports:
         - containerPort: 3004
+          {{ if .Values.codeExecutor.portName }}
+          name: {{ .Values.codeExecutor.portName }}
+          {{ else }}
           name: {{ template "retool.name" . }}
-          protocol: TCP
-        - containerPort: 9090
-          name: metrics
+          {{ end }}
           protocol: TCP
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
@@ -137,9 +134,9 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: 3004
+    {{ if .Values.codeExecutor.portName }}
+    name: {{ .Values.codeExecutor.portName }}
+    {{ else }}
     name: {{ template "retool.name" . }}
-  - protocol: TCP
-    port: 9090
-    targetPort: metrics
-    name: metrics
+    {{ end }}
 {{- end }}
