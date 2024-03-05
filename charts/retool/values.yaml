@@ -330,7 +330,7 @@ workflows:
     # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
     replicaCount: 1
     # portName: custom-port-name, e.g. http-workflows-worker; defaults to "retool.name"
-    # metricsPortName: custom-port-name, e.g. http-workflow-worker-metrics; defaults to "metrics"
+    # metricsPortName: custom-port-name, e.g. http-workflows-worker-metrics; defaults to "metrics"
 
   backend:
     # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
