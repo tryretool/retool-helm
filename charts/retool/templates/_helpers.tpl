@@ -163,6 +163,8 @@ Usage: (include "retool.workflows.enabled" .)
   {{- $output = "" -}}
 {{- else if eq .Values.image.tag "latest" -}}
   {{- $output = "1" -}}
+{{- else if (or (contains "stable" .Values.image.tag) (contains "edge" .Values.image.tag)) -}}
+  {{- $output = "1" -}}
 {{- else if semverCompare ">= 3.6.11" .Values.image.tag -}}
   {{- $output = "1" -}}
 {{- else -}}
@@ -176,6 +178,7 @@ Set Code Executor enabled
 Usage: (include "retool.codeExecutor.enabled" .)
 */}}
 {{- define "retool.codeExecutor.enabled" -}}
+{{- $codeExecutorVersion := (include "retool.codeExecutor.image.tag" .) -}}
 {{- $output := "" -}}
 {{- if or
     (eq (toString .Values.codeExecutor.enabled) "true")
@@ -186,9 +189,11 @@ Usage: (include "retool.codeExecutor.enabled" .)
   {{- else -}}
     {{- $output = "" -}}
   {{- end -}}
-{{- else if empty (include "retool.codeExecutor.image.tag" .) -}}
+{{- else if empty $codeExecutorVersion -}}
   {{- $output = "" -}}
-{{- else if semverCompare ">= 3.20.15" (include "retool.codeExecutor.image.tag" .) -}}
+{{- else if (or (contains "stable" $codeExecutorVersion) (contains "edge" $codeExecutorVersion)) -}}
+  {{- $output = "1" -}}
+{{- else if semverCompare ">= 3.20.15" $codeExecutorVersion -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
@@ -249,6 +254,8 @@ Usage: (template "retool.codeExecutor.image.tag" .)
     {{- fail "If using image.tag=latest (not recommended, select an explicit tag instead) and enabling codeExecutor, explicitly set codeExecutor.image.tag" }}
   {{- else if (eq .Values.image.tag "latest") -}}
     {{- "" -}}
+  {{- else if (or (contains "stable" .Values.image.tag) (contains "edge" .Values.image.tag)) -}}
+    {{- .Values.image.tag -}}
   {{- else if semverCompare ">= 3.20.15" .Values.image.tag -}}
     {{- .Values.image.tag -}}
   {{- else -}}
