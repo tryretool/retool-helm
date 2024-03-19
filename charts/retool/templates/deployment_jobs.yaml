@@ -4,7 +4,10 @@ kind: Deployment
 metadata:
   name: {{ template "retool.fullname" . }}-jobs-runner
   labels:
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    telemetry.retool.com/service-name: jobs-runner
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -26,8 +29,10 @@ spec:
 {{ toYaml .Values.jobRunner.annotations | indent 8 }}
 {{- end }}
       labels:
+        {{- include "retool.labels" . | nindent 8 }}
         app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
         app.kubernetes.io/instance: {{ .Release.Name }}
+        telemetry.retool.com/service-name: jobs-runner
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -47,7 +52,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: jobs-runner
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
@@ -80,6 +85,9 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:

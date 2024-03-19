@@ -2,10 +2,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-workflow-worker
+  name: {{ include "retool.workflowWorker.name" . }}
   labels:
-    retoolService: {{ template "retool.fullname" . }}-workflow-worker
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.workflowWorker.selectorLabels" . | nindent 4 }}
+    {{- include "retool.workflowWorker.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -14,12 +15,12 @@ spec:
   replicas: {{ (.Values.workflows.worker).replicaCount | default (.Values.workflows.replicaCount | default 1) }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-workflow-worker
+      {{- include "retool.workflowWorker.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
-        prometheus.io/job: {{ template "retool.fullname" . }}-workflow-worker
+        prometheus.io/job: {{ include "retool.workflowWorker.name" . }}
         prometheus.io/scrape: 'true'
         prometheus.io/port: '9090'
 {{- if .Values.podAnnotations }}
@@ -32,7 +33,9 @@ spec:
 {{ toYaml .Values.workflows.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.fullname" . }}-workflow-worker
+        {{- include "retool.workflowWorker.selectorLabels" . | nindent 8 }}
+        {{- include "retool.workflowWorker.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -52,7 +55,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: workflow-worker
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
@@ -114,7 +117,7 @@ spec:
           - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
             value: "3005"
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ template "retool.fullname" . }}-workflow-backend
+            value: http://{{ include "retool.workflowBackend.name" . }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
@@ -133,6 +136,9 @@ spec:
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- if and (((.Values.workflows.config).otelCollector).enabled) (((.Values.workflows.config).otelCollector).endpoint) }}
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
              value: {{ ((.Values.workflows.config).otelCollector).endpoint }}
@@ -317,21 +323,21 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ template "retool.fullname" . }}
+  name: {{ include "retool.workflowWorker.name" . }}
 spec:
   {{ toYaml .Values.podDisruptionBudget }}
   selector:
     matchLabels:
-  {{- include "retool.selectorLabels" . | nindent 6 }}
+      {{- include "retool.workflowWorker.selectorLabels" . | nindent 6 }}
 {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.fullname" . }}-workflow-worker
+  name: {{ include "retool.workflowWorker.name" . }}
 spec:
   selector:
-    retoolService: {{ template "retool.fullname" . }}-workflow-worker
+    {{- include "retool.workflowWorker.selectorLabels" . | nindent 4 }}
   ports:
   - protocol: TCP
     port: 3005
