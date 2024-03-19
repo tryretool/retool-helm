@@ -5,6 +5,7 @@ metadata:
   name: {{ include "retool.fullname" . }}-telemetry
   labels:
     {{- include "retool.telemetry.labels" . | nindent 4 }}
+    {{- include "retool.telemetry.selectorLabels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
@@ -12,6 +13,7 @@ spec:
   template:
     metadata:
       labels:
+        {{- include "retool.telemetry.labels" . | nindent 8 }}
         {{- include "retool.telemetry.selectorLabels" . | nindent 8 }}
       annotations:
         {{- if or .Values.telemetry.customVectorConfig .Values.telemetry.customGrafanaAgentConfig }}
@@ -27,6 +29,10 @@ spec:
         resources:
           {{ toYaml .Values.telemetry.resources | nindent 10 }}
         env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: {{ include "retool.deploymentTemplateType" . }}
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: {{ include "retool.deploymentTemplateVersion" . }}
           - name: VECTOR_SELF_NODE_NAME
             valueFrom:
               fieldRef:
@@ -56,7 +62,7 @@ spec:
                 {{- end }}
           {{- end }}
           - name: RTEL_DEPLOYMENT_MODE
-            value: 'kubernetes-helm'
+            value: 'k8s-helm'
           - name: RTEL_HELM_RELEASE_NAME
             value: {{ .Release.Name | quote }}
           - name: RTEL_KUBE_POD_PREFIX
