@@ -11,8 +11,6 @@ Labels to include on telemetry pods.
 */}}
 {{- define "retool.telemetry.labels" -}}
 helm.sh/chart: {{ include "retool.chart" . }}
-{{ include "retool.telemetry.selectorLabels" . }}
-app.kubernetes.io/version: {{ .Chart.Version | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 

@@ -44,9 +44,6 @@ Common labels
 */}}
 {{- define "retool.labels" -}}
 helm.sh/chart: {{ include "retool.chart" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -65,7 +62,7 @@ Selector labels for workflow backend. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
 {{- define "retool.workflowBackend.selectorLabels" -}}
-retoolService: {{ template "retool.workflowBackend.name" . }}
+retoolService: {{ include "retool.workflowBackend.name" . }}
 {{- end }}
 
 {{/*
@@ -82,7 +79,7 @@ Selector labels for workflow worker. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
 {{- define "retool.workflowWorker.selectorLabels" -}}
-retoolService: {{ template "retool.workflowWorker.name" . }}
+retoolService: {{ include "retool.workflowWorker.name" . }}
 {{- end }}
 
 {{/*
@@ -99,7 +96,7 @@ Selector labels for code executor. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
 {{- define "retool.codeExecutor.selectorLabels" -}}
-retoolService: {{ template "retool.codeExecutor.name" . }}
+retoolService: {{ include "retool.codeExecutor.name" . }}
 {{- end }}
 
 {{/*
