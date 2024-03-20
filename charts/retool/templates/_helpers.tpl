@@ -178,7 +178,6 @@ Set Code Executor enabled
 Usage: (include "retool.codeExecutor.enabled" .)
 */}}
 {{- define "retool.codeExecutor.enabled" -}}
-{{- $codeExecutorVersion := (include "retool.codeExecutor.image.tag" .) -}}
 {{- $output := "" -}}
 {{- if or
     (eq (toString .Values.codeExecutor.enabled) "true")
@@ -189,11 +188,11 @@ Usage: (include "retool.codeExecutor.enabled" .)
   {{- else -}}
     {{- $output = "" -}}
   {{- end -}}
-{{- else if empty $codeExecutorVersion -}}
+{{- else if empty (include "retool.codeExecutor.image.tag" .) -}}
   {{- $output = "" -}}
-{{- else if (or (contains "stable" $codeExecutorVersion) (contains "edge" $codeExecutorVersion)) -}}
+{{- else if (or (contains "stable" (include "retool.codeExecutor.image.tag" .)) (contains "edge" (include "retool.codeExecutor.image.tag" .))) -}}
   {{- $output = "1" -}}
-{{- else if semverCompare ">= 3.20.15" $codeExecutorVersion -}}
+{{- else if semverCompare ">= 3.20.15" (include "retool.codeExecutor.image.tag" .) -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
