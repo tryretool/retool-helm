@@ -267,7 +267,7 @@ tolerations: []
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
 nodeSelector: {}
 
-# Common annotations for all pods (backend and job runner).
+# Common annotations for all pods.
 podAnnotations: {}
 
 revisionHistoryLimit: 3
@@ -404,6 +404,32 @@ dbconnector:
     # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
     # This feature is not ready for production use; please check with the Retool team before enablement.
     enabled: false
+
+multiplayer:
+  # Enable this to use Retool's experimental multiplayer editing feature.
+  # This feature is not ready for production use; please check with the Retool team before enablement.
+  enabled: false
+
+  replicaCount: 1
+
+  # Resources for multiplayer pods
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      memory: "2048Mi"
+
+  # Set environment variables for multiplayer pods, e.g. defining which origin to use
+  # environmentVariables:
+  #   - name: MAIN_DOMAIN
+  #     value: retool.foo.com
+
+  # Annotations for multiplayer pods
+  annotations: {}
+
+  # Labels for multiplayer pods
+  labels: {}
 
 codeExecutor:
   # enabled by default from Chart version 6.0.15 and Retool image 3.20.15 onwards
