@@ -145,6 +145,10 @@ spec:
             - name: VISIBILITY_DBNAME
               value: "{{ $.Values.server.config.persistence.visibility.sql.database }}"
             {{- end }}
+            {{- if $.Values.server.config.persistence.visibility.sql.user }}
+            - name: VISIBILITY_DBUSER
+              value: "{{ $.Values.server.config.persistence.visibility.sql.user }}"
+            {{- end }}
             {{- if ($.Values.server.config.persistence.default.sql.tls).enabled }}
             - name: SQL_TLS_ENABLED
               value: "true"
