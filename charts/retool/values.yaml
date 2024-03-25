@@ -702,3 +702,5 @@ telemetry:
 
   rbac:
     create: true
+
+  extraEnv: []

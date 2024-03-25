@@ -73,6 +73,7 @@ spec:
             value: {{ include "retool.telemetry.logSourcePodLabels" . | quote }}
           - name: RTEL_SEND_TO_RETOOL
             value: {{ .Values.telemetry.sendToRetool.enabled | quote }}
+          {{- .Values.telemetry.extraEnv | toYaml | nindent 10 }}
         {{- if .Values.externalSecrets.enabled }}
         envFrom:
         - secretRef:
