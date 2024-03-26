@@ -12,5 +12,5 @@ dependencies:
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: retool-temporal-services-helm
-    version: 1.1.2
+    version: 1.1.5
     condition: retool-temporal-services-helm.enabled,workflows.enabled
