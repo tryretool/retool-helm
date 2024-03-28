@@ -67,6 +67,10 @@ spec:
             value: production
           - name: NODE_OPTIONS
             value: {{(.Values.codeExecutor.config).nodeOptions | default "--max_old_space_size=1024" }}
+          {{- if include "retool.workflows.enabled" . }}
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://{{ template "retool.fullname" . }}-workflow-backend
+          {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
             value: "{{ $value }}"
