@@ -61,6 +61,8 @@ spec:
                 key: license-key
                 {{- end }}
           {{- end }}
+          - name: RTEL_ENABLED
+            value: 'true'
           - name: RTEL_DEPLOYMENT_MODE
             value: 'k8s-helm'
           - name: RTEL_HELM_RELEASE_NAME
