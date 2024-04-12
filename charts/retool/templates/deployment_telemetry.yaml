@@ -19,6 +19,9 @@ spec:
         {{- if or .Values.telemetry.customVectorConfig .Values.telemetry.customGrafanaAgentConfig }}
         checksum/custom-config: {{ include (print $.Template.BasePath "/telemetry_configmap.yaml") . | sha256sum | quote }}
         {{- end }}
+        {{- if .Values.telemetry.extraAnnotations }}
+        {{- .Values.telemetry.extraAnnotations | toYaml | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "retool.telemetry.serviceAccountName" . }}
       containers:
@@ -75,7 +78,9 @@ spec:
             value: {{ include "retool.telemetry.logSourcePodLabels" . | quote }}
           - name: RTEL_SEND_TO_RETOOL
             value: {{ .Values.telemetry.sendToRetool.enabled | quote }}
+          {{- if .Values.telemetry.extraEnv }}
           {{- .Values.telemetry.extraEnv | toYaml | nindent 10 }}
+          {{- end }}
         {{- if .Values.externalSecrets.enabled }}
         envFrom:
         - secretRef:
@@ -117,11 +122,19 @@ spec:
           - name: sysfs
             mountPath: "/host/sys"
             readOnly: true
+          {{- if .Values.telemetry.extraVolumeMounts }}
+          {{- .Values.telemetry.extraVolumeMounts | toYaml | nindent 10 }}
+          {{- end }}
         ports:
           - containerPort: 9125
-            # hostPort: 9125
             name: statsd-udp
             protocol: UDP
+          {{- if .Values.telemetry.extraPorts }}
+          {{- .Values.telemetry.extraPorts | toYaml | nindent 10 }}
+          {{- end }}
+        {{- if .Values.telemetry.extraContainerSpec }}
+        {{- .Values.telemetry.extraContainerSpec | toYaml | nindent 8 }}
+        {{- end }}
       volumes:
         - name: vector-data
           emptyDir:
@@ -146,6 +159,12 @@ spec:
         - name: sysfs
           hostPath:
             path: "/sys"
+        {{- if .Values.telemetry.extraVolumes }}
+        {{- .Values.telemetry.extraVolumes | toYaml | nindent 8 }}
+        {{- end }}
+      {{- if .Values.telemetry.extraPodSpec }}
+      {{- .Values.telemetry.extraPodSpec | toYaml | nindent 6 }}
+      {{- end }}
 
 ---
 apiVersion: v1

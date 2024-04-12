@@ -704,3 +704,10 @@ telemetry:
     create: true
 
   extraEnv: []
+  extraAnnotations: {}
+  extraPodSpec: {}
+  extraVolumes: []
+  extraVolumeMounts: []
+  extraPorts: []
+  extraContainerSpec: {}
+

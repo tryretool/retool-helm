@@ -64,3 +64,21 @@ telemetry:
     foo: bar
   customGrafanaAgentConfig: |
     // wee woo custom text
+  extraAnnotations:
+    foo.com/bar: baz
+  extraPodSpec:
+    hostname: bleepbloop
+  extraVolumes:
+    - name: varlog
+      hostPath:
+        path: "/var/log"
+  extraVolumeMounts:
+    - name: varlog
+      mountPath: "/hostvarlog"
+      readOnly: true
+  extraPorts:
+    - containerPort: 9999
+      name: yaaaaa
+      protocol: TCP
+  extraContainerSpec:
+    args: ["this should be ignored"]
