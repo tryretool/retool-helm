@@ -230,6 +230,7 @@ extraVolumeMounts: []
 
 extraVolumes: []
 
+# These resource specifications apply to the main backend and workflows backend pods.
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
@@ -389,8 +390,9 @@ workflows:
   #     value: "100"
   # }
 
-  # Resources for the workflow worker - these are sane inputs that bias towards stability
+  # Resources for the workflow worker only - these are sane inputs that bias towards stability
   # Can adjust but may see OOM errors if memory too low for heavy workflow load
+  # To make adjustments to workflows backend, use top level resources key.
   resources:
     limits:
       cpu: 2000m
@@ -710,4 +712,3 @@ telemetry:
   extraVolumeMounts: []
   extraPorts: []
   extraContainerSpec: {}
-
