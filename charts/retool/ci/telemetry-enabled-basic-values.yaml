@@ -55,3 +55,5 @@ persistentVolumeClaim:
 # === New telemetry stuff ===
 telemetry:
   enabled: true
+  image:
+    tag: 3.42.0-edge

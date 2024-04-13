@@ -57,7 +57,7 @@ telemetry:
   enabled: true
   image:
     repository: 'tryretool/telemetry'
-    # tag:
+    tag: 3.42.0-edge
   sendToRetool:
     enabled: true
   customVectorConfig:
