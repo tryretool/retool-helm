@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
   name: {{ template "retool.fullname" . }}
   labels:
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.selectorLabels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -27,7 +28,9 @@ spec:
 {{ toYaml .Values.ui.annotations | indent 8 }}
 {{- end }}
       labels:
-{{- include "retool.selectorLabels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
+        {{- include "retool.selectorLabels" . | nindent 8 }}
+        telemetry.retool.com/service-name: main-backend
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -54,7 +57,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: main-backend
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
@@ -140,6 +143,9 @@ spec:
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
@@ -244,6 +250,7 @@ spec:
             port: {{ .Values.service.internalPort }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
 {{- end }}
 {{- if .Values.readinessProbe.enabled }}

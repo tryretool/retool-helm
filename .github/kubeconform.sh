@@ -19,7 +19,10 @@ tar -xf /tmp/kubeconform.tar.gz kubeconform
 # validate charts
 for CHART_DIR in ${CHART_DIRS}; do
   echo "Running kubeconform for folder: '$CHART_DIR'"
-  helm dep up "${CHART_DIR}" \
-    && helm template --kube-version "${KUBERNETES_VERSION#v}" --values "${CHART_DIR}"/ci/kubeconform-values.yaml "${CHART_DIR}" \
-    | ./kubeconform --strict --summary --kubernetes-version "${KUBERNETES_VERSION#v}"
+  helm dep up "${CHART_DIR}"
+  for VALUES_FILE in $(find "${CHART_DIR}/ci" -name '*values.yaml'); do
+    echo "== Checking values file: ${VALUES_FILE}"
+    helm template --kube-version "${KUBERNETES_VERSION#v}" --values "${VALUES_FILE}" "${CHART_DIR}" \
+      | ./kubeconform --strict --summary --kubernetes-version "${KUBERNETES_VERSION#v}"
+  done
 done

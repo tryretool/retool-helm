@@ -1,6 +1,6 @@
 charts/**/*.tgz
 .prettierignore
 
-kubeconform
+/kubeconform
 
 .DS_Store

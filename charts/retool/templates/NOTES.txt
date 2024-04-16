@@ -22,6 +22,7 @@
 {{- end }}
 
 {{- if and .Values.postgresql.enabled (and (not .Values.postgresql.auth.postgresPassword) (eq .Values.postgresql.auth.username "postgres")) }}
+
 ***************************************************************************
 Warning: Using in-cluster postgresql setup. `.Values.postgresql.auth.username username` is set to the default admin username "postgres", but the admin password field `.Values.postgresql.auth.postgresPassword` is not set, so a random password is generated and used. This wouldn't affect your usage, but if you choose to uninstall and reinstall this helm chart, please make sure you remove the existing PersistentVolumeClaim backing the in-cluster postgresql by running:
   kubectl --namespace {{ .Release.Namespace }} delete pvc/data-{{ include "retool.fullname" . }}-postgresql-0

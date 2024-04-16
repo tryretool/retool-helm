@@ -44,20 +44,70 @@ Common labels
 */}}
 {{- define "retool.labels" -}}
 helm.sh/chart: {{ include "retool.chart" . }}
-{{ include "retool.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Selector labels for main backend. Note changes here will require deployment
+recreation and incur downtime. The "app.kubernetes.io/instance" label should
+also be included in all deployments, so telemetry knows how to find logs. 
 */}}
 {{- define "retool.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "retool.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Selector labels for workflow backend. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.workflowBackend.selectorLabels" -}}
+retoolService: {{ include "retool.workflowBackend.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for workflow backend.
+*/}}
+{{- define "retool.workflowBackend.labels" -}}
+app.kubernetes.io/name: {{ include "retool.workflowBackend.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: workflow-backend
+{{- end }}
+
+{{/*
+Selector labels for workflow worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.workflowWorker.selectorLabels" -}}
+retoolService: {{ include "retool.workflowWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for workflow worker.
+*/}}
+{{- define "retool.workflowWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.workflowWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: workflow-worker
+{{- end }}
+
+{{/*
+Selector labels for code executor. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.codeExecutor.selectorLabels" -}}
+retoolService: {{ include "retool.codeExecutor.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for code executor.
+*/}}
+{{- define "retool.codeExecutor.labels" -}}
+app.kubernetes.io/name: {{ include "retool.codeExecutor.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: code-executor
+{{- end }}
+
 
 {{/*
 Create the name of the service account to use
@@ -232,6 +282,20 @@ Set Temporal namespace
 {{- else -}}
 {{- "workflows" | quote -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Set workflow backend service name
+*/}}
+{{- define "retool.workflowBackend.name" -}}
+{{ template "retool.fullname" . }}-workflow-backend
+{{- end -}}
+
+{{/*
+Set workflow worker service name
+*/}}
+{{- define "retool.workflowWorker.name" -}}
+{{ template "retool.fullname" . }}-workflow-worker
 {{- end -}}
 
 {{/*

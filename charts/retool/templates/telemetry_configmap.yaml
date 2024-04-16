@@ -1,0 +1,22 @@
+{{- if .Values.telemetry.enabled }}
+
+{{- if or .Values.telemetry.customVectorConfig .Values.telemetry.customGrafanaAgentConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.fullname" . }}-telemetry
+  labels:
+    {{- include "retool.telemetry.labels" . | nindent 4 }}
+data:
+  {{- if .Values.telemetry.customVectorConfig }}
+  vector-custom.yaml: |
+    {{- tpl (toYaml .Values.telemetry.customVectorConfig) . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.telemetry.customGrafanaAgentConfig }}
+  grafana-agent-custom.river: |
+    {{- .Values.telemetry.customGrafanaAgentConfig | nindent 4 }}
+  {{- end }}
+
+{{- end }}
+
+{{- end }}

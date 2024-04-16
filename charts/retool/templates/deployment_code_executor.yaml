@@ -4,8 +4,9 @@ kind: Deployment
 metadata:
   name: {{ template "retool.codeExecutor.name" . }}
   labels:
-    retoolService: {{ template "retool.codeExecutor.name" . }}
-{{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.codeExecutor.selectorLabels" . | nindent 4 }}
+    {{- include "retool.codeExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -14,7 +15,7 @@ spec:
   replicas: {{ .Values.codeExecutor.replicaCount }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.codeExecutor.name" . }}
+      {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -29,7 +30,9 @@ spec:
 {{ toYaml .Values.codeExecutor.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ template "retool.codeExecutor.name" . }}
+        {{- include "retool.codeExecutor.selectorLabels" . | nindent 8 }}
+        {{- include "retool.codeExecutor.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
@@ -49,7 +52,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: code-executor
         image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
@@ -67,6 +70,9 @@ spec:
             value: production
           - name: NODE_OPTIONS
             value: {{(.Values.codeExecutor.config).nodeOptions | default "--max_old_space_size=1024" }}
+
+          {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
+
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
             value: "{{ $value }}"
@@ -132,7 +138,7 @@ metadata:
   name: {{ template "retool.codeExecutor.name" . }}
 spec:
   selector:
-    retoolService: {{ template "retool.codeExecutor.name" . }}
+    {{- include "retool.codeExecutor.selectorLabels" . | nindent 4 }}
   ports:
   - protocol: TCP
     port: 80

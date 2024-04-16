@@ -1,0 +1,84 @@
+# ================================================
+# === boilerplate to get a bootable deployment ===
+# ================================================
+config:
+  encryptionKey: '000000000'
+  jwtSecret: '000000000'
+
+  licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
+
+image:
+  tag: 'latest'
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+  limits:
+    cpu: 1000m
+    memory: 4096Mi
+
+workflows:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1024Mi
+    limits:
+      cpu: 1000m
+      memory: 2048Mi
+
+env:
+  NUM_WORKERS: '1'
+  # NODE_DEBUG: 'module'
+
+ingress:
+  kubernetes.io/ingress.class: nginx
+  hosts:
+  - host: retool.example.com
+    paths:
+      - path: /
+
+livenessProbe:
+  timeoutSeconds: 60
+  periodSeconds: 2
+  failureThreshold: 60
+readinessProbe:
+  timeoutSeconds: 30
+  periodSeconds: 5
+
+replicaCount: 1
+
+persistentVolumeClaim:
+  size: '3Gi'
+# ================================================
+
+# === New telemetry stuff ===
+telemetry:
+  enabled: true
+  image:
+    repository: 'tryretool/telemetry'
+    tag: 3.42.0-edge
+  sendToRetool:
+    enabled: true
+  customVectorConfig:
+    foo: bar
+  customGrafanaAgentConfig: |
+    // wee woo custom text
+  extraAnnotations:
+    foo.com/bar: baz
+  extraPodSpec:
+    hostname: bleepbloop
+  extraVolumes:
+    - name: varlog
+      hostPath:
+        path: "/var/log"
+  extraVolumeMounts:
+    - name: varlog
+      mountPath: "/hostvarlog"
+      readOnly: true
+  extraPorts:
+    - containerPort: 9999
+      name: yaaaaa
+      protocol: TCP
+  extraContainerSpec:
+    args: ["this should be ignored"]
