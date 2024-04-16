@@ -21,3 +21,8 @@
 .idea/
 *.tmproj
 .vscode/
+
+# Don't package testing values files
+/ci
+# Try not to package past versions into new chart bundles
+retool*.tgz
