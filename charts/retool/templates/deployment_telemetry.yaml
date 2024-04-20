@@ -129,6 +129,9 @@ spec:
           - containerPort: 9125
             name: udp-statsd
             protocol: UDP
+          - containerPort: 4317
+            name: otel-traces
+            protocol: TCP
           {{- if .Values.telemetry.extraPorts }}
           {{- .Values.telemetry.extraPorts | toYaml | nindent 10 }}
           {{- end }}
@@ -178,6 +181,9 @@ spec:
     - name: udp-statsd
       port: 9125
       protocol: UDP
+    - name: otel-traces
+      port: 4317
+      protocol: TCP
   selector:
     {{- include "retool.telemetry.selectorLabels" . | nindent 4 }}
   type: ClusterIP
