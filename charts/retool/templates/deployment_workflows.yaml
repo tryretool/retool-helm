@@ -223,7 +223,7 @@ spec:
         {{- end }}
         ports:
         - containerPort: {{ .Values.service.internalPort }}
-          name: {{ template "retool.name" . }}
+          name: tcp-{{ template "retool.workflowBackend.name" . }}
           protocol: TCP
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
@@ -319,4 +319,5 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: {{ .Values.service.internalPort }}
+    name: tcp-{{ template "retool.workflowBackend.name" . }}
 {{- end }}

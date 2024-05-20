@@ -195,7 +195,7 @@ spec:
             - name: rpc
               containerPort: {{ include (printf "temporal.%s.grpcPort" $service) $ }}
               protocol: TCP
-            - name: metrics
+            - name: tcp-metrics
               containerPort: 9090
               protocol: TCP
           {{- if and (ne $service "worker") $.Values.server.useLegacyHealthProbe }}
