@@ -195,6 +195,9 @@ spec:
             - name: rpc
               containerPort: {{ include (printf "temporal.%s.grpcPort" $service) $ }}
               protocol: TCP
+            - name: membership
+              containerPort: {{ include (printf "temporal.%s.membershipPort" $service) $ }}
+              protocol: TCP
             - name: http-metrics
               containerPort: 9090
               protocol: TCP

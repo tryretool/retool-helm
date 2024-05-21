@@ -19,11 +19,22 @@ spec:
   ports:
     - port: {{ .Values.server.frontend.service.port }}
       targetPort: rpc
+{{- if semverCompare ">=1.20-0" $.Capabilities.KubeVersion.Version }}
+      appProtocol: TCP
+{{- end }}
       protocol: TCP
       name: grpc-rpc
       {{- if hasKey .Values.server.frontend.service "nodePort" }}
       nodePort: {{ .Values.server.frontend.service.nodePort }}
       {{- end }}
+    - port: {{ include "temporal.frontend.membershipPort" $ }}
+      targetPort: membership
+{{- if semverCompare ">=1.20-0" $.Capabilities.KubeVersion.Version }}
+      appProtocol: TCP
+{{- end }}
+      protocol: TCP
+      name: grpc-membership
+
   selector:
     app.kubernetes.io/name: {{ include "temporal.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -64,7 +75,17 @@ spec:
     - port: {{ $serviceValues.service.port }}
       targetPort: rpc
       protocol: TCP
+{{- if semverCompare ">=1.20-0" $.Capabilities.KubeVersion.Version }}
+      appProtocol: TCP
+{{- end }}
       name: grpc-rpc
+    - port: {{ include (printf "temporal.%s.membershipPort" $service) $ }}
+      targetPort: membership
+{{- if semverCompare ">=1.20-0" $.Capabilities.KubeVersion.Version }}
+      appProtocol: TCP
+{{- end }}
+      protocol: TCP
+      name: grpc-membership
     - port: 9090
       targetPort: http-metrics
       protocol: TCP
