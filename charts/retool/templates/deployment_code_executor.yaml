@@ -86,7 +86,7 @@ spec:
           {{- end }}
         ports:
         - containerPort: 3004
-          name: tcp-{{ template "retool.codeExecutor.name" . }}
+          name: http-server
           protocol: TCP
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
@@ -137,5 +137,5 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: 3004
-    name: tcp-{{ template "retool.codeExecutor.name" . }}
+    name: http-server
 {{- end }}

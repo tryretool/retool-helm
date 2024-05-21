@@ -66,9 +66,9 @@ spec:
       protocol: TCP
       name: grpc-rpc
     - port: 9090
-      targetPort: tcp-metrics
+      targetPort: http-metrics
       protocol: TCP
-      name: tcp-metrics
+      name: http-metrics
   selector:
     app.kubernetes.io/name: {{ include "temporal.name" $ }}
     app.kubernetes.io/instance: {{ $.Release.Name }}

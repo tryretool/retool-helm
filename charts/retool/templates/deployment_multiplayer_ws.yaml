@@ -7,7 +7,7 @@ spec:
   selector:
     retoolService: {{ template "retool.multiplayer.name" . }}
   ports:
-  - name: tcp-{{ template "retool.multiplayer.name" . }}
+  - name: http-server
     protocol: TCP
     port: 80
     targetPort: 3001
@@ -130,7 +130,7 @@ spec:
         {{- end }}
         ports:
           - containerPort: 3001
-            name: tcp-{{ template "retool.multiplayer.name" . }}
+            name: http-server
             protocol: TCP
         resources:
 {{ toYaml .Values.multiplayer.resources | indent 10 }}
