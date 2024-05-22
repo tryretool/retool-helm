@@ -1,6 +1,6 @@
 # Our top level values.yaml is what customers start with in new deployments,
 # but helm needs it to live at chart/retool/values.yaml. Eventually we should
-# shrink our values.yaml to only the required values and point customers at 
+# shrink our values.yaml to only the required values and point customers at
 # chart/retool/values.yaml as the reference for all configurable values. Until
 # then, we have both copies and should make sure they don't diverge.
 
@@ -8,6 +8,9 @@ name: Ensure values.yaml files match
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   check:
