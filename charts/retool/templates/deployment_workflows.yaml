@@ -130,7 +130,7 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ include "retool.workflowBackend.name" . }}
-          {{- if .Values.codeExecutor.enabled }}
+          {{- if include "retool.codeExecutor.enabled" . }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
