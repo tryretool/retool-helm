@@ -35,15 +35,23 @@ jobs:
         env:
           CT_DEBUG: "false"
         run: |
+          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
+            changed=""
+            echo "$changed"
+            echo "::set-output name=changed::$changed"
+            exit 0
+          fi
+
           changed=$(ct list-changed --config .github/ct.yaml)
           if [[ -n "$changed" ]]; then
             echo -n "Charts changed:"
             echo "$changed"
             echo "::set-output name=changed::$changed"
-          else
-            echo "PR without any chart changes - failing"
-            exit 1
+            exit 0
           fi
+
+          echo "PR without any chart changes - failing"
+          exit 1
 
   lint-chart:
     runs-on: ubuntu-latest
