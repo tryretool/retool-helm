@@ -241,7 +241,7 @@ spec:
         {{- end }}
         ports:
         - containerPort: {{ .Values.service.internalPort }}
-          name: {{ template "retool.name" . }}
+          name: http-server
           protocol: TCP
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:

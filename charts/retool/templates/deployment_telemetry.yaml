@@ -127,7 +127,7 @@ spec:
           {{- end }}
         ports:
           - containerPort: 9125
-            name: statsd-udp
+            name: udp-statsd
             protocol: UDP
           {{- if .Values.telemetry.extraPorts }}
           {{- .Values.telemetry.extraPorts | toYaml | nindent 10 }}
@@ -175,7 +175,7 @@ metadata:
     {{- include "retool.telemetry.labels" . | nindent 4 }}
 spec:
   ports:
-    - name: statsd-udp
+    - name: udp-statsd
       port: 9125
       protocol: UDP
   selector:

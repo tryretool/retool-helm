@@ -306,6 +306,14 @@ Set code executor service name
 {{- end -}}
 
 {{/*
+Set multiplayer service name
+*/}}
+{{- define "retool.multiplayer.name" -}}
+{{ template "retool.fullname" . }}-multiplayer-ws
+{{- end -}}
+
+
+{{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
