@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - "charts/**"
+  push:
+    branches:
+      - main
 
 jobs:
   changed:
