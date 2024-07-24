@@ -129,6 +129,8 @@ spec:
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
 {{- end }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
 ---
 apiVersion: v1
 kind: Service
