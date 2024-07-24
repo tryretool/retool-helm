@@ -40,7 +40,7 @@ config:
     # db:
     # user:
     # password:
-    # ssl_enabled:
+    # ssl_enabled: whether to enable SSL for connecting to the Retool Postgres database, equivalent to the POSTGRES_SSL_ENABLED environment variable. Place here instead of in the env block.
     # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
     # passwordSecretName:
     # passwordSecretKey is the key in the k8s secret, default: postgresql-password
