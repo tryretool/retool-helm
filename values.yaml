@@ -267,7 +267,8 @@ tolerations: []
 
 # Node labels for pod assignment
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
-nodeSelector: {}
+nodeSelector:
+  kubernetes.io/arch: amd64
 
 # Common annotations for all pods.
 podAnnotations: {}
@@ -641,7 +642,6 @@ hostAliases: {}
 #     - anothertest.com
 
 telemetry:
-
   # When enabled, will collect metrics and logs from the other pods in the
   # chart. These will be forwarded to Retool for proactive monitoring and bug
   # identification when `telemetry.sendToRetool.enabled = true`, and can also
@@ -650,7 +650,6 @@ telemetry:
   enabled: false
 
   sendToRetool:
-
     # Only relevant when `telemetry.enabled = true`. When enabled, telemetry
     # from pods in this chart will be forwarded to Retool for proactive
     # monitoring and bug identification.
@@ -660,13 +659,12 @@ telemetry:
     address: "https://telemetry.retool.com:443"
 
   image:
-
     repository: "tryretool/telemetry"
 
     # Default to same as top level `image.tag`.
     tag: null
 
-    pullPolicy: 'IfNotPresent'
+    pullPolicy: "IfNotPresent"
 
   resources:
     requests:
