@@ -306,6 +306,15 @@ jobRunner:
   # will already launch a job runner pod
   # enabled: true
 
+  # These resource specifications apply specific to the jobs-runner pod. Set the resources to scale jobs-runner pod separately from main-backend pods.
+  # resources:
+  #   limits:
+  #     cpu: 4096m
+  #     memory: 8192Mi
+  #   requests:
+  #     cpu: 2048m
+  #     memory: 4096Mi
+  
   # Annotations for job runner pods
   annotations: {}
 
