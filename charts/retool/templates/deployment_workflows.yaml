@@ -244,7 +244,11 @@ spec:
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
         resources:
+{{- if .Values.workflows.backend.resources }}
+{{ toYaml .Values.workflows.backend.resources | indent 10 }}
+{{- else }}
 {{ toYaml .Values.resources | indent 10 }}
+{{- end }}
         volumeMounts:
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
