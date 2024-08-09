@@ -232,6 +232,7 @@ extraVolumeMounts: []
 extraVolumes: []
 
 # These resource specifications apply to the main backend and workflows backend pods.
+# If workflows.backend.resources is set, these resources will not be applied to workflows backend pods 
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m

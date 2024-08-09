@@ -231,7 +231,8 @@ extraVolumeMounts: []
 
 extraVolumes: []
 
-# These resource specifications apply to the main backend and workflows backend pods.
+# These resource specifications apply to the main backend, jobs-runner, db-connector, and workflows backend pods. 
+# If workflows.backend.resources is set, these resources will not be applied to workflows backend pods 
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
@@ -338,15 +339,15 @@ workflows:
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
     # will launch 9 pods -- 4 workflow backend, 1 workflow workers, and 4 for temporal cluster
     replicaCount: 1
-    
-     # These resource specifications apply only to the workflow-backend pod. Set the resources to scale workflow-backend pod separately from main-backend pods.
-    # resources:
-    #   limits:
-    #     cpu: 4096m
-    #     memory: 8192Mi
-    #   requests:
-    #     cpu: 2048m
-    #     memory: 4096Mi
+
+    # These resource specifications apply only to the workflow-backend pod. Set the resources to scale workflow-backend pod separately from main-backend pods.
+    resources:
+      limits:
+        cpu: 4096m
+        memory: 8192Mi
+      requests:
+        cpu: 2048m
+        memory: 4096Mi
 
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
