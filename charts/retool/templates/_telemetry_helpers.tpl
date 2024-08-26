@@ -70,7 +70,7 @@ Env vars to include on retool pods to collect telemetry via telemetry pod.
   value: "9125"
 - name: OTLP_HOST
   value: {{ printf "%s.%s" (include "retool.telemetry.fullname" .) .Release.Namespace | quote }}
-- name: OTLP_PORT
+- name: OTLP_HTTP_PORT
   value: "4318"
 {{- end }}
 {{- end }}
