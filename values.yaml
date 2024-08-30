@@ -405,9 +405,8 @@ workflows:
 
 dbconnector:
   java:
-    # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
-    # This feature is not ready for production use; please check with the Retool team before enablement.
-    enabled: false
+    # Disable this to disable Retool's Java dbconnector.
+    enabled: true
 
 multiplayer:
   # Enable this to use Retool's experimental multiplayer editing feature.
