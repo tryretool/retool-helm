@@ -2,7 +2,15 @@ apiVersion: v2
 name: retool
 description: A Helm chart for Kubernetes
 type: application
+<<<<<<< HEAD
 version: 6.3.0
+=======
+<<<<<<< HEAD
+version: 6.2.16
+=======
+version: 6.3.0
+>>>>>>> c457c9d (changing version)
+>>>>>>> 1f1cb5a (changing version)
 maintainers:
   - name: Retool Engineering
     email: engineering+helm@retool.com
