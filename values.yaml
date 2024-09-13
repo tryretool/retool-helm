@@ -238,7 +238,7 @@ extraVolumeMounts: []
 
 extraVolumes: []
 
-# These resource specifications apply to the main backend and workflows backend pods.
+# These resource specifications apply to the main backend, jobs-runner, db-connector, and workflows backend pods(unless if container specific resources are set)
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
@@ -306,7 +306,7 @@ jobRunner:
   # will already launch a job runner pod
   # enabled: true
 
-  # These resource specifications apply only to the jobs-runner pod. Set the resources to scale jobs-runner pod separately from main-backend pods.
+  # These resource apply only to the jobs-runner pod. Set the resources to scale jobs-runner pod separately from main-backend pods.
   # resources:
   #   limits:
   #     cpu: 4096m
