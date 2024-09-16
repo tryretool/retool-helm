@@ -176,7 +176,11 @@ spec:
         {{- end }}
         {{- end }}
         resources:
+{{- if .Values.jobRunner.resources }}
+{{ toYaml .Values.jobRunner.resources | indent 10 }}
+{{- else }}
 {{ toYaml .Values.resources | indent 10 }}
+{{- end }}
         {{- if regexMatch "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" .Values.image.tag }}
         {{- if semverCompare ">=2.110.0-0" .Values.image.tag }}
         livenessProbe:
