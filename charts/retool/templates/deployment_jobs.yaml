@@ -55,6 +55,14 @@ spec:
       - name: jobs-runner
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
         args:
           - bash
           - -c
