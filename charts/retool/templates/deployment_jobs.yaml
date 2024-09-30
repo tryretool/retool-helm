@@ -8,6 +8,9 @@ metadata:
     app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
     app.kubernetes.io/instance: {{ .Release.Name }}
     telemetry.retool.com/service-name: jobs-runner
+{{- if .Values.deploymentLabels }}
+{{ toYaml .Values.deploymentLabels | indent 4 }}
+{{- end }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
