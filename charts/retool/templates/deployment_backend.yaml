@@ -6,7 +6,6 @@ metadata:
     {{- include "retool.labels" . | nindent 4 }}
     {{- include "retool.selectorLabels" . | nindent 4 }}
 {{- if .Values.deployment.labels }}
-  labels:
 {{ toYaml .Values.deployment.labels | indent 4 }}
 {{- end }}
 {{- if .Values.deployment.annotations }}
