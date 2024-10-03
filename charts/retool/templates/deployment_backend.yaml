@@ -315,6 +315,8 @@ spec:
       securityContext:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
+        allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
 {{- end }}
       volumes:
 {{- range .Values.extraConfigMapMounts }}
