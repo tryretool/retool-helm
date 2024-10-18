@@ -118,6 +118,7 @@ externalSecrets:
 files: {}
 
 deployment:
+  labels: {}
   annotations: {}
 
 service:
