@@ -348,7 +348,7 @@ workflows:
     # will launch 9 pods -- 4 workflow backend, 1 workflow workers, and 4 for temporal cluster
     replicaCount: 1
 
-      # If necessary, specify the resources to provision the workflows-backend pod separately from the main backend pods.
+    # If necessary, specify the resources to provision the workflows-backend pod separately from the main backend pods.
     # resources:
     #   limits:
     #     cpu: 4096m
