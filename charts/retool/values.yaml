@@ -363,7 +363,7 @@ workflows:
     #   requests:
     #     cpu: 2048m
     #     memory: 4096Mi
-    
+
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
   # to .Values.config.dbConnectorTimeout
