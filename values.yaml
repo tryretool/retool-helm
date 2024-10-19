@@ -419,7 +419,7 @@ workflows:
 
   # Resources for the workflow worker only - these are sane inputs that bias towards stability
   # Can adjust but may see OOM errors if memory too low for heavy workflow load
-  # To make adjustments to workflows backend, use top level resources key.
+  # To make adjustments to workflows backend, use workflows.backend.resources key.
   resources:
     limits:
       cpu: 2000m
