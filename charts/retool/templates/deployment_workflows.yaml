@@ -66,12 +66,22 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
+          {{- if semverCompare ">= 3.93.0-0" .Values.image.tag -}}
           {{ if ( not $.Values.dbconnector.java.enabled ) }}
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}
           - name: SERVICE_TYPE
             value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          {{- else }} # Corresponds to {{- if semverCompare ">= 3.93.0-0" .Values.image.tag -}}
+          {{ if $.Values.dbconnector.java.enabled }}
+          - name: SERVICE_TYPE
+            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
+          {{ else }}
+          - name: SERVICE_TYPE
+            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          {{ end }}
+          {{- end }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
