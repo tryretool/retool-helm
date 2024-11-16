@@ -77,47 +77,29 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          {{- if include "retool.jobRunner.enabled" . }}
-
-          {{- if semverCompare ">= 3.93.0-0" .Values.image.tag -}}
-          {{ if ( not $.Values.dbconnector.java.enabled ) }}
-          - name: DISABLE_JAVA_DBCONNECTOR
-            value: "true"
-          {{ end }}
+          {{ if and ( or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) ( .Values.jobRunner.enabled ) }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
-          {{- else -}} # Corresponds to {{- if semverCompare ">= 3.93.0-0" .Values.image.tag -}}
-          {{ if $.Values.dbconnector.java.enabled }}
-          - name: SERVICE_TYPE
-            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
-          {{ else }}
-          - name: SERVICE_TYPE
-            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
-          {{ end }}
-          {{- end -}}
-
-          {{- else }} # Corresponds to {{- if include "retool.jobRunner.enabled" . }}
-
-          {{- if semverCompare ">= 3.93.0-0" .Values.image.tag -}}
-          {{ if ( not $.Values.dbconnector.java.enabled ) }}
-          - name: DISABLE_JAVA_DBCONNECTOR
-            value: "true"
-          {{ end }}
+          {{ else if and ( or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) ( not .Values.jobRunner.enabled ) }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JOBS_RUNNER
-
-          {{- else -}} # Corresponds to {{- if semverCompare ">= 3.93.0-0" .Values.image.tag -}}
-
-          {{ if $.Values.dbconnector.java.enabled }}
+          {{ else if and ( not or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) ( .Values.jobRunner.enabled ) ( $.Values.dbconnector.java.enabled ) }}
+          - name: SERVICE_TYPE
+            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
+          {{ else if and ( not or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) ( .Values.jobRunner.enabled ) ( not $.Values.dbconnector.java.enabled ) }}
+          - name: SERVICE_TYPE
+            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          {{ else if and ( not or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) ( not .Values.jobRunner.enabled ) ( $.Values.dbconnector.java.enabled ) }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JOBS_RUNNER,JAVA_DBCONNECTOR
           {{ else }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JOBS_RUNNER
           {{ end }}
-          {{- end -}}
-
-          {{- end }}
+          {{ if and ( or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) ( not $.Values.dbconnector.java.enabled ) }}
+          - name: DISABLE_JAVA_DBCONNECTOR
+            value: "true"
+          {{ end }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
