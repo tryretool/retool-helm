@@ -67,7 +67,7 @@ spec:
           - name: NODE_ENV
             value: production
           {{- $retool_version_with_java_dbconnector_opt_out := ( or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) }}
-          {{- $serviceType := list "MAIN_BACKEND" "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
+          {{- $serviceType := list "WORKFLOW_BACKEND" "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
           {{- /*
             JAVA_DBCONNECTOR in the service type only applies before the version of Retool that changes it to opt-out (3.93.0-edge),
             and only if the Java dbconnector is enabled in values.yaml.
