@@ -5,6 +5,9 @@ metadata:
   labels:
     {{- include "retool.labels" . | nindent 4 }}
     {{- include "retool.selectorLabels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -75,21 +78,19 @@ spec:
           - name: NODE_ENV
             value: production
           {{- if include "retool.jobRunner.enabled" . }}
-          {{ if $.Values.dbconnector.java.enabled }}
-          - name: SERVICE_TYPE
-            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
-          {{ else }}
+          {{ if ( not $.Values.dbconnector.java.enabled ) }}
+          - name: DISABLE_JAVA_DBCONNECTOR
+            value: "true"
+          {{ end }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
-          {{ end }}
           {{- else }}
-          {{ if $.Values.dbconnector.java.enabled }}
-          - name: SERVICE_TYPE
-            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR,JOBS_RUNNER
-          {{ else }}
+          {{ if ( not $.Values.dbconnector.java.enabled ) }}
+          - name: DISABLE_JAVA_DBCONNECTOR
+            value: "true"
+          {{ end }}
           - name: SERVICE_TYPE
             value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JOBS_RUNNER
-          {{ end }}
           {{- end }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
