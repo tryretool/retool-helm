@@ -114,6 +114,9 @@ externalSecrets:
       #   path: global-retool-config
       # - name: retool-db
       #   path: global-retool-db-config
+    # When true, uses kubernetes-client CRDs and not external-secrets CRDs
+    # Defaults to true
+    useLegacyCR: true
 
 files: {}
 
