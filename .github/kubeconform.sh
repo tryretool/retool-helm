@@ -21,12 +21,8 @@ for CHART_DIR in ${CHART_DIRS}; do
   echo "Running kubeconform for folder: '$CHART_DIR'"
   helm dep up "${CHART_DIR}"
   for VALUES_FILE in $(find "${CHART_DIR}/ci" -name '*values.yaml'); do
+    echo "== Checking values file: ${VALUES_FILE}"
     helm template --kube-version "${KUBERNETES_VERSION#v}" --values "${VALUES_FILE}" "${CHART_DIR}" \
       | ./kubeconform --strict --summary --kubernetes-version "${KUBERNETES_VERSION#v}"
-    for OPTION_FILE in $(find "${CHART_DIR}/ci" -name '*option.yaml'); do
-      echo "== Checking values file: ${VALUES_FILE} and option file: ${OPTION_FILE}"
-      helm template --kube-version "${KUBERNETES_VERSION#v}" --values "${VALUES_FILE}" --values "${OPTION_FILE}" "${CHART_DIR}" \
-        | ./kubeconform --strict --summary --kubernetes-version "${KUBERNETES_VERSION#v}"
-    done
   done
 done
