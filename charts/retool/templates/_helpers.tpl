@@ -50,7 +50,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels for main backend. Note changes here will require deployment
 recreation and incur downtime. The "app.kubernetes.io/instance" label should
-also be included in all deployments, so telemetry knows how to find logs. 
+also be included in all deployments, so telemetry knows how to find logs.
 */}}
 {{- define "retool.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "retool.name" . }}
@@ -200,6 +200,8 @@ Usage: (include "retool.workflows.enabled" .)
 */}}
 {{- define "retool.workflows.enabled" -}}
 {{- $output := "" -}}
+{{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $retool_version_with_workflows := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.6.11-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
 {{- if or
     (eq (toString .Values.workflows.enabled) "true")
     (eq (toString .Values.workflows.enabled) "false")
@@ -213,7 +215,7 @@ Usage: (include "retool.workflows.enabled" .)
   {{- $output = "" -}}
 {{- else if eq .Values.image.tag "latest" -}}
   {{- $output = "1" -}}
-{{- else if semverCompare ">= 3.6.11-0" .Values.image.tag -}}
+{{- else if $retool_version_with_workflows -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
@@ -227,6 +229,8 @@ Usage: (include "retool.codeExecutor.enabled" .)
 */}}
 {{- define "retool.codeExecutor.enabled" -}}
 {{- $output := "" -}}
+{{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ) ) }}
 {{- if or
     (eq (toString .Values.codeExecutor.enabled) "true")
     (eq (toString .Values.codeExecutor.enabled) "false")
@@ -240,7 +244,7 @@ Usage: (include "retool.codeExecutor.enabled" .)
   {{- $output = "" -}}
 {{- else if (or (contains "stable" (include "retool.codeExecutor.image.tag" .)) (contains "edge" (include "retool.codeExecutor.image.tag" .))) -}}
   {{- $output = "1" -}}
-{{- else if semverCompare ">= 3.20.15-0" (include "retool.codeExecutor.image.tag" .) -}}
+{{- else if $retool_version_with_ce -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
@@ -319,11 +323,13 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- if .Values.codeExecutor.image.tag -}}
   {{- .Values.codeExecutor.image.tag -}}
 {{- else if .Values.image.tag  -}}
+  {{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
   {{- if and (eq .Values.image.tag "latest") (eq (toString .Values.codeExecutor.enabled) "true") -}}
     {{- fail "If using image.tag=latest (not recommended, select an explicit tag instead) and enabling codeExecutor, explicitly set codeExecutor.image.tag" }}
   {{- else if (eq .Values.image.tag "latest") -}}
     {{- "" -}}
-  {{- else if semverCompare ">= 3.20.15-0" .Values.image.tag -}}
+  {{- else if $retool_version_with_ce -}}
     {{- .Values.image.tag -}}
   {{- else -}}
     {{- "1.1.0" -}}

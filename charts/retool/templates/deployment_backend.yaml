@@ -77,7 +77,12 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          {{- $retool_version_with_java_dbconnector_opt_out := ( or (eq "latest" $.Values.image.tag ) ( semverCompare ">= 3.93.0-0" $.Values.image.tag ) ) }}
+          {{- /*
+            We are making an assumption here that if we see an invalid tag, we are running a relatively recent version of Retool.
+            Older versions of Retool should always have a semver-compatible tag; only internal versions should be noncompliant.
+          */}}
+          {{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+          {{- $retool_version_with_java_dbconnector_opt_out := ( or ( not ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ) ( semverCompare ">= 3.93.0-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
           {{- $serviceType := list "MAIN_BACKEND" "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
           {{- /*
             JAVA_DBCONNECTOR in the service type only applies before the version of Retool that changes it to opt-out (3.93.0-edge),
