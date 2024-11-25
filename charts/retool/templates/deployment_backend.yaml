@@ -77,18 +77,12 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          {{- /*
-            We are making an assumption here that if we see an invalid tag, we are running a relatively recent version of Retool.
-            Older versions of Retool should always have a semver-compatible tag; only internal versions should be noncompliant.
-          */}}
-          {{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
-          {{- $retool_version_with_java_dbconnector_opt_out := ( or ( not ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ) ( semverCompare ">= 3.93.0-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
           {{- $serviceType := list "MAIN_BACKEND" "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
           {{- /*
             JAVA_DBCONNECTOR in the service type only applies before the version of Retool that changes it to opt-out (3.93.0-edge),
             and only if the Java dbconnector is enabled in values.yaml.
           */}}
-          {{- if and ( not $retool_version_with_java_dbconnector_opt_out ) ( $.Values.dbconnector.java.enabled ) }}
+          {{- if and ( not ( include "retool_version_with_java_dbconnector_opt_out" . ) ) ( $.Values.dbconnector.java.enabled ) }}
             {{- $serviceType = append $serviceType "JAVA_DBCONNECTOR" }}
           {{- end }}
           {{- /*
@@ -100,7 +94,11 @@ spec:
           {{- end }}
           - name: SERVICE_TYPE
             value: {{ join "," $serviceType }}
-          {{ if and $retool_version_with_java_dbconnector_opt_out ( not $.Values.dbconnector.java.enabled ) }}
+          {{ if ( include "retool_version_with_java_dbconnector_opt_out" . ) }}
+          - name: json
+            value: yeah
+          {{ end }}
+          {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}

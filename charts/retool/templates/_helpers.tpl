@@ -338,3 +338,14 @@ Usage: (template "retool.codeExecutor.image.tag" .)
   {{- fail "Please set a value for .Values.image.tag" }}
 {{- end -}}
 {{- end -}}
+
+{{- define "retool_version_with_java_dbconnector_opt_out" -}}
+{{- $output := "" -}}
+{{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- if or ( not ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ) ( semverCompare ">= 3.93.0-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) }}
+  {{- $output := "1" -}}
+{{- else -}}
+  {{- $output = "" -}}
+{{- end }}
+{{- $output -}}
+{{- end -}}
