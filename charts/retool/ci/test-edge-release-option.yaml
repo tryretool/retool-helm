@@ -1,5 +1,5 @@
 image:
-  tag: "5.100.0-edge"
+  tag: "100.100.0-edge"
 dbconnector:
   java:
     enabled: true

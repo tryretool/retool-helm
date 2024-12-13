@@ -200,7 +200,7 @@ Usage: (include "retool.workflows.enabled" .)
 */}}
 {{- define "retool.workflows.enabled" -}}
 {{- $output := "" -}}
-{{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
 {{- $retool_version_with_workflows := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.6.11-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
 {{- if or
     (eq (toString .Values.workflows.enabled) "true")
@@ -229,7 +229,7 @@ Usage: (include "retool.codeExecutor.enabled" .)
 */}}
 {{- define "retool.codeExecutor.enabled" -}}
 {{- $output := "" -}}
-{{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
 {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ) ) }}
 {{- if or
     (eq (toString .Values.codeExecutor.enabled) "true")
@@ -323,7 +323,7 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- if .Values.codeExecutor.image.tag -}}
   {{- .Values.codeExecutor.image.tag -}}
 {{- else if .Values.image.tag  -}}
-  {{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+  {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
   {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
   {{- if and (eq .Values.image.tag "latest") (eq (toString .Values.codeExecutor.enabled) "true") -}}
     {{- fail "If using image.tag=latest (not recommended, select an explicit tag instead) and enabling codeExecutor, explicitly set codeExecutor.image.tag" }}
@@ -341,11 +341,13 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 
 {{- define "retool_version_with_java_dbconnector_opt_out" -}}
 {{- $output := "" -}}
-{{- $valid_retool_version_regexp := "([0-9]+]\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
-{{- if or ( not ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ) ( semverCompare ">= 3.93.0-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) }}
-  {{- $output := "1" -}}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- if not ( regexMatch $valid_retool_version_regexp .Values.image.tag ) -}}
+  {{- $output = "1" -}}
+{{- else if semverCompare ">= 3.93.0-0" ( regexFind $valid_retool_version_regexp .Values.image.tag ) -}}
+  {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
-{{- end }}
+{{- end -}}
 {{- $output -}}
 {{- end -}}
