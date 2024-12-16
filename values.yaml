@@ -220,6 +220,9 @@ readinessProbe:
   periodSeconds: 10
   successThreshold: 5
 
+preStopHook:
+  enabled: true
+
 # To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
 startupProbe:
   enabled: false

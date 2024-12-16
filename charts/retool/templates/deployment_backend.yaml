@@ -270,6 +270,12 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
+{{- if .Values.preStopHook.enabled }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sleep", "30"]
+{{- end }}
 {{- if .Values.startupProbe.enabled }}
         startupProbe:
           httpGet:
