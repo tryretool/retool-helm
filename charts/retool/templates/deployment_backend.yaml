@@ -93,7 +93,7 @@ spec:
           - name: ABC
             value: "true"
           {{- end }}
-          {{- if not .Values.jobRunner.enabled }}
+          {{- if not include "retool.jobRunner.enabled" . }}
             {{- $serviceType = append $serviceType "JOBS_RUNNER" }}
           {{- end }}
           - name: SERVICE_TYPE
