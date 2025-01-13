@@ -89,7 +89,7 @@ spec:
             It may seem counterintuitive to add the JOBS_RUNNER service type only without a jobs runner.
             The reason for this is that the backend needs to act as a jobs runner, if the jobs runner is not enabled.
           */}}
-          {{- if not .Values.jobRunner.enabled }}
+          {{- if not ( include "retool.jobRunner.enabled" . ) }}
             {{- $serviceType = append $serviceType "JOBS_RUNNER" }}
           {{- end }}
           - name: SERVICE_TYPE
