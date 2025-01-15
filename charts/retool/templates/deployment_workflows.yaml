@@ -87,7 +87,7 @@ spec:
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" . }}-dbconnector
           - name: DB_CONNECTOR_PORT
-            value: '3002'
+            value: {{ .Values.dbconnector.port | quote }}
           {{- end }}
           {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
           - name: DISABLE_JAVA_DBCONNECTOR

@@ -123,7 +123,7 @@ spec:
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" . }}-dbconnector
           - name: DB_CONNECTOR_PORT
-            value: '3002'
+            value: {{ .Values.dbconnector.port | quote }}
           {{- end }}
           {{- if .Values.config.dbConnectorTimeout }}
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
