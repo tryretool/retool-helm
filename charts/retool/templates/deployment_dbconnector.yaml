@@ -2,29 +2,44 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-dbconnector
+  name: {{ include "retool.dbconnector.name" . }}
   labels:
-    retoolService: {{ template "retool.fullname" . }}-dbconnector
+    {{- include "retool.dbconnector.selectorLabels" . | nindent 4 }}
+    {{- include "retool.dbconnector.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- if .Values.deployment.annotations }}
+  annotations:
+    {{- toYaml .Values.deployment.annotations | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.dbconnector.replicas }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.fullname" . }}-dbconnector
+      {{- include "retool.dbconnector.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        {{- if .Values.podAnnotations }}
+        {{ toYaml .Values.podAnnotations | indent 8 }}
+        {{- end }}
+        {{- if .Values.backend.annotations }}
+        {{ toYaml .Values.backend.annotations | indent 8 }}
+        {{- end }}
       labels:
-        retoolService: {{ template "retool.fullname" . }}-dbconnector
+        {{- include "retool.dbconnector.selectorLabels" . | nindent 8 }}
+        {{- include "retool.dbconnector.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
     spec:
-{{- if .Values.dbconnector.terminationGracePeriodSeconds }}
+      {{- if .Values.dbconnector.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .Values.dbconnector.terminationGracePeriodSeconds }} 
-{{- end }}
+      {{- end }}
       containers:
       - args:
         - bash
         - -c
-        - chmod -R +x ./docker_scripts; sync; ./docker_scripts/start_api.sh        
+        - chmod -R +x ./docker_scripts; sync; ./docker_scripts/start_api.sh
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
-        name: {{ template "retool.fullname" . }}-dbconnector
+        name: {{ include "retool.dbconnector.name" . }}
         readinessProbe:
           httpGet:
             path: {{ .Values.readinessProbe.path }}
@@ -41,20 +56,12 @@ spec:
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
         resources:
-{{ toYaml .Values.dbconnector.resources | indent 10 }}
+          {{- if .Values.dbconnector.resources }}
+          {{- toYaml .Values.dbconnector.resources | nindent 10 }}
+          {{- else }}
+          {{- toYaml .Values.resources | nindent 10 }}
+          {{- end }}
         env:
-          - name: DEPLOYMENT_TEMPLATE_TYPE
-            value: {{ template "retool.deploymentTemplateType" . }}
-          - name: DEPLOYMENT_TEMPLATE_VERSION
-            value: {{ template "retool.deploymentTemplateVersion" . }}
-          - name: NODE_ENV
-            value: production
-          - name: RTEL_SERVICE_NAME
-            value: retool_dbconnector
-          - name: K8S_DEPLOYMENT
-            value: {{ template "retool.fullname" . }}-dbconnector
-          - name: NODE_OPTIONS
-            value: {{(.Values.workflows.config).nodeOptions | default "--max_old_space_size=1024" }}
           {{- if $.Values.dbconnector.java.enabled }}
           - name: SERVICE_TYPE
             value: DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
@@ -62,18 +69,18 @@ spec:
           - name: SERVICE_TYPE
             value: DB_CONNECTOR,DB_SSH_CONNECTOR
           {{- end }}
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: {{ template "retool.deploymentTemplateType" . }}
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: {{ template "retool.deploymentTemplateVersion" . }}
+          - name: NODE_ENV
+            value: production
+          - name: NODE_OPTIONS
+            value: {{ .Values.dbconnector.config.nodeOptions }}
           - name: DBCONNECTOR_HTTP_AGENT_MAX_SOCKETS
-            value: "1000"
+            value: {{ .Values.dbconnector.config.httpAgentMaxSockets | quote }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
-            value: "100"
-          - name: DBCONNECTOR_QUERY_TIMEOUT_MS
-          {{- if .Values.workflows.dbConnectorTimeout }}
-            value: {{ .Values.workflows.dbConnectorTimeout | quote}}
-          {{- else if .Values.config.dbConnectorTimeout }}
-            value: {{ .Values.config.dbConnectorTimeout | quote}}
-          {{- else }}
-            value: "5400000"
-          {{- end }}
+            value: {{ .Values.dbconnector.config.postgresPoolMaxSize | quote }}
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_BACKEND_HOST
@@ -82,17 +89,6 @@ spec:
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
-          {{- if and (((.Values.workflows.config).otelCollector).enabled) (((.Values.workflows.config).otelCollector).endpoint) }}
-          - name: OTEL_EXPORTER_OTLP_ENDPOINT
-             value: {{ ((.Values.workflows.config).otelCollector).endpoint }}
-          {{- else if ((.Values.workflows.config).otelCollector).enabled }}
-          - name: HOST_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.hostIP
-          - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: "http://$(HOST_IP):4317"
-          {{- end }}
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
@@ -127,7 +123,7 @@ spec:
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
-          {{- if  .Values.postgresql.enabled }}
+              {{- if .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
                 # `postgres` is the default admin username for postgres in the subchart we use, so it needs the admin password
                 # if a different username is picked, then it needs the custom password instead.
@@ -136,7 +132,7 @@ spec:
                 {{- else }}
                 key: password
                 {{- end }}
-          {{- else }}
+              {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}
                 key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
@@ -144,7 +140,7 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: postgresql-password
                 {{- end }}
-          {{- end }}
+              {{- end }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -170,7 +166,6 @@ spec:
           {{- with .Values.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
-          {{- include "retool.sharedEnv" $ | nindent 10 }}
         {{- if .Values.externalSecrets.enabled }}
         envFrom:
         - secretRef:
@@ -188,75 +183,88 @@ spec:
         {{- end }}
         {{- end }}
         volumeMounts:
-        - name: dsdsocket
-          mountPath: /var/run/datadog
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
           mountPath: "/usr/share/retool/config/{{ $configFile }}"
           subPath: {{ $configFile }}
         {{- end }}
-        {{if and .Values.persistentVolumeClaim.enabled .Values.persistentVolumeClaim.mountPath }}
+        {{- if and .Values.persistentVolumeClaim.enabled .Values.persistentVolumeClaim.mountPath }}
         - name: retool-pv
           mountPath: {{ .Values.persistentVolumeClaim.mountPath }}
         {{- end }}
-{{- if .Values.extraVolumeMounts }}
-{{ toYaml .Values.extraVolumeMounts | indent 8 }}
-{{- end }}
-{{- with .Values.extraContainers }}
-{{ tpl . $ | indent 6 }}
-{{- end }}
-{{- range .Values.extraConfigMapMounts }}
+        {{- if .Values.extraVolumeMounts }}
+        {{- toYaml .Values.extraVolumeMounts | nindent 8 }}
+        {{- end }}
+        {{- with .Values.extraContainers }}
+        {{- tpl . $ | indent 8 }}
+        {{- end }}
+        {{- range .Values.extraConfigMapMounts }}
         - name: {{ .name }}
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
-{{- end }}
-    {{- if .Values.image.pullSecrets }}
+        {{- end }}
+      {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
-{{ toYaml .Values.image.pullSecrets | indent 8 }}
-    {{- end }}
-    {{- if .Values.affinity }}
+        {{- toYaml .Values.image.pullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
       affinity:
-{{ toYaml .Values.affinity | indent 8 }}
-    {{- end }}
-    {{- if .Values.nodeSelector }}
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
-    {{- end }}
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
       tolerations:
-{{ toYaml .Values.tolerations | indent 8 }}
-{{- if .Values.securityContext.enabled }}
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- if .Values.securityContext.enabled }}
       securityContext:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
-{{- end }}
+      {{- end }}
       volumes:
-      - name: dsdsocket
-        hostPath:
-          path: /var/run/datadog/
-{{- range .Values.extraConfigMapMounts }}
+        {{- range .Values.extraConfigMapMounts }}
         - name: {{ .name }}
           configMap:
             name: {{ .configMap }}
-{{- end }}
+        {{- end }}
         {{- if .Values.persistentVolumeClaim.enabled }}
         - name: retool-pv
           persistentVolumeClaim:
             claimName: {{ default (include "retool.fullname" .) .Values.persistentVolumeClaim.existingClaim }}
         {{- end }}
-{{- if .Values.extraVolumes }}
-{{ toYaml .Values.extraVolumes | indent 8 }}
-{{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+        {{- end }}
 ---
+
+{{- if .Values.podDisruptionBudget }}
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version -}}
+apiVersion: policy/v1
+{{- else -}}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retool.dbconnector.name" . }}
+spec:
+  {{ toYaml .Values.podDisruptionBudget }}
+  selector:
+    matchLabels:
+      {{- include "retool.dbconnector.selectorLabels" . | nindent 6 }}
+---
+{{- end }}
+
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.fullname" . }}-dbconnector
+  name: {{ include "retool.dbconnector.name" . }}
 spec:
   selector:
-    retoolService: {{ template "retool.fullname" . }}-dbconnector
+    retoolService: {{ include "retool.dbconnector.name" . }}
   ports:
   - protocol: TCP
-    name: {{ template "retool.name" . }}
+    name: http-server
     port: 3002
     targetPort: 3002
 {{- end }}

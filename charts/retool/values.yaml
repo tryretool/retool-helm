@@ -430,10 +430,46 @@ workflows:
       cpu: 1000m
       memory: 2048Mi
 
+# Config for optional standalone dbconnector deployment.
 dbconnector:
+  # By default (disabled), the main backend makes resource queries directly; if
+  # enabled, only dbconnector pods will make resource queries on behalf of main
+  # backend and workflow-backend pods.
+  enabled: false
+
   java:
-    # Disable this to disable Retool's Java dbconnector.
+    # Disable this to disable Retool's Java dbconnector. Applies whether
+    # dbconnector.enabled is true or false.
     enabled: true
+
+  # Desired pod count for dbconnector deployment.
+  replicas: 1
+
+  # (Optional) If set, make dbconnector pods wait the specified time before
+  # kubernetes will forcibly kill them when they need to be rescheduled. Setting
+  # this to a long duration will minimize disruption to any long-running
+  # resource queries during updates, at the cost of making updates take longer.
+  # terminationGracePeriodSeconds: 960
+
+  # If necessary, specify the resources to provision the workflows-backend pod
+  # separately from the main backend pods. If unspecified, uses the same
+  # resources configured for main backend.
+  # resources:
+  #   limits:
+  #     cpu: 4096m
+  #     memory: 8192Mi
+  #   requests:
+  #     cpu: 2048m
+  #     memory: 4096Mi
+
+  config:
+    nodeOptions: '--max_old_space_size=1024'
+    postgresPoolMaxSize: 100
+    httpAgentMaxSockets: 1000
+
+  # Extra annotations specific to standalone dbconnector pods.
+  annotations: {}
+
 
 multiplayer:
   # Enable this to use Retool's experimental multiplayer editing feature.
