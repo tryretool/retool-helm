@@ -66,7 +66,7 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          {{- $serviceType := list "WORKFLOW_BACKEND" "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
+          {{- $serviceType := list "WORKFLOW_BACKEND" }}
           {{- /*
             JAVA_DBCONNECTOR in the service type only applies before the version of Retool that changes it to opt-out (3.93.0-edge),
             and only if the Java dbconnector is enabled in values.yaml.
@@ -74,8 +74,21 @@ spec:
           {{- if and ( not ( include "retool_version_with_java_dbconnector_opt_out" . ) ) ( $.Values.dbconnector.java.enabled ) }}
             {{- $serviceType = append $serviceType "JAVA_DBCONNECTOR" }}
           {{- end }}
+          {{- /* 
+            The dbconnector.enabled setting is to enable a standalone dbconnector deployment.
+            If it is not enabled (default), the main backend acts as its own dbconnector.
+          */ -}}
+          {{- if not $.Values.dbconnector.enabled -}}
+            {{- $serviceType = concat $serviceType (list "DB_CONNECTOR" "DB_SSH_CONNECTOR") -}}
+          {{- end }}
           - name: SERVICE_TYPE
             value: {{ join "," $serviceType }}
+          {{- if $.Values.dbconnector.enabled }}
+          - name: DB_CONNECTOR_HOST
+            value: http://{{ template "retool.fullname" . }}-dbconnector
+          - name: DB_CONNECTOR_PORT
+            value: '3002'
+          {{- end }}
           {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"

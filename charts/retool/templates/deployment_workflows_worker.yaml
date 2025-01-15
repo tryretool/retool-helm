@@ -78,6 +78,12 @@ spec:
             value: WORKFLOW_TEMPORAL_WORKER
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
+          {{- if $.Values.dbconnector.enabled }}
+          - name: DB_CONNECTOR_HOST
+            value: http://{{ template "retool.fullname" . }}-dbconnector
+          - name: DB_CONNECTOR_PORT
+            value: '3002'
+          {{ end }}
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
           {{- if .Values.workflows.dbConnectorTimeout }}
             value: {{ .Values.workflows.dbConnectorTimeout | quote}}
