@@ -467,6 +467,9 @@ dbconnector:
     postgresPoolMaxSize: 100
     httpAgentMaxSockets: 1000
 
+  # Which port to listen on. Used for both Pods and Service for dbconnector.
+  port: 3002
+
   # Extra annotations specific to standalone dbconnector pods.
   annotations: {}
 
