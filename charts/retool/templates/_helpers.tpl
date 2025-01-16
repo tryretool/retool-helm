@@ -58,6 +58,23 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Selector labels for standalone dbconnector. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.dbconnector.selectorLabels" -}}
+retoolService: {{ include "retool.dbconnector.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for standalone dbconnector.
+*/}}
+{{- define "retool.dbconnector.labels" -}}
+app.kubernetes.io/name: {{ include "retool.dbconnector.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: dbconnector
+{{- end }}
+
+{{/*
 Selector labels for workflow backend. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
@@ -284,6 +301,13 @@ Set Temporal namespace
 {{- else -}}
 {{- "workflows" | quote -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Set dbconnector service name
+*/}}
+{{- define "retool.dbconnector.name" -}}
+{{ template "retool.fullname" . }}-dbconnector
 {{- end -}}
 
 {{/*
