@@ -461,6 +461,13 @@ multiplayer:
   # Labels for multiplayer pods
   labels: {}
 
+  # Paths to route to multiplayer pods; defaults to /api/multiplayer. Can specify both path and port.
+  ingress:
+    enabled: true
+    paths:
+      - path: /api/multiplayer
+        port: 80
+
 codeExecutor:
   # enabled by default from Chart version 6.0.15 and Retool image 3.20.15 onwards
   # explicitly set other fields as needed
