@@ -31,7 +31,7 @@ spec:
       http:
         paths:
           # The multiplayer paths must be added before the main path to avoid less specific paths being matched first.
-          {{- if ( and .Values.multiplayer.enabled .Values.multiplayer.ingress.enabled ) }}
+          {{- if ( and ((.Values.multiplayer).enabled) (((.Values.multiplayer).ingress).enabled) ) }}
           {{- range .Values.multiplayer.ingress.paths }}
           - path: {{ .path }}
             {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
@@ -67,8 +67,8 @@ spec:
 {{ toYaml . | indent 10 }}
           {{- end }}
           # The multiplayer paths must be added before the main path to avoid less specific paths being matched first.
-          {{- if ( and .Values.multiplayer.enabled .Values.multiplayer.ingress.enabled ) }}
-          {{- range .Values.multiplayer.ingress.paths }}
+          {{- if ( and (($.Values.multiplayer).enabled) ((($.Values.multiplayer).ingress).enabled) ) }}
+          {{- range (($.Values.multiplayer).ingress).paths }}
           - path: {{ .path }}
             {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
             pathType: {{ .pathType | default "ImplementationSpecific" }}
