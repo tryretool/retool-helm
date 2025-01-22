@@ -463,6 +463,7 @@ multiplayer:
 
   # Paths to route to multiplayer pods; defaults to /api/multiplayer. Can specify both path and port.
   ingress:
+    # This conditional is dependent on multiplayer.enabled.
     enabled: true
     paths:
       - path: /api/multiplayer
