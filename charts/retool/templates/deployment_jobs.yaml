@@ -166,9 +166,9 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.externalSecrets.name }}
-        {{- range .Values.externalSecrets.secrets }}	
-        - secretRef:	
-            name: {{ .name }}	
+        {{- range .Values.externalSecrets.secrets }}
+        - secretRef:
+            name: {{ .name }}
         {{- end }}
         {{- end }}
         {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
@@ -239,8 +239,13 @@ spec:
 {{ toYaml .Values.tolerations | indent 8 }}
 {{- if .Values.securityContext.enabled }}
       securityContext:
+{{- if .Values.securityContext.values }}
+{{ toYaml .Values.securityContext.values | indent 8 }}
+{{- else }}
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
+        allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+{{- end }}
 {{- end }}
       volumes:
 {{- range .Values.extraConfigMapMounts }}
