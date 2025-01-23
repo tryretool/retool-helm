@@ -290,12 +290,11 @@ spec:
 {{ toYaml .Values.tolerations | indent 8 }}
 {{- if .Values.securityContext.enabled }}
       securityContext:
-{{- if .Values.securityContext.values }}
-{{ toYaml .Values.securityContext.values | indent 8 }}
-{{- else }}
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
         allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+{{- if .Values.securityContext.extraSecurityContext }}
+{{ toYaml .Values.securityContext.extraSecurityContext | indent 8 }}
 {{- end }}
 {{- end }}
       volumes:

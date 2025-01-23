@@ -637,8 +637,7 @@ securityContext:
   runAsUser: 1000
   fsGroup: 2000
   # Use this section to define additional security context values not provided by default.
-  # Existing values above will be fully replaced by the values in this section.
-  values: {}
+  extraSecurityContext: {}
 
 extraConfigMapMounts: []
 
