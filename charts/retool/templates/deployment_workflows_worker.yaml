@@ -278,6 +278,10 @@ spec:
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
 {{- end }}
+{{- if .Values.securityContext.extraContainerLevelSecurityContext }}
+        securityContext:
+{{ toYaml .Values.securityContext.extraContainerLevelSecurityContext | indent 10 }}
+{{- end }}
 {{- with .Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}
@@ -304,7 +308,6 @@ spec:
       securityContext:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
-        allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
 {{- if .Values.securityContext.extraSecurityContext }}
 {{ toYaml .Values.securityContext.extraSecurityContext | indent 8 }}
 {{- end }}

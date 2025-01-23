@@ -633,11 +633,11 @@ persistentVolumeClaim:
 # default security context
 securityContext:
   enabled: false
-  allowPrivilegeEscalation: false
   runAsUser: 1000
   fsGroup: 2000
   # Use this section to define additional security context values not provided by default.
   extraSecurityContext: {}
+  extraContainerLevelSecurityContext: {}
 
 extraConfigMapMounts: []
 

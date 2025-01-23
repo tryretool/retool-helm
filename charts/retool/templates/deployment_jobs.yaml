@@ -223,6 +223,10 @@ spec:
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
 {{- end }}
+{{- if .Values.securityContext.extraContainerLevelSecurityContext }}
+        securityContext:
+{{ toYaml .Values.securityContext.extraContainerLevelSecurityContext | indent 10 }}
+{{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
@@ -241,7 +245,6 @@ spec:
       securityContext:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
-        allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
 {{- if .Values.securityContext.extraSecurityContext }}
 {{ toYaml .Values.securityContext.extraSecurityContext | indent 8 }}
 {{- end }}
