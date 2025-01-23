@@ -1,0 +1,9 @@
+# default security context
+securityContext:
+  enabled: true
+  runAsUser: 10
+  fsGroup: 20
+  extraSecurityContext:
+    runAsNonRoot: true
+  extraContainerLevelSecurityContext:
+    allowPrivilegeEscalation: false

@@ -166,9 +166,9 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.externalSecrets.name }}
-        {{- range .Values.externalSecrets.secrets }}	
-        - secretRef:	
-            name: {{ .name }}	
+        {{- range .Values.externalSecrets.secrets }}
+        - secretRef:
+            name: {{ .name }}
         {{- end }}
         {{- end }}
         {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
@@ -223,6 +223,10 @@ spec:
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
 {{- end }}
+{{- if .Values.securityContext.extraContainerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
+{{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
@@ -241,6 +245,9 @@ spec:
       securityContext:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
+{{- if .Values.securityContext.extraSecurityContext }}
+{{ toYaml .Values.securityContext.extraSecurityContext | indent 8 }}
+{{- end }}
 {{- end }}
       volumes:
 {{- range .Values.extraConfigMapMounts }}
