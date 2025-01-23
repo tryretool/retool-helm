@@ -635,8 +635,9 @@ securityContext:
   enabled: false
   runAsUser: 1000
   fsGroup: 2000
-  # Use this section to define additional security context values not provided by default.
+  # Use this section to define additional pod security context values for primary Retool pods not provided by default.
   extraSecurityContext: {}
+  # Use this section to define additional container security context values for primary Retool pods not provided by default.
   extraContainerSecurityContext: {}
 
 extraConfigMapMounts: []
