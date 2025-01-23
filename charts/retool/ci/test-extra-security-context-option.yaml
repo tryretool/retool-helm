@@ -5,6 +5,4 @@ securityContext:
   runAsUser: 10
   fsGroup: 20
   extraSecurityContext:
-    supplementalGroups: [4000]
-    supplementalGroupsPolicy: Strict
     runAsNonRoot: true
