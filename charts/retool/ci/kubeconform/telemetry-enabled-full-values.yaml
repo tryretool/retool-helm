@@ -89,3 +89,22 @@ telemetry:
       protocol: TCP
   extraContainerSpec:
     args: ["this should be ignored"]
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: "app.kubernetes.io/name"
+                  operator: In
+                  values:
+                    - retool
+            topologyKey: "kubernetes.io/hostname"
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  tolerations:
+    - key: "key"
+      operator: "NotEqual"
+      value: "value"
+      effect: "NoExecute"
