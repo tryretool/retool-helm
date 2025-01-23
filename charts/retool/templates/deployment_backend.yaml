@@ -309,9 +309,9 @@ spec:
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
 {{- end }}
-{{- if .Values.securityContext.extraContainerLevelSecurityContext }}
+{{- if .Values.securityContext.extraContainerSecurityContext }}
         securityContext:
-{{ toYaml .Values.securityContext.extraContainerLevelSecurityContext | indent 10 }}
+{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
 {{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:

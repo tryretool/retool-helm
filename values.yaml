@@ -637,7 +637,7 @@ securityContext:
   fsGroup: 2000
   # Use this section to define additional security context values not provided by default.
   extraSecurityContext: {}
-  extraContainerLevelSecurityContext: {}
+  extraContainerSecurityContext: {}
 
 extraConfigMapMounts: []
 
