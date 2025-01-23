@@ -165,6 +165,16 @@ spec:
       {{- if .Values.telemetry.extraPodSpec }}
       {{- .Values.telemetry.extraPodSpec | toYaml | nindent 6 }}
       {{- end }}
+{{- if .Values.telemetry.affinity }}
+      affinity:
+{{ toYaml .Values.telemetry.affinity | indent 8 }}
+{{- end }}
+{{- if .Values.telemetry.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.telemetry.nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml .Values.telemetry.tolerations | indent 8 }}
 
 ---
 apiVersion: v1

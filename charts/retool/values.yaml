@@ -733,6 +733,9 @@ telemetry:
   rbac:
     create: true
 
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
   extraEnv: []
   extraAnnotations: {}
   extraPodSpec: {}
