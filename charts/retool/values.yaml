@@ -636,8 +636,10 @@ securityContext:
   runAsUser: 1000
   fsGroup: 2000
   # Use this section to define additional pod security context values for primary Retool pods not provided by default.
+  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podsecuritycontext-v1-core
   extraSecurityContext: {}
   # Use this section to define additional container security context values for primary Retool pods not provided by default.
+  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#securitycontext-v1-core
   extraContainerSecurityContext: {}
 
 extraConfigMapMounts: []
