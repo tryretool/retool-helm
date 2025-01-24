@@ -30,6 +30,20 @@ spec:
     - host: {{ .Values.ingress.hostName | quote }}
       http:
         paths:
+          # The multiplayer paths must be added before the main path to avoid less specific paths being matched first.
+          {{- if ( and ((.Values.multiplayer).enabled) (((.Values.multiplayer).ingress).enabled) ) }}
+          {{- range .Values.multiplayer.ingress.paths }}
+          - path: {{ .path }}
+            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
+            pathType: {{ .pathType | default "ImplementationSpecific" }}
+            {{- end }}
+            backend:
+              service:
+                name: {{ template "retool.multiplayer.name" . }}
+                port:
+                  number: {{ .port }}
+          {{- end }}
+          {{- end }}
           - path:
             {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
             pathType: {{ $pathType }}
@@ -51,6 +65,20 @@ spec:
         paths:
           {{- with .extraPaths }}
 {{ toYaml . | indent 10 }}
+          {{- end }}
+          # The multiplayer paths must be added before the main path to avoid less specific paths being matched first.
+          {{- if ( and (($.Values.multiplayer).enabled) ((($.Values.multiplayer).ingress).enabled) ) }}
+          {{- range (($.Values.multiplayer).ingress).paths }}
+          - path: {{ .path }}
+            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
+            pathType: {{ .pathType | default "ImplementationSpecific" }}
+            {{- end }}
+            backend:
+              service:
+                name: {{ template "retool.multiplayer.name" . }}
+                port:
+                  number: {{ .port }}
+          {{- end }}
           {{- end }}
           {{- range .paths }}
           - path: {{ .path }}
