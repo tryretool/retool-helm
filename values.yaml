@@ -113,10 +113,14 @@ externalSecrets:
       #   path: global-retool-config
       # - name: retool-db
       #   path: global-retool-db-config
+    # When true, uses kubernetes-client CRDs and not external-secrets CRDs
+    # Defaults to true
+    useLegacyCR: true
 
 files: {}
 
 deployment:
+  labels: {}
   annotations: {}
 
 service:
@@ -215,6 +219,9 @@ readinessProbe:
   periodSeconds: 10
   successThreshold: 5
 
+preStopHook:
+  enabled: true
+
 # To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
 startupProbe:
   enabled: false
@@ -230,7 +237,7 @@ extraVolumeMounts: []
 
 extraVolumes: []
 
-# These resource specifications apply to the main backend and workflows backend pods.
+# These resource specifications will apply to the main backend, jobs-runner, dbconnector, and workflows-backend pods unless container specific resources are set.
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
@@ -298,6 +305,15 @@ jobRunner:
   # will already launch a job runner pod
   # enabled: true
 
+  # If necessary, specify the resources to provision the jobRunner pod separately from the main backend pods.
+  # resources:
+  #   limits:
+  #     cpu: 4096m
+  #     memory: 8192Mi
+  #   requests:
+  #     cpu: 2048m
+  #     memory: 4096Mi
+
   # Annotations for job runner pods
   annotations: {}
 
@@ -337,6 +353,15 @@ workflows:
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
     # will launch 9 pods -- 4 workflow backend, 1 workflow workers, and 4 for temporal cluster
     replicaCount: 1
+
+    # If necessary, specify the resources to provision the workflows-backend pod separately from the main backend pods.
+    # resources:
+    #   limits:
+    #     cpu: 4096m
+    #     memory: 8192Mi
+    #   requests:
+    #     cpu: 2048m
+    #     memory: 4096Mi
 
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
@@ -393,7 +418,7 @@ workflows:
 
   # Resources for the workflow worker only - these are sane inputs that bias towards stability
   # Can adjust but may see OOM errors if memory too low for heavy workflow load
-  # To make adjustments to workflows backend, use top level resources key.
+  # To make adjustments to workflows backend, use workflows.backend.resources key.
   resources:
     limits:
       cpu: 2000m
@@ -404,9 +429,8 @@ workflows:
 
 dbconnector:
   java:
-    # Enable this to use Retool's experimental next-gen dbconnector to connect to resources.
-    # This feature is not ready for production use; please check with the Retool team before enablement.
-    enabled: false
+    # Disable this to disable Retool's Java dbconnector.
+    enabled: true
 
 multiplayer:
   # Enable this to use Retool's experimental multiplayer editing feature.
@@ -608,9 +632,14 @@ persistentVolumeClaim:
 # default security context
 securityContext:
   enabled: false
-  allowPrivilegeEscalation: false
   runAsUser: 1000
   fsGroup: 2000
+  # Use this section to define additional pod security context values for primary Retool pods not provided by default.
+  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podsecuritycontext-v1-core
+  extraSecurityContext: {}
+  # Use this section to define additional container security context values for primary Retool pods not provided by default.
+  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#securitycontext-v1-core
+  extraContainerSecurityContext: {}
 
 extraConfigMapMounts: []
 

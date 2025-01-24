@@ -66,12 +66,19 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          {{ if $.Values.dbconnector.java.enabled }}
+          {{- $serviceType := list "WORKFLOW_BACKEND" "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
+          {{- /*
+            JAVA_DBCONNECTOR in the service type only applies before the version of Retool that changes it to opt-out (3.93.0-edge),
+            and only if the Java dbconnector is enabled in values.yaml.
+          */}}
+          {{- if and ( not ( include "retool_version_with_java_dbconnector_opt_out" . ) ) ( $.Values.dbconnector.java.enabled ) }}
+            {{- $serviceType = append $serviceType "JAVA_DBCONNECTOR" }}
+          {{- end }}
           - name: SERVICE_TYPE
-            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
-          {{ else }}
-          - name: SERVICE_TYPE
-            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+            value: {{ join "," $serviceType }}
+          {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
+          - name: DISABLE_JAVA_DBCONNECTOR
+            value: "true"
           {{ end }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
@@ -245,7 +252,11 @@ spec:
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
         resources:
+{{- if .Values.workflows.backend.resources }}
+{{ toYaml .Values.workflows.backend.resources | indent 10 }}
+{{- else }}
 {{ toYaml .Values.resources | indent 10 }}
+{{- end }}
         volumeMounts:
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
@@ -254,6 +265,10 @@ spec:
         {{- end }}
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
+{{- end }}
+{{- if .Values.securityContext.extraContainerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
 {{- end }}
 {{- with .Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
@@ -281,6 +296,9 @@ spec:
       securityContext:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
+{{- if .Values.securityContext.extraSecurityContext }}
+{{ toYaml .Values.securityContext.extraSecurityContext | indent 8 }}
+{{- end }}
 {{- end }}
       volumes:
 {{- range .Values.extraConfigMapMounts }}
