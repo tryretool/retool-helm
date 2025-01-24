@@ -95,6 +95,9 @@ externalSecrets:
   # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
   # This mode only allows a single secret name to be provided.
   enabled: false
+  # If external secrets are currently enabled, it is disallowed to specify regular configuration secrets as a safeguard from clobbering.
+  # This flag allows bypassing that check and specifying both an ExternalSecret and a regular secret for different secrets.
+  includeConfigSecrets: false
   name: retool-config
   # Array of secrets to be use as env variables. (Optional)
   secrets:
