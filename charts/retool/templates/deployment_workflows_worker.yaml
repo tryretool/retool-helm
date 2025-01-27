@@ -150,7 +150,7 @@ spec:
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
             value: "http://$(HOST_IP):4317"
           {{- end }}
-          {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
+          {{- if (include "shouldIncludeConfigSecretsEnvVars" .) }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:
