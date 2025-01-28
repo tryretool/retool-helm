@@ -52,7 +52,7 @@ spec:
             value: "/host/proc"
           - name: SYSFS_ROOT
             value: "/host/sys"
-          {{- if (include "shouldIncludeConfigSecretsEnvVars" .) }}
+          {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:
