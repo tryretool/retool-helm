@@ -91,7 +91,7 @@ spec:
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
-          {{- if (include "shouldIncludeConfigSecretsEnvVars" .) }}
+          {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:

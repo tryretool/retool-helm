@@ -141,7 +141,7 @@ spec:
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
-          {{- if (include "shouldIncludeConfigSecretsEnvVars" .) }}
+          {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
               secretKeyRef:

@@ -356,5 +356,11 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 Checks whether or not ExternalSecret definitions are enabled and can potentially clobber secrets or explicitly allow additional direct secret refs.
 */}}
 {{- define "shouldIncludeConfigSecretsEnvVars" -}}
-{{- or (not (or (.Values.externalSecrets.enabled) (.Values.externalSecrets.externalSecretsOperator.enabled))) .Values.includeConfigSecrets -}}
+{{- $output := "" -}}
+{{- if or (not (or (.Values.externalSecrets.enabled) (.Values.externalSecrets.externalSecretsOperator.enabled))) .Values.externalSecrets.includeConfigSecrets -}}
+  {{- $output = "1" -}}
+{{- else -}}
+  {{- $output = "" -}}
+{{- end -}}
+{{- $output -}}
 {{- end -}}
