@@ -159,5 +159,6 @@ spec:
   selector:
     matchLabels:
   {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}
+{{- end }}
 ---
 {{- end }}
