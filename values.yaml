@@ -112,7 +112,7 @@ externalSecrets:
     # May be set to zero to fetch and create it once
     refreshInterval: "1m"
 
-  # SecretStoreRef defines the default SecretStore to use when fetching the secret data.
+    # SecretStoreRef defines the default SecretStore to use when fetching the secret data.
     secretStoreRef:
       name: aws-secretsmanager
       kind: SecretStore # or ClusterSecretStore
