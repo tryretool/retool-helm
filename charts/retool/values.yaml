@@ -491,8 +491,7 @@ multiplayer:
 
   # Set environment variables for multiplayer pods, e.g. defining which origin to use
   # environmentVariables:
-  #   - name: MAIN_DOMAIN
-  #     value: retool.foo.com
+  #   MAIN_DOMAIN: "retool.foo.com"
 
   # Annotations for multiplayer pods
   annotations: {}
