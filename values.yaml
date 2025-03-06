@@ -115,7 +115,7 @@ externalSecrets:
     # SecretStoreRef defines the default SecretStore to use when fetching the secret data.
     secretStoreRef:
       name: aws-secretsmanager
-      kind: SecretStore # or ClusterSecretStore
+      kind: SecretStore  # or ClusterSecretStore
 
     # Array of name/path key/value pairs to use for the External Secrets Objects.
     secretRef:
