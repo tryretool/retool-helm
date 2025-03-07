@@ -106,9 +106,17 @@ externalSecrets:
   # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
   externalSecretsOperator:
     enabled: false
-    # External Secrets Operator Backend Types: https://github.com/external-secrets/external-secrets#supported-backends
-    # Default set to AWS Secrets Manager.
-    backendType: secretsManager
+
+    # RefreshInterval is the amount of time before the values reading again from the SecretStore provider
+    # Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (from time.ParseDuration)
+    # May be set to zero to fetch and create it once
+    refreshInterval: "1m"
+
+    # SecretStoreRef defines the default SecretStore to use when fetching the secret data.
+    secretStoreRef:
+      name: aws-secretsmanager
+      kind: SecretStore  # or ClusterSecretStore
+
     # Array of name/path key/value pairs to use for the External Secrets Objects.
     secretRef:
       []
@@ -116,9 +124,13 @@ externalSecrets:
       #   path: global-retool-config
       # - name: retool-db
       #   path: global-retool-db-config
+
     # When true, uses kubernetes-client CRDs and not external-secrets CRDs
     # Defaults to true
     useLegacyCR: true
+    # Legacy External Secrets Backend Types: https://github.com/external-secrets/kubernetes-external-secrets
+    # Default set to AWS Secrets Manager.
+    backendType: secretsManager
 
 files: {}
 
