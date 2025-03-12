@@ -3,14 +3,37 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ template "retool.multiplayer.name" . }}
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- if .Values.service.labels }}
+  {{- range $key, $value := .Values.service.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.multiplayer.service.annotations }}
+  {{- with .Values.multiplayer.service.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
 spec:
   selector:
     retoolService: {{ template "retool.multiplayer.name" . }}
   ports:
   - name: http-server
     protocol: TCP
+    {{- if .Values.multiplayer.service.externalPort }}
+    port: {{ .Values.service.externalPort }}
+    {{- else }}
     port: 80
+    {{- end }}
+    {{- if .Values.multiplayer.service.internalPort }}
+    targetPort: {{ .Values.service.internalPort }}
+    {{- else }}
     targetPort: 3001
+    {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
