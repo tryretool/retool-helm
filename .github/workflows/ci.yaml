@@ -4,6 +4,7 @@ name: Lint and Test Charts
 # https://github.com/DataDog/helm-charts/blob/main/.github/workflows/ci.yaml
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "charts/**"
@@ -98,7 +99,7 @@ jobs:
           - v1.30.10
           - v1.29.10
           - v1.28.15
-          - v1.27.6
+          - v1.27.16
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -123,7 +124,7 @@ jobs:
         # Only keep a couple because they take ~5 min each to run :(
         k8s:
           - v1.31.6
-          - v1.27.6
+          - v1.27.16
     steps:
       - name: Checkout
         uses: actions/checkout@v3
