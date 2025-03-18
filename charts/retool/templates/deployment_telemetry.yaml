@@ -29,6 +29,12 @@ spec:
         image: '{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag | default .Values.image.tag }}'
         imagePullPolicy: {{ .Values.telemetry.image.pullPolicy }}
         command: ['retool-telemetry']
+        securityContext:
+        {{ if .Values.telemetry.securityContext }}
+{{ toYaml .Values.telemetry.securityContext | indent 10 }}
+          {{ else }}
+          privileged: true
+          {{ end }}
         resources:
           {{ toYaml .Values.telemetry.resources | nindent 10 }}
         env:
