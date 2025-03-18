@@ -18,7 +18,6 @@ config:
       # clientSecretSecretName:
       # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
       # clientSecretSecretKey:
-      domain:
   encryptionKey:
   # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:
@@ -95,6 +94,9 @@ externalSecrets:
   # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
   # This mode only allows a single secret name to be provided.
   enabled: false
+  # If external secrets are currently enabled, it is disallowed to specify regular configuration secrets as a safeguard from clobbering.
+  # This flag allows bypassing that check and specifying both an ExternalSecret and a regular secret for different secrets.
+  includeConfigSecrets: false
   name: retool-config
   # Array of secrets to be use as env variables. (Optional)
   secrets:
@@ -104,9 +106,17 @@ externalSecrets:
   # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
   externalSecretsOperator:
     enabled: false
-    # External Secrets Operator Backend Types: https://github.com/external-secrets/external-secrets#supported-backends
-    # Default set to AWS Secrets Manager.
-    backendType: secretsManager
+
+    # RefreshInterval is the amount of time before the values reading again from the SecretStore provider
+    # Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (from time.ParseDuration)
+    # May be set to zero to fetch and create it once
+    refreshInterval: "1m"
+
+    # SecretStoreRef defines the default SecretStore to use when fetching the secret data.
+    secretStoreRef:
+      name: aws-secretsmanager
+      kind: SecretStore  # or ClusterSecretStore
+
     # Array of name/path key/value pairs to use for the External Secrets Objects.
     secretRef:
       []
@@ -114,6 +124,13 @@ externalSecrets:
       #   path: global-retool-config
       # - name: retool-db
       #   path: global-retool-db-config
+
+    # When true, uses kubernetes-client CRDs and not external-secrets CRDs
+    # Defaults to true
+    useLegacyCR: true
+    # Legacy External Secrets Backend Types: https://github.com/external-secrets/kubernetes-external-secrets
+    # Default set to AWS Secrets Manager.
+    backendType: secretsManager
 
 files: {}
 
@@ -200,6 +217,7 @@ serviceAccount:
   # If set and create is false, the service account must be existing
   name:
   annotations: {}
+  automountToken: false
 
 livenessProbe:
   enabled: true
@@ -217,6 +235,9 @@ readinessProbe:
   periodSeconds: 10
   successThreshold: 5
 
+preStopHook:
+  enabled: true
+
 # To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
 startupProbe:
   enabled: false
@@ -232,7 +253,7 @@ extraVolumeMounts: []
 
 extraVolumes: []
 
-# These resource specifications apply to the main backend and workflows backend pods.
+# These resource specifications will apply to the main backend, jobs-runner, dbconnector, and workflows-backend pods unless container specific resources are set.
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
@@ -300,6 +321,15 @@ jobRunner:
   # will already launch a job runner pod
   # enabled: true
 
+  # If necessary, specify the resources to provision the jobRunner pod separately from the main backend pods.
+  # resources:
+  #   limits:
+  #     cpu: 4096m
+  #     memory: 8192Mi
+  #   requests:
+  #     cpu: 2048m
+  #     memory: 4096Mi
+
   # Annotations for job runner pods
   annotations: {}
 
@@ -339,6 +369,15 @@ workflows:
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
     # will launch 9 pods -- 4 workflow backend, 1 workflow workers, and 4 for temporal cluster
     replicaCount: 1
+
+    # If necessary, specify the resources to provision the workflows-backend pod separately from the main backend pods.
+    # resources:
+    #   limits:
+    #     cpu: 4096m
+    #     memory: 8192Mi
+    #   requests:
+    #     cpu: 2048m
+    #     memory: 4096Mi
 
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
@@ -395,7 +434,7 @@ workflows:
 
   # Resources for the workflow worker only - these are sane inputs that bias towards stability
   # Can adjust but may see OOM errors if memory too low for heavy workflow load
-  # To make adjustments to workflows backend, use top level resources key.
+  # To make adjustments to workflows backend, use workflows.backend.resources key.
   resources:
     limits:
       cpu: 2000m
@@ -404,10 +443,49 @@ workflows:
       cpu: 1000m
       memory: 2048Mi
 
+# Config for optional standalone dbconnector deployment.
 dbconnector:
+  # By default (disabled), the main backend makes resource queries directly; if
+  # enabled, only dbconnector pods will make resource queries on behalf of main
+  # backend and workflow-backend pods.
+  enabled: false
+
   java:
-    # Disable this to disable Retool's Java dbconnector.
+    # Disable this to disable Retool's Java dbconnector. Applies whether
+    # dbconnector.enabled is true or false.
     enabled: true
+
+  # Desired pod count for dbconnector deployment.
+  replicas: 1
+
+  # (Optional) If set, make dbconnector pods wait the specified time before
+  # kubernetes will forcibly kill them when they need to be rescheduled. Setting
+  # this to a long duration will minimize disruption to any long-running
+  # resource queries during updates, at the cost of making updates take longer.
+  # terminationGracePeriodSeconds: 960
+
+  # If necessary, specify the resources to provision the workflows-backend pod
+  # separately from the main backend pods. If unspecified, uses the same
+  # resources configured for main backend.
+  # resources:
+  #   limits:
+  #     cpu: 4096m
+  #     memory: 8192Mi
+  #   requests:
+  #     cpu: 2048m
+  #     memory: 4096Mi
+
+  config:
+    nodeOptions: '--max_old_space_size=1024'
+    postgresPoolMaxSize: 100
+    httpAgentMaxSockets: 1000
+
+  # Which port to listen on. Used for both Pods and Service for dbconnector.
+  port: 3002
+
+  # Extra annotations specific to standalone dbconnector pods.
+  annotations: {}
+
 
 multiplayer:
   # Enable this to use Retool's experimental multiplayer editing feature.
@@ -426,14 +504,21 @@ multiplayer:
 
   # Set environment variables for multiplayer pods, e.g. defining which origin to use
   # environmentVariables:
-  #   - name: MAIN_DOMAIN
-  #     value: retool.foo.com
+  #   MAIN_DOMAIN: "retool.foo.com"
 
   # Annotations for multiplayer pods
   annotations: {}
 
   # Labels for multiplayer pods
   labels: {}
+
+  # Paths to route to multiplayer pods; defaults to /api/multiplayer. Can specify both path and port.
+  ingress:
+    # This conditional is dependent on multiplayer.enabled.
+    enabled: true
+    paths:
+      - path: /api/multiplayer
+        port: 80
 
 codeExecutor:
   # enabled by default from Chart version 6.0.15 and Retool image 3.20.15 onwards
@@ -609,9 +694,14 @@ persistentVolumeClaim:
 # default security context
 securityContext:
   enabled: false
-  allowPrivilegeEscalation: false
   runAsUser: 1000
   fsGroup: 2000
+  # Use this section to define additional pod security context values for primary Retool pods not provided by default.
+  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podsecuritycontext-v1-core
+  extraSecurityContext: {}
+  # Use this section to define additional container security context values for primary Retool pods not provided by default.
+  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#securitycontext-v1-core
+  extraContainerSecurityContext: {}
 
 extraConfigMapMounts: []
 

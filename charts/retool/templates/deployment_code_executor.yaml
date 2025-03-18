@@ -144,4 +144,21 @@ spec:
     port: 80
     targetPort: 3004
     name: http-server
+---
+{{- if .Values.podDisruptionBudget }}
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version -}}
+apiVersion: policy/v1
+{{- else -}}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "retool.codeExecutor.name" . }}
+spec:
+  {{ toYaml .Values.podDisruptionBudget }}
+  selector:
+    matchLabels:
+  {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}
+{{- end }}
+---
 {{- end }}

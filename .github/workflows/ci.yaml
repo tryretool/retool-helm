@@ -4,6 +4,7 @@ name: Lint and Test Charts
 # https://github.com/DataDog/helm-charts/blob/main/.github/workflows/ci.yaml
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "charts/**"
@@ -27,7 +28,7 @@ jobs:
           version: v3.6.3
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
+          python-version: 3.12
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (list-changed)
@@ -64,7 +65,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
+          python-version: 3.12
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (lint)
@@ -93,12 +94,12 @@ jobs:
         # When changing versions here, check that the version exists at:
         # https://github.com/yannh/kubernetes-json-schema
         k8s:
-          - v1.28.2
-          - v1.27.6
-          - v1.26.5
-          - v1.25.2
-          - v1.24.2
-          - v1.22.9
+          - v1.32.2
+          - v1.31.6
+          - v1.30.10
+          - v1.29.10
+          - v1.28.15
+          - v1.27.16
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -122,12 +123,8 @@ jobs:
       matrix:
         # Only keep a couple because they take ~5 min each to run :(
         k8s:
-          - v1.26.4
-          # - v1.25.2
-          # - v1.24.2
-          - v1.22.9
-          # - v1.18.20
-          # - v1.16.15
+          - v1.31.6
+          - v1.27.16
     steps:
       - name: Checkout
         uses: actions/checkout@v3
