@@ -1,0 +1,196 @@
+{{- if .Values.telemetry.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retool.fullname" . }}-telemetry
+  labels:
+    {{- include "retool.telemetry.labels" . | nindent 4 }}
+    {{- include "retool.telemetry.selectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "retool.telemetry.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "retool.telemetry.labels" . | nindent 8 }}
+        {{- include "retool.telemetry.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if or .Values.telemetry.customVectorConfig .Values.telemetry.customGrafanaAgentConfig }}
+        checksum/custom-config: {{ include (print $.Template.BasePath "/telemetry_configmap.yaml") . | sha256sum | quote }}
+        {{- end }}
+        {{- if .Values.telemetry.extraAnnotations }}
+        {{- .Values.telemetry.extraAnnotations | toYaml | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "retool.telemetry.serviceAccountName" . }}
+      containers:
+      - name: telemetry
+        image: '{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag | default .Values.image.tag }}'
+        imagePullPolicy: {{ .Values.telemetry.image.pullPolicy }}
+        command: ['retool-telemetry']
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          runAsUser: 1001
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          {{ toYaml .Values.telemetry.resources | nindent 10 }}
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: {{ include "retool.deploymentTemplateType" . }}
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: {{ include "retool.deploymentTemplateVersion" . }}
+          - name: VECTOR_SELF_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: VECTOR_SELF_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: VECTOR_SELF_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: PROCFS_ROOT
+            value: "/host/proc"
+          - name: SYSFS_ROOT
+            value: "/host/sys"
+          {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.config.licenseKeySecretName }}
+                name: {{ .Values.config.licenseKeySecretName }}
+                key: {{ .Values.config.licenseKeySecretKey | default "license-key" }}
+                {{- else }}
+                name: {{ template "retool.fullname" . }}
+                key: license-key
+                {{- end }}
+          {{- end }}
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_DEPLOYMENT_MODE
+            value: 'k8s-helm'
+          - name: RTEL_HELM_RELEASE_NAME
+            value: {{ .Release.Name | quote }}
+          - name: RTEL_KUBE_POD_PREFIX
+            value: {{ include "retool.fullname" . | quote }}
+          - name: RTEL_KUBE_NAMESPACE
+            value: {{ .Release.Namespace | quote }}
+          - name: RTEL_KUBE_LABEL_SELECTOR
+            value: {{ include "retool.telemetry.logSourcePodLabels" . | quote }}
+          - name: RTEL_SEND_TO_RETOOL
+            value: {{ .Values.telemetry.sendToRetool.enabled | quote }}
+          {{- if .Values.telemetry.extraEnv }}
+          {{- .Values.telemetry.extraEnv | toYaml | nindent 10 }}
+          {{- end }}
+        {{- if .Values.externalSecrets.enabled }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.externalSecrets.name }}
+        {{- end }}
+        {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
+        envFrom:
+        {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
+        - secretRef:
+            name: {{ .name }}
+        {{- end }}
+        {{- end }}
+        volumeMounts:
+          - name: vector-data
+            mountPath: {{ .Values.telemetry.customVectorConfig | dig "data_dir" "/vector-data" | quote }}
+          - name: grafana-agent-data
+            mountPath: /grafana-agent-data
+          {{- if .Values.telemetry.customVectorConfig }}
+          - name: custom-config
+            mountPath: "/etc/vector-custom/vector-custom.yaml"
+            subPath: "vector-custom.yaml"
+            readOnly: true
+          {{- end }}
+          {{- if .Values.telemetry.customGrafanaAgentConfig }}
+          - name: custom-config
+            mountPath: "/etc/grafana-agent-custom/grafana-agent-custom.river"
+            subPath: "grafana-agent-custom.river"
+            readOnly: true
+          {{- end }}
+          # - name: var-log
+          #   mountPath: "/var/log/"
+          #   readOnly: true
+          # - name: var-lib
+          #   mountPath: "/var/lib"
+          #   readOnly: true
+          # - name: procfs
+          #   mountPath: "/host/proc"
+          #   readOnly: true
+          # - name: sysfs
+          #   mountPath: "/host/sys"
+          #   readOnly: true
+          {{- if .Values.telemetry.extraVolumeMounts }}
+          {{- .Values.telemetry.extraVolumeMounts | toYaml | nindent 10 }}
+          {{- end }}
+        ports:
+          - containerPort: 9125
+            name: udp-statsd
+            protocol: UDP
+          {{- if .Values.telemetry.extraPorts }}
+          {{- .Values.telemetry.extraPorts | toYaml | nindent 10 }}
+          {{- end }}
+        {{- if .Values.telemetry.extraContainerSpec }}
+        {{- .Values.telemetry.extraContainerSpec | toYaml | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: vector-data
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: grafana-agent-data
+          emptyDir:
+            sizeLimit: 100Mi
+        {{- if or .Values.telemetry.customVectorConfig .Values.telemetry.customGrafanaAgentConfig }}
+        - name: custom-config
+          configMap:
+            name: {{ include "retool.fullname" . }}-telemetry
+        {{- end }}
+        # - name: var-log
+        #   hostPath:
+        #     path: "/var/log/"
+        # - name: var-lib
+        #   hostPath:
+        #     path: "/var/lib/"
+        # - name: procfs
+        #   hostPath:
+        #     path: "/proc"
+        # - name: sysfs
+        #   hostPath:
+        #     path: "/sys"
+        {{- if .Values.telemetry.extraVolumes }}
+        {{- .Values.telemetry.extraVolumes | toYaml | nindent 8 }}
+        {{- end }}
+      {{- if .Values.telemetry.extraPodSpec }}
+      {{- .Values.telemetry.extraPodSpec | toYaml | nindent 6 }}
+      {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.telemetry.fullname" . }}
+  labels:
+    {{- include "retool.telemetry.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: udp-statsd
+      port: 9125
+      protocol: UDP
+  selector:
+    {{- include "retool.telemetry.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+
+
+{{- end }}
