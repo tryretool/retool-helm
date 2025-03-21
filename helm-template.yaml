@@ -1,0 +1,1244 @@
+---
+# Source: retool/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: release-name-retool
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: retool/templates/telemetry_rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "release-name-telemetry"
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+automountServiceAccountToken: true
+---
+# Source: retool/charts/postgresql/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: release-name-postgresql
+  namespace: "default"
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-12.1.5
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  postgres-password: "UHdiT3ppMVVJdA=="
+  password: "cmV0b29s"
+  # We don't auto-generate LDAP password when it's not provided as we do for other passwords
+---
+# Source: retool/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: release-name-retool
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/resource-policy": no-upgrade-existing
+type: Opaque
+data:
+  license-key: "NmRhMDY2ZGYtYjFhYi00NTMzLWI4ZjktMTM1ZTY5MzZkOGIy"
+
+  
+  
+  jwt-secret: "SmhvZGN1SUZsOGZXNUJLTXlFUkJzMFZIMkF1ZStpanJGRmRxMjNZSlN0OTd4V2Mx"
+  
+  
+
+  
+  
+  encryption-key: "SmhvZGN1SUZsOGZXNUJLTXlFUkJzMFZIMkF1ZStpanJGRmRxMjNZSlN0OTd4V2Mx"
+  
+  
+
+  
+  google-client-secret: ""
+---
+# Source: retool/templates/telemetry_rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: release-name-telemetry
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+      - nodes/metrics
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+---
+# Source: retool/templates/telemetry_rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: release-name-telemetry
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: release-name-telemetry
+subjects:
+  - kind: ServiceAccount
+    name: release-name-telemetry
+    namespace: default
+---
+# Source: retool/charts/postgresql/templates/primary/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-postgresql-hl
+  namespace: "default"
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-12.1.5
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: primary
+    # Use this annotation in addition to the actual publishNotReadyAddresses
+    # field below because the annotation will stop being respected soon but the
+    # field is broken in some versions of Kubernetes:
+    # https://github.com/kubernetes/kubernetes/issues/58662
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  # We want all pods in the StatefulSet to have their addresses published for
+  # the sake of the other Postgresql pods even before they're ready, since they
+  # have to be able to talk to each other in order to become ready.
+  publishNotReadyAddresses: true
+  ports:
+    - name: tcp-postgresql
+      port: 5432
+      targetPort: tcp-postgresql
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/component: primary
+---
+# Source: retool/charts/postgresql/templates/primary/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-postgresql
+  namespace: "default"
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-12.1.5
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: primary
+  annotations:
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: tcp-postgresql
+      port: 5432
+      targetPort: tcp-postgresql
+      nodePort: null
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/component: primary
+---
+# Source: retool/templates/deployment_code_executor.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-retool-code-executor
+spec:
+  selector:
+    retoolService: release-name-retool-code-executor
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3004
+    name: http-server
+---
+# Source: retool/templates/deployment_telemetry.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-telemetry
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+spec:
+  ports:
+    - name: udp-statsd
+      port: 9125
+      protocol: UDP
+  selector:
+    app.kubernetes.io/name: telemetry
+    app.kubernetes.io/instance: release-name
+  type: ClusterIP
+---
+# Source: retool/templates/deployment_workflows.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-retool-workflow-backend
+spec:
+  selector:
+    retoolService: release-name-retool-workflow-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+    name: http-server
+---
+# Source: retool/templates/deployment_workflows_worker.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-retool-workflow-worker
+spec:
+  selector:
+    retoolService: release-name-retool-workflow-worker
+  ports:
+  - protocol: TCP
+    port: 3005
+    targetPort: 3005
+    name: http-server
+  - protocol: TCP
+    port: 9090
+    targetPort: http-metrics
+    name: http-metrics
+---
+# Source: retool/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+  name: release-name-retool
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+
+  selector:
+    app.kubernetes.io/name: retool
+    app.kubernetes.io/instance: release-name
+---
+# Source: retool/templates/deployment_backend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-retool
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: retool
+    app.kubernetes.io/instance: release-name
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: retool
+      app.kubernetes.io/instance: release-name
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      annotations:
+      labels:
+        helm.sh/chart: retool-6.2.8
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: retool
+        app.kubernetes.io/instance: release-name
+        telemetry.retool.com/service-name: main-backend
+    spec:
+      serviceAccountName: release-name-retool
+      containers:
+      - name: main-backend
+        image: "tryretool/backend:6.2.8"
+        imagePullPolicy: IfNotPresent
+        args:
+          - bash
+          - -c
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 "release-name-postgresql":"5432"; ./docker_scripts/start_api.sh
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: "k8s-helm"
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: "6.2.8"
+          - name: NODE_ENV
+            value: production
+          
+          - name: SERVICE_TYPE
+            value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          
+          - name: CLIENT_ID
+            value: 
+          - name: COOKIE_INSECURE
+            value: "false"
+          - name: POSTGRES_HOST
+            value: "release-name-postgresql"
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: "hammerhead_production"
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_SSL_ENABLED
+            value: "false"
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://release-name-retool-workflow-backend
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://release-name-retool-code-executor
+          
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['telemetry.retool.com/service-name']
+          - name: K8S_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: STATSD_HOST
+            value: "release-name-telemetry.default"
+          - name: STATSD_PORT
+            value: "9125"
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: license-key
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: jwt-secret
+          - name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: encryption-key
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: release-name-postgresql
+                # `postgres` is the default admin username for postgres in the subchart we use, so it needs the admin password
+                # if a different username is picked, then it needs the custom password instead.
+                key: postgres-password
+          - name: CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: google-client-secret
+        ports:
+        - containerPort: 3000
+          name: http-server
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 10
+          failureThreshold:  3
+        readinessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 4096m
+            memory: 8192Mi
+          requests:
+            cpu: 2048m
+            memory: 4096Mi
+        volumeMounts:
+        
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - retool
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+        []
+      volumes:
+---
+# Source: retool/templates/deployment_code_executor.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-retool-code-executor
+  labels:
+    retoolService: release-name-retool-code-executor
+    app.kubernetes.io/name: release-name-retool-code-executor
+    app.kubernetes.io/instance: release-name
+    telemetry.retool.com/service-name: code-executor
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: release-name-retool-code-executor
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      annotations:
+      labels:
+        retoolService: release-name-retool-code-executor
+        app.kubernetes.io/name: release-name-retool-code-executor
+        app.kubernetes.io/instance: release-name
+        telemetry.retool.com/service-name: code-executor
+        helm.sh/chart: retool-6.2.8
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      serviceAccountName: release-name-retool
+      containers:
+      - name: code-executor
+        image: "tryretool/code-executor-service:6.2.8"
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          
+          privileged: true
+          
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: "k8s-helm"
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: "6.2.8"
+          - name: NODE_ENV
+            value: production
+          - name: NODE_OPTIONS
+            value: --max_old_space_size=1024
+          
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['telemetry.retool.com/service-name']
+          - name: K8S_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: STATSD_HOST
+            value: "release-name-telemetry.default"
+          - name: STATSD_PORT
+            value: "9125"
+        ports:
+        - containerPort: 3004
+          name: http-server
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3004
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          failureThreshold:  3
+        readinessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3004
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 2048Mi
+          requests:
+            cpu: 1000m
+            memory: 1024Mi
+        volumeMounts:
+      volumes:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+        []
+---
+# Source: retool/templates/deployment_jobs.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-retool-jobs-runner
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: retool-jobs-runner
+    app.kubernetes.io/instance: release-name
+    telemetry.retool.com/service-name: jobs-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: retool-jobs-runner
+      app.kubernetes.io/instance: release-name
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      annotations:
+      labels:
+        helm.sh/chart: retool-6.2.8
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: retool-jobs-runner
+        app.kubernetes.io/instance: release-name
+        telemetry.retool.com/service-name: jobs-runner
+    spec:
+      serviceAccountName: release-name-retool
+      containers:
+      - name: jobs-runner
+        image: "tryretool/backend:6.2.8"
+        imagePullPolicy: IfNotPresent
+        args:
+          - bash
+          - -c
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 "release-name-postgresql":"5432"; ./docker_scripts/start_api.sh
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: "k8s-helm"
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: "6.2.8"
+          - name: NODE_ENV
+            value: production
+          - name: SERVICE_TYPE
+            value: JOBS_RUNNER
+          - name: CLIENT_ID
+            value: 
+          - name: COOKIE_INSECURE
+            value: "false"
+          - name: POSTGRES_HOST
+            value: "release-name-postgresql"
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: "hammerhead_production"
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_SSL_ENABLED
+            value: "false"
+          
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['telemetry.retool.com/service-name']
+          - name: K8S_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: STATSD_HOST
+            value: "release-name-telemetry.default"
+          - name: STATSD_PORT
+            value: "9125"
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: license-key
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: jwt-secret
+          - name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: encryption-key
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: release-name-postgresql
+                key: postgres-password
+          - name: CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: google-client-secret
+        resources:
+          limits:
+            cpu: 4096m
+            memory: 8192Mi
+          requests:
+            cpu: 2048m
+            memory: 4096Mi
+        livenessProbe:
+          httpGet:
+            path: /api/checkJobsRunnerHealth
+            port: 3003
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /api/checkJobsRunnerHealth
+            port: 3003
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 3
+        volumeMounts:
+        
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - retool
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+        []
+      volumes:
+---
+# Source: retool/templates/deployment_telemetry.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-retool-telemetry
+  labels:
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: telemetry
+    app.kubernetes.io/instance: release-name
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telemetry
+      app.kubernetes.io/instance: release-name
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: retool-6.2.8
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: telemetry
+        app.kubernetes.io/instance: release-name
+      annotations:
+    spec:
+      serviceAccountName: release-name-telemetry
+      containers:
+      - name: telemetry
+        image: 'tryretool/telemetry:6.2.8'
+        imagePullPolicy: IfNotPresent
+        command: ['retool-telemetry']
+        resources:
+          
+          limits:
+            cpu: 256m
+            memory: 256Mi
+          requests:
+            cpu: 128m
+            memory: 128Mi
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: "k8s-helm"
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: "6.2.8"
+          - name: VECTOR_SELF_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: VECTOR_SELF_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: VECTOR_SELF_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: PROCFS_ROOT
+            value: "/host/proc"
+          - name: SYSFS_ROOT
+            value: "/host/sys"
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: license-key
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_DEPLOYMENT_MODE
+            value: 'k8s-helm'
+          - name: RTEL_HELM_RELEASE_NAME
+            value: "release-name"
+          - name: RTEL_KUBE_POD_PREFIX
+            value: "release-name-retool"
+          - name: RTEL_KUBE_NAMESPACE
+            value: "default"
+          - name: RTEL_KUBE_LABEL_SELECTOR
+            value: "app.kubernetes.io/instance=release-name"
+          - name: RTEL_SEND_TO_RETOOL
+            value: "true"
+        volumeMounts:
+          - name: vector-data
+            mountPath: "/vector-data"
+          - name: grafana-agent-data
+            mountPath: /grafana-agent-data
+        ports:
+          - containerPort: 9125
+            name: udp-statsd
+            protocol: UDP
+      volumes:
+        - name: vector-data
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: grafana-agent-data
+          emptyDir:
+            sizeLimit: 100Mi
+---
+# Source: retool/templates/deployment_workflows.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-retool-workflow-backend
+  labels:
+    retoolService: release-name-retool-workflow-backend
+    app.kubernetes.io/name: release-name-retool-workflow-backend
+    app.kubernetes.io/instance: release-name
+    telemetry.retool.com/service-name: workflow-backend
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: release-name-retool-workflow-backend
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      annotations:
+      labels:
+        retoolService: release-name-retool-workflow-backend
+        app.kubernetes.io/name: release-name-retool-workflow-backend
+        app.kubernetes.io/instance: release-name
+        telemetry.retool.com/service-name: workflow-backend
+        helm.sh/chart: retool-6.2.8
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      serviceAccountName: release-name-retool
+      containers:
+      - name: workflow-backend
+        image: "tryretool/backend:6.2.8"
+        imagePullPolicy: IfNotPresent
+        args:
+          - bash
+          - -c
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 "release-name-postgresql":"5432"; ./docker_scripts/start_api.sh
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: "k8s-helm"
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: "6.2.8"
+          - name: NODE_ENV
+            value: production
+          
+          - name: SERVICE_TYPE
+            value: WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
+          
+          - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+            value: "100"
+          - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+            value: "5400000"
+          - name: DISABLE_DATABASE_MIGRATIONS
+            value: "true"
+          
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['telemetry.retool.com/service-name']
+          - name: K8S_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: STATSD_HOST
+            value: "release-name-telemetry.default"
+          - name: STATSD_PORT
+            value: "9125"
+
+          - name: CLIENT_ID
+            value: 
+          - name: COOKIE_INSECURE
+            value: "false"
+          - name: POSTGRES_HOST
+            value: "release-name-postgresql"
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: "hammerhead_production"
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_SSL_ENABLED
+            value: "false"
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://release-name-retool-workflow-backend
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://release-name-retool-code-executor
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: license-key
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: jwt-secret
+          - name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: encryption-key
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: release-name-postgresql
+                key: postgres-password
+          - name: CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: google-client-secret
+        ports:
+        - containerPort: 3000
+          name: http-server
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          failureThreshold:  3
+        readinessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 4096m
+            memory: 8192Mi
+          requests:
+            cpu: 2048m
+            memory: 4096Mi
+        volumeMounts:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - retool
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+        []
+      volumes:
+---
+# Source: retool/templates/deployment_workflows_worker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-retool-workflow-worker
+  labels:
+    retoolService: release-name-retool-workflow-worker
+    app.kubernetes.io/name: release-name-retool-workflow-worker
+    app.kubernetes.io/instance: release-name
+    telemetry.retool.com/service-name: workflow-worker
+    helm.sh/chart: retool-6.2.8
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: release-name-retool-workflow-worker
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      annotations:
+        prometheus.io/job: release-name-retool-workflow-worker
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+      labels:
+        retoolService: release-name-retool-workflow-worker
+        app.kubernetes.io/name: release-name-retool-workflow-worker
+        app.kubernetes.io/instance: release-name
+        telemetry.retool.com/service-name: workflow-worker
+        helm.sh/chart: retool-6.2.8
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      serviceAccountName: release-name-retool
+      containers:
+      - name: workflow-worker
+        image: "tryretool/backend:6.2.8"
+        imagePullPolicy: IfNotPresent
+        args:
+          - bash
+          - -c
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 "release-name-postgresql":"5432"; ./docker_scripts/start_api.sh
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: "k8s-helm"
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: "6.2.8"
+          - name: NODE_ENV
+            value: production
+          - name: NODE_OPTIONS
+            value: --max_old_space_size=1024
+          - name: SERVICE_TYPE
+            value: WORKFLOW_TEMPORAL_WORKER
+          - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+            value: "100"
+          - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+            value: "5400000"
+          - name: DISABLE_DATABASE_MIGRATIONS
+            value: "true"
+          - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
+            value: "3005"
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://release-name-retool-workflow-backend
+          - name: CLIENT_ID
+            value: 
+          - name: COOKIE_INSECURE
+            value: "false"
+          - name: POSTGRES_HOST
+            value: "release-name-postgresql"
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: "hammerhead_production"
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_SSL_ENABLED
+            value: "false"
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://release-name-retool-code-executor
+          
+          - name: RTEL_ENABLED
+            value: 'true'
+          - name: RTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['telemetry.retool.com/service-name']
+          - name: K8S_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: STATSD_HOST
+            value: "release-name-telemetry.default"
+          - name: STATSD_PORT
+            value: "9125"
+          - name: LICENSE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: license-key
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: jwt-secret
+          - name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: encryption-key
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: release-name-postgresql
+                key: postgres-password
+          - name: CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: release-name-retool
+                key: google-client-secret
+        ports:
+        - containerPort: 3005
+          name: http-server
+          protocol: TCP
+        - containerPort: 9090
+          name: http-metrics
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3005
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          failureThreshold:  3
+        readinessProbe:
+          httpGet:
+            path: /api/checkHealth
+            port: 3005
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 8192Mi
+          requests:
+            cpu: 1000m
+            memory: 2048Mi
+        volumeMounts:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - retool
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+        []
+      volumes:
+---
+# Source: retool/charts/postgresql/templates/primary/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: release-name-postgresql
+  namespace: "default"
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-12.1.5
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: primary
+  annotations:
+spec:
+  replicas: 1
+  serviceName: release-name-postgresql-hl
+  updateStrategy:
+    rollingUpdate: {}
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: primary
+  template:
+    metadata:
+      name: release-name-postgresql
+      labels:
+        app.kubernetes.io/name: postgresql
+        helm.sh/chart: postgresql-12.1.5
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: primary
+      annotations:
+    spec:
+      serviceAccountName: default
+      
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: postgresql
+                    app.kubernetes.io/instance: release-name
+                    app.kubernetes.io/component: primary
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+        nodeAffinity:
+          
+      securityContext:
+        fsGroup: 1001
+      hostNetwork: false
+      hostIPC: false
+      initContainers:
+      containers:
+        - name: postgresql
+          image: docker.io/postgres:13
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            runAsUser: 1001
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: POSTGRESQL_PORT_NUMBER
+              value: "5432"
+            - name: POSTGRESQL_VOLUME_DIR
+              value: "/data/"
+            - name: PGDATA
+              value: "/data/pgdata"
+            # Authentication
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: release-name-postgresql
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: "hammerhead_production"
+            # Replication
+            # Initdb
+            # Standby
+            # LDAP
+            - name: POSTGRESQL_ENABLE_LDAP
+              value: "no"
+            # TLS
+            - name: POSTGRESQL_ENABLE_TLS
+              value: "no"
+            # Audit
+            - name: POSTGRESQL_LOG_HOSTNAME
+              value: "false"
+            - name: POSTGRESQL_LOG_CONNECTIONS
+              value: "false"
+            - name: POSTGRESQL_LOG_DISCONNECTIONS
+              value: "false"
+            - name: POSTGRESQL_PGAUDIT_LOG_CATALOG
+              value: "off"
+            # Others
+            - name: POSTGRESQL_CLIENT_MIN_MESSAGES
+              value: "error"
+            - name: POSTGRESQL_SHARED_PRELOAD_LIBRARIES
+              value: "pgaudit"
+          ports:
+            - name: tcp-postgresql
+              containerPort: 5432
+          livenessProbe:
+            failureThreshold: 6
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "postgres" -d "dbname=hammerhead_production" -h 127.0.0.1 -p 5432
+          readinessProbe:
+            failureThreshold: 6
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - -e
+                
+                - |
+                  exec pg_isready -U "postgres" -d "dbname=hammerhead_production" -h 127.0.0.1 -p 5432
+          resources:
+            limits: {}
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: data
+              mountPath: /data/
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"
+# ---
+# # Source: retool/templates/ingress.yaml
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   labels:
+#     helm.sh/chart: retool-6.2.8
+#     app.kubernetes.io/managed-by: Helm
+#   name: release-name-retool
+# spec:
+#   rules:
