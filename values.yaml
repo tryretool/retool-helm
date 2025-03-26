@@ -675,7 +675,7 @@ retool-temporal-services-helm:
 
 persistentVolumeClaim:
   # set to true to use pvc
-  enabled: false
+  enabled: true
   # set to the name of the existing pvc
   existingClaim: ""
   annotations: {}
