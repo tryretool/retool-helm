@@ -105,7 +105,6 @@ spec:
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}
-          {{ end }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
