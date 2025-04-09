@@ -454,6 +454,7 @@ dbconnector:
     # Disable this to disable Retool's Java dbconnector. Applies whether
     # dbconnector.enabled is true or false.
     enabled: true
+    port: 3007
 
   # Desired pod count for dbconnector deployment.
   replicas: 1

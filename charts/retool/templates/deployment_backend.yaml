@@ -85,7 +85,7 @@ spec:
           {{- if and ( not ( include "retool_version_with_java_dbconnector_opt_out" . ) ) ( $.Values.dbconnector.java.enabled ) }}
             {{- $serviceType = append $serviceType "JAVA_DBCONNECTOR" }}
           {{- end }}
-          {{- /* 
+          {{- /*
             The dbconnector.enabled setting is to enable a standalone dbconnector deployment.
             If it is not enabled (default), the main backend acts as its own dbconnector.
           */ -}}
@@ -123,7 +123,13 @@ spec:
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" . }}-dbconnector
           - name: DB_CONNECTOR_PORT
-            value: {{ .Values.dbconnector.port | quote }}
+            value: {{ $.Values.dbconnector.port | quote }}
+          {{- if $.Values.dbconnector.java.enabled }}
+          - name: JAVA_DBCONNECTOR_HOST
+            value: http://{{ template "retool.fullname" . }}-dbconnector
+          - name: JAVA_DBCONNECTOR_PORT
+            value: {{ $.Values.dbconnector.java.port | quote }}
+          {{- end }}
           {{- end }}
           {{- if .Values.config.dbConnectorTimeout }}
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS

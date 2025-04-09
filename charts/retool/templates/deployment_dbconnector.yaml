@@ -31,7 +31,7 @@ spec:
         {{- include "retool.labels" . | nindent 8 }}
     spec:
       {{- if .Values.dbconnector.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.dbconnector.terminationGracePeriodSeconds }} 
+      terminationGracePeriodSeconds: {{ .Values.dbconnector.terminationGracePeriodSeconds }}
       {{- end }}
       containers:
       - args:
@@ -267,4 +267,10 @@ spec:
     name: http-server
     port: {{ .Values.dbconnector.port }}
     targetPort: {{ .Values.dbconnector.port }}
+  {{ if .Values.dbconnector.java.enabled }}
+  - protocol: TCP
+    name: java-dbconnector-server
+    port: {{ .Values.dbconnector.java.port }}
+    targetPort: {{ .Values.dbconnector.java.port }}
+  {{ end }}
 {{- end }}
