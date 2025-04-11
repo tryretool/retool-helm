@@ -101,7 +101,7 @@ spec:
           {{- end }}
           - name: SERVICE_TYPE
             value: {{ join "," $serviceType }}
-          {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
+          {{ if and (  not $.Values.dbconnector.enabled  ) ( and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) ) }}
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}

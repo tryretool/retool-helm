@@ -62,13 +62,16 @@ spec:
           {{- toYaml .Values.resources | nindent 10 }}
           {{- end }}
         env:
-          {{- if $.Values.dbconnector.java.enabled }}
-          - name: SERVICE_TYPE
-            value: DB_CONNECTOR,DB_SSH_CONNECTOR,JAVA_DBCONNECTOR
-          {{- else }}
-          - name: SERVICE_TYPE
-            value: DB_CONNECTOR,DB_SSH_CONNECTOR
+          {{- $serviceType := list "DB_CONNECTOR" "DB_SSH_CONNECTOR" }}
+          {{- if and ( not ( include "retool_version_with_java_dbconnector_opt_out" . ) ) ( $.Values.dbconnector.java.enabled ) }}
+            {{- $serviceType = append $serviceType "JAVA_DBCONNECTOR" }}
           {{- end }}
+          - name: SERVICE_TYPE
+            value: {{ join "," $serviceType }}
+          {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
+          - name: DISABLE_JAVA_DBCONNECTOR
+            value: "true"
+          {{ end }}
           - name: DEPLOYMENT_TEMPLATE_TYPE
             value: {{ template "retool.deploymentTemplateType" . }}
           - name: DEPLOYMENT_TEMPLATE_VERSION
