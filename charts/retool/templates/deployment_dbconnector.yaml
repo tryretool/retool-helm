@@ -92,6 +92,12 @@ spec:
             value: {{ default "" .Values.config.auth.google.clientId }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
+
+          {{- if .Values.config.dbConnectorTimeout }}
+          - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+            value: {{ .Values.config.dbConnectorTimeout | quote }}
+          {{- end }}
+
           {{- if and (not .Values.externalSecrets.enabled) (not .Values.externalSecrets.externalSecretsOperator.enabled) }}
           - name: LICENSE_KEY
             valueFrom:
