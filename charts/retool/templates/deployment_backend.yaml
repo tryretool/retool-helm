@@ -124,6 +124,10 @@ spec:
             value: http://{{ template "retool.fullname" . }}-dbconnector
           - name: DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.port | quote }}
+          - name: DB_SSH_CONNECTOR_HOST
+            value: http://{{ template "retool.fullname" . }}-dbconnector
+          - name: DB_SSH_CONNECTOR_PORT
+            value: {{ .Values.dbconnector.port | quote }}
           {{- if $.Values.dbconnector.java.enabled }}
           - name: JAVA_DBCONNECTOR_HOST
             value: http://{{ template "retool.fullname" . }}-dbconnector
