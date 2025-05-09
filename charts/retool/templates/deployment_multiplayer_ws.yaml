@@ -5,8 +5,8 @@ metadata:
   name: {{ template "retool.multiplayer.name" . }}
   labels:
     {{- include "retool.labels" . | nindent 4 }}
-  {{- if .Values.service.labels }}
-  {{- range $key, $value := .Values.service.labels }}
+  {{- if .Values.multiplayer.service.labels }}
+  {{- range $key, $value := .Values.multiplayer.service.labels }}
     {{ $key }}: {{ $value | quote }}
   {{- end }}
   {{- end }}
@@ -25,12 +25,12 @@ spec:
   - name: http-server
     protocol: TCP
     {{- if .Values.multiplayer.service.externalPort }}
-    port: {{ .Values.service.externalPort }}
+    port: {{ .Values.multiplayer.service.externalPort }}
     {{- else }}
     port: 80
     {{- end }}
     {{- if .Values.multiplayer.service.internalPort }}
-    targetPort: {{ .Values.service.internalPort }}
+    targetPort: {{ .Values.multiplayer.service.internalPort }}
     {{- else }}
     targetPort: 3001
     {{- end }}
