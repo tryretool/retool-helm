@@ -26,7 +26,7 @@ spec:
   replicas: {{ .Values.multiplayer.replicaCount }}
   selector:
     matchLabels:
-      retoolService: {{ include "retool.name" . }}-multiplayer-ws
+      retoolService: {{ template "retool.multiplayer.name" . }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -38,7 +38,7 @@ spec:
 {{ toYaml .Values.multiplayer.annotations | indent 8 }}
 {{- end }}
       labels:
-        retoolService: {{ include "retool.name" . }}-multiplayer-ws
+        retoolService: {{ template "retool.multiplayer.name" . }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
