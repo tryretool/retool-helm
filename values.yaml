@@ -54,7 +54,9 @@ image:
 commandline:
   args: []
 
-env: {}
+env:
+  - name: BASE_DOMAIN
+    value: "CHANGE_ME"
 
 # Optionally specify additional environment variables to be populated from Kubernetes secrets.
 # Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
