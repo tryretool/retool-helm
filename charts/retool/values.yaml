@@ -580,6 +580,43 @@ codeExecutor:
     # tag:
     pullPolicy: IfNotPresent
 
+agents:
+  # Enable AI Agents
+  enabled: false 
+  
+  # Annotations for agent worker pods
+  annotations: {}
+
+  # Labels for agent worker pods
+  labels: {}
+  
+  # Agent configuration (can be overriden per worker type)
+  config: {}
+  
+  # Agent worker configuration
+  worker:
+    replicaCount: 1
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
+  # Agent eval worker configuration  
+  evalWorker:
+    replicaCount: 1
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
 retool-temporal-services-helm:
   # Enable to spin up a new Temporal Cluster alongside Retool
   enabled: false
