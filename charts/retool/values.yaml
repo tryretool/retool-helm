@@ -117,13 +117,25 @@ externalSecrets:
       name: aws-secretsmanager
       kind: SecretStore  # or ClusterSecretStore
 
-    # Array of name/path key/value pairs to use for the External Secrets Objects.
-    secretRef:
-      []
-      # - name: retool-config
-      #   path: global-retool-config
-      # - name: retool-db
-      #   path: global-retool-db-config
+    # Array of options to use for the ExternalSecret objects and their
+    # corresponding secretRef in pod envFrom.
+    #
+    # Example with only required fields:
+    #
+    #   secretRef:
+    #     - name: retool-config
+    #       path: global-retool-config
+    #
+    # Example with all optional fields:
+    #
+    #   secretRef
+    #     - name: extra-secrets
+    #       path: global-extra-secrets
+    #       creationPolicy: Owner
+    #       deletionPolicy: Retain
+    #       optional: true
+    #
+    secretRef: []
 
     # When true, uses kubernetes-client CRDs and not external-secrets CRDs
     # Defaults to true
