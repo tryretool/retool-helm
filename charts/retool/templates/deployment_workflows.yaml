@@ -245,6 +245,7 @@ spec:
         {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
         - secretRef:
             name: {{ .name }}
+            optional: {{ .optional | default false }}
         {{- end }}
         {{- end }}
         ports:
