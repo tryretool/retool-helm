@@ -6,13 +6,13 @@
   "containerName" "workflow-worker"
   "serviceType" "WORKFLOW_TEMPORAL_WORKER"
   "replicaCount" ((.Values.workflows.worker).replicaCount | default (.Values.workflows.replicaCount | default 1))
-  "resources" .Values.workflows.resources
-  "annotations" .Values.workflows.annotations
+  "resources" (.Values.workflows.resources | default .Values.resources)
+  "annotations" (.Values.workflows.annotations | default dict)
   "nodeOptions" ((.Values.workflows.config).nodeOptions | default "--max_old_space_size=1024")
   "healthcheckPort" "3005"
   "metricsPort" "9090"
   "prometheusAnnotations" true
-  "config" .Values.workflows.config
-  "dbConnectorTimeout" .Values.workflows.dbConnectorTimeout
-  "temporalConfig" .Values.workflows.temporal
+  "config" (.Values.workflows.config | default dict)
+  "dbConnectorTimeout" (.Values.workflows.dbConnectorTimeout | default (.Values.config.dbConnectorTimeout | default ""))
+  "temporalConfig" (.Values.workflows.temporal | default .Values.temporal)
 )) }}

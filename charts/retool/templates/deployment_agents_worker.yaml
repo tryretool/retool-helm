@@ -7,13 +7,13 @@
   "serviceType" "WORKFLOW_TEMPORAL_WORKER"
   "taskqueue" "agent"
   "replicaCount" ((.Values.agents.worker).replicaCount | default (.Values.agents.replicaCount | default 1))
-  "resources" .Values.agents.worker.resources
-  "annotations" .Values.agents.annotations
+  "resources" ((.Values.agents.worker).resources | default .Values.resources)
+  "annotations" (.Values.agents.annotations | default dict)
   "nodeOptions" ((.Values.agents.config).nodeOptions | default "--max_old_space_size=1024")
   "healthcheckPort" "3005"
   "metricsPort" "9090"
   "prometheusAnnotations" true
-  "config" .Values.agents.config
-  "dbConnectorTimeout" .Values.agents.dbConnectorTimeout
-  "temporalConfig" .Values.agents.temporal
+  "config" (.Values.agents.config | default dict)
+  "dbConnectorTimeout" (.Values.agents.dbConnectorTimeout | default (.Values.config.dbConnectorTimeout | default ""))
+  "temporalConfig" (.Values.workflows.temporal | default .Values.temporal)
 )) }}

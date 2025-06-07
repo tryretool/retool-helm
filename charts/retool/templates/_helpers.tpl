@@ -319,6 +319,8 @@ Set Temporal frontend host
 {{- define "retool.temporal.host" -}}
 {{- if (.Values.workflows.temporal).enabled -}}
 {{- .Values.workflows.temporal.host | quote -}}
+{{- else if (.Values.temporal).enabled -}}
+{{- .Values.temporal.host | quote -}}
 {{- else -}}
 {{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" -}}
 {{- end -}}
@@ -330,6 +332,8 @@ Set Temporal frontend port
 {{- define "retool.temporal.port" -}}
 {{- if (.Values.workflows.temporal).enabled -}}
 {{- .Values.workflows.temporal.port | quote -}}
+{{- else if (.Values.temporal).enabled -}}
+{{- .Values.temporal.port | quote -}}
 {{- else -}}
 {{- "7233" | quote -}}
 {{- end -}}
@@ -341,6 +345,8 @@ Set Temporal namespace
 {{- define "retool.temporal.namespace" -}}
 {{- if (.Values.workflows.temporal).enabled -}}
 {{- .Values.workflows.temporal.namespace | quote -}}
+{{- else if (.Values.temporal).enabled -}}
+{{- .Values.temporal.namespace | quote -}}
 {{- else -}}
 {{- "workflows" | quote -}}
 {{- end -}}

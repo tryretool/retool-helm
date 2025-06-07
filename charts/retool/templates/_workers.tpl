@@ -110,7 +110,8 @@ spec:
           {{- end }}
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
-          {{- if or (index $.Values "retool-temporal-services-helm" "enabled") ($worker.temporalConfig).enabled }}
+          {{- $temporalConfig := $worker.temporalConfig | default $.Values.workflows.temporal | default $.Values.temporal }}
+          {{- if or (index $.Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" $ }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
@@ -118,18 +119,18 @@ spec:
           - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
             value: {{ template "retool.temporal.namespace" $ }}
           {{- end }}
-          {{- if ($worker.temporalConfig).sslEnabled }}
+          {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"
-          {{- if (and ($worker.temporalConfig).sslCert ($worker.temporalConfig).sslKey) }}
+          {{- if (and ($temporalConfig).sslCert ($temporalConfig).sslKey) }}
           - name: WORKFLOW_TEMPORAL_TLS_CRT
-            value: {{ $worker.temporalConfig.sslCert }}
+            value: {{ $temporalConfig.sslCert }}
           - name: WORKFLOW_TEMPORAL_TLS_KEY
             valueFrom:
               secretKeyRef:
-              {{- if ($worker.temporalConfig).sslKeySecretName }}
-                name: {{ $worker.temporalConfig.sslKeySecretName }}
-                key: {{ ($worker.temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
+              {{- if ($temporalConfig).sslKeySecretName }}
+                name: {{ $temporalConfig.sslKeySecretName }}
+                key: {{ ($temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
               {{- else }}
                 name: {{ template "retool.fullname" $ }}
                 key: "temporal-tls-key"
