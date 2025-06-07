@@ -128,7 +128,7 @@ spec:
           - name: WORKFLOW_TEMPORAL_TLS_KEY
             valueFrom:
               secretKeyRef:
-              {{- if ($temporalConfig).sslKeySecretName }}
+                {{- if ($temporalConfig).sslKeySecretName }}
                 name: {{ $temporalConfig.sslKeySecretName }}
                 key: {{ ($temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
               {{- else }}

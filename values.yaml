@@ -560,11 +560,8 @@ codeExecutor:
 
 agents:
   # Enable AI Agents
-  enabled: false
+  enabled: false 
   
-  # Annotations for agent worker pods
-  annotations: {}
-
   # Labels for agent worker pods
   labels: {}
   
@@ -595,9 +592,12 @@ agents:
         cpu: 1000m
         memory: 2048Mi
 
+  # Annotations for agent worker pods
+  annotations: {}
+
 # SHARED TEMPORAL CONFIGURATION
-# This configuration is shared between workflows and agents workers.
-# In order to use either workflows or agents, temporal must be configured.
+# This configuration is shared between all workers.
+# In order to use workers, temporal must be configured.
 
 # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
 # Set enabled to true if using a pre-existing temporal cluster instead of deploying a new one.
