@@ -560,14 +560,14 @@ codeExecutor:
 
 agents:
   # Enable AI Agents
-  enabled: false 
-  
+  enabled: false
+
   # Labels for agent worker pods
   labels: {}
-  
+
   # Agent configuration (can be overriden per worker type)
   config: {}
-  
+
   # Agent worker configuration
   worker:
     replicaCount: 1
@@ -580,7 +580,7 @@ agents:
         cpu: 1000m
         memory: 2048Mi
 
-  # Agent eval worker configuration  
+  # Agent eval worker configuration
   evalWorker:
     replicaCount: 1
 
