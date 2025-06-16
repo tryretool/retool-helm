@@ -270,6 +270,9 @@ Usage: (include "retool.workflows.enabled" .)
 {{- else -}}
   {{- $output = "" -}}
 {{- end -}}
+{{- if (eq (toString .Values.agents.enabled) "true") -}} {{/* workflows (backend) is required to use agents */}}
+  {{- $output = "1" -}}
+{{- end -}}
 {{- $output -}}
 {{- end -}}
 
