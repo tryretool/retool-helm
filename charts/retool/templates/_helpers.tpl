@@ -316,14 +316,18 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 {{- end -}}
 
+{{/* Global Temporal configuration */}}
+{{- define "retool.temporalConfig" -}}
+{{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
+{{- end -}}
+
 {{/*
 Set Temporal frontend host
 */}}
 {{- define "retool.temporal.host" -}}
-{{- if (.Values.workflows.temporal).enabled -}}
-{{- .Values.workflows.temporal.host | quote -}}
-{{- else if (.Values.temporal).enabled -}}
-{{- .Values.temporal.host | quote -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if $temporalConfig.enabled -}}
+{{- $temporalConfig.host | quote -}}
 {{- else -}}
 {{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" -}}
 {{- end -}}
@@ -333,10 +337,9 @@ Set Temporal frontend host
 Set Temporal frontend port
 */}}
 {{- define "retool.temporal.port" -}}
-{{- if (.Values.workflows.temporal).enabled -}}
-{{- .Values.workflows.temporal.port | quote -}}
-{{- else if (.Values.temporal).enabled -}}
-{{- .Values.temporal.port | quote -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if $temporalConfig.enabled -}}
+{{- $temporalConfig.port | quote -}}
 {{- else -}}
 {{- "7233" | quote -}}
 {{- end -}}
@@ -346,10 +349,9 @@ Set Temporal frontend port
 Set Temporal namespace
 */}}
 {{- define "retool.temporal.namespace" -}}
-{{- if (.Values.workflows.temporal).enabled -}}
-{{- .Values.workflows.temporal.namespace | quote -}}
-{{- else if (.Values.temporal).enabled -}}
-{{- .Values.temporal.namespace | quote -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if $temporalConfig.enabled -}}
+{{- $temporalConfig.namespace | quote -}}
 {{- else -}}
 {{- "workflows" | quote -}}
 {{- end -}}

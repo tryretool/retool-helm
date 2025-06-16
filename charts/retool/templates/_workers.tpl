@@ -110,7 +110,7 @@ spec:
           {{- end }}
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
-          {{- $temporalConfig := $worker.temporalConfig | default $.Values.workflows.temporal | default $.Values.temporal }}
+          {{- $temporalConfig := (include "retool.temporalConfig" $ | fromYaml) -}}
           {{- if or (index $.Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" $ }}

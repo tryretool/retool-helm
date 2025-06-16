@@ -22,7 +22,5 @@
     "nodeOptions" ((.Values.workflows.config).nodeOptions | default "--max_old_space_size=1024")
     "config" (.Values.workflows.config | default dict)
     "dbConnectorTimeout" (.Values.workflows.dbConnectorTimeout | default (.Values.config.dbConnectorTimeout | default ""))
-
-    "temporalConfig" (.Values.workflows.temporal | default .Values.temporal)
   )
 ) }}
