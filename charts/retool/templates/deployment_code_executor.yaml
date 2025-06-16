@@ -1,4 +1,4 @@
-{{- if include "retool.codeExecutor.enabled" . }}
+{{- if include "retool.workflows.enabled" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
