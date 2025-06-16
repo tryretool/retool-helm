@@ -5,7 +5,8 @@
 
     "name" (include "retool.agentEvalWorker.name" .)
     "selectorLabels" (include "retool.agentEvalWorker.selectorLabels" .)
-    "labels" (include "retool.agentEvalWorker.labels" .)
+    "workerLabels" (include "retool.agentEvalWorker.labels" .)
+    "labels" (.Values.agents.labels | default dict)
 
     "containerName" "agent-eval-worker"
     "serviceType" "AGENT_EVAL_TEMPORAL_WORKER"

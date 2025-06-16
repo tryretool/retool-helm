@@ -10,7 +10,7 @@ metadata:
   name: {{ $worker.name }}
   labels:
     {{- $worker.selectorLabels | nindent 4 }}
-    {{- $worker.labels | nindent 4 }}
+    {{- $worker.workerLabels | nindent 4 }}
     {{- include "retool.labels" $ | nindent 4 }}
 {{- if $.Values.deployment.annotations }}
   annotations:
@@ -41,10 +41,13 @@ spec:
 {{- end }}
       labels:
         {{- $worker.selectorLabels | nindent 8 }}
-        {{- $worker.labels | nindent 8 }}
+        {{- $worker.workerLabels | nindent 8 }}
         {{- include "retool.labels" $ | nindent 8 }}
 {{- if $.Values.podLabels }}
 {{ toYaml $.Values.podLabels | indent 8 }}
+{{- end }}
+{{- if $worker.labels }}
+{{ toYaml $worker.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" $ }}

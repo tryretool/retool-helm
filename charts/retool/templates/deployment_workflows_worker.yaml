@@ -5,7 +5,8 @@
 
     "name" (include "retool.workflowWorker.name" .)
     "selectorLabels" (include "retool.workflowWorker.selectorLabels" .)
-    "labels" (include "retool.workflowWorker.labels" .)
+    "workerLabels" (include "retool.workflowWorker.labels" .)
+    "labels" (.Values.workflows.labels | default dict)
 
     "containerName" "workflow-worker"
     "serviceType" "WORKFLOW_TEMPORAL_WORKER"
