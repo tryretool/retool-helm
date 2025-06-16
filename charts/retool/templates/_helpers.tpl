@@ -338,6 +338,29 @@ Set multiplayer service name
 {{ template "retool.fullname" . }}-multiplayer-ws
 {{- end -}}
 
+
+{{/*
+Set code executor image tag
+Usage: (template "retool.codeExecutor.image.tag" .)
+*/}}
+{{- define "retool.codeExecutor.image.tag" -}}
+{{- if .Values.codeExecutor.image.tag -}}
+  {{- .Values.codeExecutor.image.tag -}}
+{{- else if .Values.image.tag  -}}
+  {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
+  {{- if (eq .Values.image.tag "latest") -}}
+    {{- fail "If using image.tag=latest (not recommended, select an explicit tag instead) and enabling codeExecutor, explicitly set codeExecutor.image.tag" }}
+  {{- else if $retool_version_with_ce -}}
+    {{- .Values.image.tag -}}
+  {{- else -}}
+    {{- "1.1.0" -}}
+  {{- end -}}
+{{- else -}}
+  {{- fail "Please set a value for .Values.image.tag" }}
+{{- end -}}
+{{- end -}}
+
 {{- define "retool_version_with_java_dbconnector_opt_out" -}}
 {{- $output := "" -}}
 {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
