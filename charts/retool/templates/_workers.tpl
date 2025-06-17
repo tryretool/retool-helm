@@ -349,9 +349,10 @@ spec:
       imagePullSecrets:
 {{ toYaml $.Values.image.pullSecrets | indent 8 }}
     {{- end }}
-    {{- if $.Values.affinity }}
+    {{- $affinity := $workerValues.affinity | default $parentValues.affinity | default $.Values.affinity -}}
+    {{- if $affinity }}
       affinity:
-{{ toYaml $.Values.affinity | indent 8 }}
+{{ toYaml $affinity | indent 8 }}
     {{- end }}
     {{- if $.Values.nodeSelector }}
       nodeSelector:
