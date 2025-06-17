@@ -1,53 +1,81 @@
+{{- define "retool.workers" -}}
+- parent: agents
+  type: agent
+- parent: agents
+  type: agentEval
+- parent: workflows
+  type: workflow
+{{- end -}}
+
+{{- define "retool.worker.deployments" -}}
+{{- $root := . -}}
+{{- $workers := include "retool.workers" . | fromYamlArray -}}
+
+{{- range $worker := $workers -}}
+{{- if eq (include (printf "retool.%s.enabled" $worker.parent) $root) "1" -}}
+{{ include "retool.worker.deployment" (dict "root" $root "parent" $worker.parent "workerType" $worker.type) }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "retool.worker.deployment" -}}
+{{- $ := .root -}}
+{{- $parent := .parent -}}
+{{- $workerType := .workerType -}}
+{{- $parentValues := index $.Values $parent -}}
 
-{{- $ := .context -}}
-{{- $worker := .worker -}}
+{{- $workerValues := $parentValues.worker -}}
+{{- if eq $workerType "agentEval" -}}
+  {{- $workerValues = $parentValues.evalWorker -}}
+{{- end -}}
 
-{{- if $worker.enabled }}
+{{- $healthcheckPort := ternary 3012 3005 (eq $workerType "agentEval") -}}
+{{- $serviceType := ternary "AGENT_EVAL_TEMPORAL_WORKER" "WORKFLOW_TEMPORAL_WORKER" (eq $workerType "agentEval") -}}
+{{- $taskqueue := ternary "agent-eval" (ternary "agent" "" (eq $workerType "agent")) (eq $workerType "agentEval") -}}
+
+{{/* yaml starts here */}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $worker.name }}
+  name: {{ include (printf "retool.%sWorker.name" $workerType) $ }}
   labels:
-    {{- $worker.selectorLabels | nindent 4 }}
-    {{- $worker.workerLabels | nindent 4 }}
+    {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 4 }}
+    {{- include (printf "retool.%sWorker.labels" $workerType) $ | nindent 4 }}
     {{- include "retool.labels" $ | nindent 4 }}
 {{- if $.Values.deployment.annotations }}
   annotations:
 {{ toYaml $.Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ $worker.replicaCount }}
+  replicas: {{ $workerValues.replicaCount | default $parentValues.replicaCount | default 1 }}
   selector:
     matchLabels:
-      {{- $worker.selectorLabels | nindent 6 }}
+      {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 6 }}
   revisionHistoryLimit: {{ $.Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
-{{- if $worker.prometheusAnnotations }}
-        prometheus.io/job: {{ $worker.name }}
+        prometheus.io/job: {{ include (printf "retool.%sWorker.name" $workerType) $ }}
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '{{ $worker.metricsPort }}'
-{{- end }}
+        prometheus.io/port: '9090'
 {{- if $.Values.podAnnotations }}
 {{ toYaml $.Values.podAnnotations | indent 8 }}
 {{- end }}
 {{- if $.Values.backend.annotations }}
 {{ toYaml $.Values.backend.annotations | indent 8 }}
 {{- end }}
-{{- if $worker.annotations }}
-{{ toYaml $worker.annotations | indent 8 }}
+{{- if $parentValues.annotations }}
+{{ toYaml $parentValues.annotations | indent 8 }}
 {{- end }}
       labels:
-        {{- $worker.selectorLabels | nindent 8 }}
-        {{- $worker.workerLabels | nindent 8 }}
+        {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 8 }}
+        {{- include (printf "retool.%sWorker.labels" $workerType) $ | nindent 8 }}
         {{- include "retool.labels" $ | nindent 8 }}
 {{- if $.Values.podLabels }}
 {{ toYaml $.Values.podLabels | indent 8 }}
 {{- end }}
-{{- if $worker.labels }}
-{{ toYaml $worker.labels | indent 8 }}
+{{- if $parentValues.labels }}
+{{ toYaml $parentValues.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" $ }}
@@ -62,7 +90,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ $worker.containerName }}
+      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else }}{{ $workerType }}-worker{{ end }}
         image: "{{ $.Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" $.Values.image.tag }}"
         imagePullPolicy: {{ $.Values.image.pullPolicy }}
         args:
@@ -79,15 +107,13 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" $ }}
           - name: NODE_ENV
             value: production
-          {{- if $worker.nodeOptions }}
           - name: NODE_OPTIONS
-            value: {{ $worker.nodeOptions }}
-          {{- end }}
+            value: {{ $parentValues.config.nodeOptions | default "--max_old_space_size=1024" }}
           - name: SERVICE_TYPE
-            value: {{ $worker.serviceType }}
-          {{- if $worker.taskqueue }}
+            value: {{ $serviceType }}
+          {{- if $taskqueue }}
           - name: WORKER_TEMPORAL_TASKQUEUE
-            value: {{ $worker.taskqueue }}
+            value: {{ $taskqueue }}
           {{- end }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
@@ -102,10 +128,10 @@ spec:
           - name: JAVA_DBCONNECTOR_PORT
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
-          {{ end }}
+          {{- end }}
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
-          {{- if $worker.dbConnectorTimeout }}
-            value: {{ $worker.dbConnectorTimeout | quote}}
+          {{- if $parentValues.dbConnectorTimeout }}
+            value: {{ $parentValues.dbConnectorTimeout | quote}}
           {{- else if $.Values.config.dbConnectorTimeout }}
             value: {{ $.Values.config.dbConnectorTimeout | quote}}
           {{- else }}
@@ -140,9 +166,9 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
-          {{- if $worker.healthcheckPort }}
+          {{- if $healthcheckPort }}
           - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
-            value: "{{ $worker.healthcheckPort }}"
+            value: "{{ $healthcheckPort }}"
           {{- end }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ include "retool.workflowBackend.name" $ }}
@@ -167,10 +193,10 @@ spec:
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
 
-          {{- if and (($worker.config.otelCollector).enabled) (($worker.config.otelCollector).endpoint) }}
+          {{- if and (($parentValues.config.otelCollector).enabled) (($parentValues.config.otelCollector).endpoint) }}
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
-             value: {{ ($worker.config.otelCollector).endpoint }}
-          {{- else if ($worker.config.otelCollector).enabled }}
+            value: {{ ($parentValues.config.otelCollector).endpoint }}
+          {{- else if ($parentValues.config.otelCollector).enabled }}
           - name: HOST_IP
             valueFrom:
               fieldRef:
@@ -249,7 +275,7 @@ spec:
           {{- with $.Values.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
-          {{- with $worker.config.environmentVariables }}
+          {{- with $parentValues.config.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
         {{- if $.Values.externalSecrets.enabled }}
@@ -270,22 +296,18 @@ spec:
         {{- end }}
         {{- end }}
         ports:
-        {{- if $worker.healthcheckPort }}
-        - containerPort: {{ $worker.healthcheckPort }}
+        - containerPort: {{ $healthcheckPort }}
           name: http-server
           protocol: TCP
-        {{- end }}
-        {{- if $worker.metricsPort }}
-        - containerPort: {{ $worker.metricsPort }}
+        - containerPort: 9090
           name: http-metrics
           protocol: TCP
-        {{- end }}
 
 {{- if $.Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
             path: {{ $.Values.livenessProbe.path }}
-            port: {{ $worker.healthcheckPort | default $.Values.service.internalPort }}
+            port: {{ $healthcheckPort }}
           initialDelaySeconds: {{ $.Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ $.Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ $.Values.livenessProbe.failureThreshold }}
@@ -294,14 +316,14 @@ spec:
         readinessProbe:
           httpGet:
             path: {{ $.Values.readinessProbe.path }}
-            port: {{ $worker.healthcheckPort | default $.Values.service.internalPort }}
+            port: {{ $healthcheckPort }}
           initialDelaySeconds: {{ $.Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ $.Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ $.Values.readinessProbe.successThreshold }}
           periodSeconds: {{ $.Values.readinessProbe.periodSeconds }}
 {{- end }}
         resources:
-{{ toYaml $worker.resources | indent 10 }}
+{{ toYaml ($workerValues.resources | default $parentValues.resources | default $.Values.resources) | indent 10 }}
         volumeMounts:
         {{- range $configFile := (keys $.Values.files) }}
         - name: {{ template "retool.name" $ }}
@@ -363,33 +385,29 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ $worker.name }}
+  name: {{ include (printf "retool.%sWorker.name" $workerType) $ }}
 spec:
   {{ toYaml $.Values.podDisruptionBudget }}
   selector:
     matchLabels:
-      {{- $worker.selectorLabels | nindent 6 }}
+      {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 6 }}
 {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $worker.name }}
+  name: {{ include (printf "retool.%sWorker.name" $workerType) $ }}
 spec:
   selector:
-    {{- $worker.selectorLabels | nindent 4 }}
+    {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 4 }}
   ports:
-{{- if $worker.healthcheckPort }}
   - protocol: TCP
-    port: {{ $worker.healthcheckPort }}
-    targetPort: {{ $worker.healthcheckPort }}
+    port: {{ $healthcheckPort }}
+    targetPort: {{ $healthcheckPort }}
     name: http-server
-{{- end }}
-{{- if $worker.metricsPort }}
   - protocol: TCP
-    port: {{ $worker.metricsPort }}
+    port: 9090
     targetPort: http-metrics
     name: http-metrics
-{{- end }}
-{{- end }}
+---
 {{- end }}
