@@ -687,6 +687,69 @@ temporal:
   # sslKeySecretName:
   # sslKeySecretKey
 
+agents:
+  # Enable AI Agents
+  # NOTE: at present, agents may only be used in combination with the `agents-preview` image tag
+  enabled: false
+
+  # Labels for agent worker pods
+  labels: {}
+
+  # Agent configuration (can be overriden per worker type)
+  config: {}
+
+  # Agent worker configuration
+  worker:
+    replicaCount: 1
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
+  # Agent eval worker configuration
+  evalWorker:
+    replicaCount: 1
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
+  # Annotations for agent worker pods
+  annotations: {}
+
+# SHARED TEMPORAL CONFIGURATION
+# This configuration is shared between all workers.
+# In order to use workers, temporal must be configured.
+
+# IMPORTANT: Incompatible with retool-temporal-services-helm subchart
+# Set enabled to true if using a pre-existing temporal cluster instead of deploying a new one.
+temporal:
+  # set enabled to true if using a pre-existing temporal cluster
+  enabled: false
+  # discoverable service name for the temporal frontend service
+  # host:
+  # discoverable service port for the temporal frontend service
+  # port:
+  # temporal namespace to use for Temporal Workflows related to Retool
+  # namespace:
+  # whether to use TLS/SSL when connecting to Temporal
+  # sslEnabled: false
+  # base64 encoded string of TLS/SSL client certificate to use for mTLS
+  # sslCert:
+  # base64 encoded string of TLS/SSL client certificate secret key to use for mTLS
+  # sslKey:
+  # recommended alternative to sslKey. Name and key of k8s secret containing base64 encoded sslKey
+  # sslKeySecretName:
+  # sslKeySecretKey
+
 retool-temporal-services-helm:
   # Enable to spin up a new Temporal Cluster alongside Retool
   enabled: false
