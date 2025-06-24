@@ -186,10 +186,8 @@ spec:
             value: {{ template "retool.postgresql.user" $ }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
-          {{- if include "retool.codeExecutor.enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" $ }}
-          {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
 
