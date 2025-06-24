@@ -139,7 +139,8 @@ spec:
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
             value: {{ .Values.config.dbConnectorTimeout | quote }}
           {{- end }}
-          {{- if and (include "retool.workflows.enabled" .) (or (index .Values "retool-temporal-services-helm" "enabled") (.Values.workflows.temporal.enabled)) }}
+          {{- $temporalConfig := (include "retool.temporalConfig" $ | fromYaml) }}
+          {{- if and (include "retool.workflows.enabled" .) (or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled) }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
@@ -151,18 +152,18 @@ spec:
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
           {{- end }}
-          {{- if (.Values.workflows.temporal).sslEnabled }}
+          {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"
-          {{- if (and (.Values.workflows.temporal).sslCert (.Values.workflows.temporal).sslKey) }}
+          {{- if (and ($temporalConfig).sslCert ($temporalConfig).sslKey) }}
           - name: WORKFLOW_TEMPORAL_TLS_CRT
-            value: {{ .Values.workflows.temporal.sslCert }}
+            value: {{ $temporalConfig.sslCert }}
           - name: WORKFLOW_TEMPORAL_TLS_KEY
             valueFrom:
               secretKeyRef:
-              {{- if (.Values.workflows.temporal).sslKeySecretName }}
-                name: {{ .Values.workflows.temporal.sslKeySecretName }}
-                key: {{ .Values.workflows.temporal.sslKeySecretKey | default "temporal-tls-key" }}
+              {{- if ($temporalConfig).sslKeySecretName }}
+                name: {{ $temporalConfig.sslKeySecretName }}
+                key: {{ ($temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
               {{- else }}
                 name: {{ template "retool.fullname" . }}
                 key: "temporal-tls-key"
