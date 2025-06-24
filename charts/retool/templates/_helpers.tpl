@@ -310,10 +310,11 @@ Set agents enabled
 Usage: (include "retool.agents.enabled" .)
 */}}
 {{- define "retool.agents.enabled" -}}
+{{- $output := "" -}}
 {{- if (eq (toString .Values.agents.enabled) "true") -}}
-1
-{{- else -}}
+  {{- $output = "1" -}}
 {{- end -}}
+{{- $output -}}
 {{- end -}}
 
 {{/* Global Temporal configuration */}}
