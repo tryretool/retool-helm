@@ -533,6 +533,12 @@ multiplayer:
       - path: /api/multiplayer
         port: 80
 
+  service:
+    externalPort: 80
+    internalPort: 3001
+    annotations: {}
+    labels: {}
+
 codeExecutor:
   # enabled by default from Chart version 6.0.15 and Retool image 3.20.15 onwards
   # explicitly set other fields as needed
