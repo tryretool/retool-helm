@@ -1,0 +1,23 @@
+{{- if not .Values.priorityClassName }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ include "retool.fullname" . }}-jobs-runner-priority
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+value: 20
+preemptionPolicy: Never
+globalDefault: false
+description: "PriorityClass for Retool jobs runner pods"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ include "retool.fullname" . }}-backend-priority
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+value: 10
+preemptionPolicy: Never
+globalDefault: false
+description: "PriorityClass for Retool backend pods"
+{{- end }}
