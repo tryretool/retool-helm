@@ -45,7 +45,9 @@ spec:
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
-      priorityClassName: "{{ .Values.priorityClassName }}"
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- else }}
+      priorityClassName: {{ printf "%s-jobs-runner-priority" (include "retool.fullname" .) | quote }}
       {{- end }}
 {{- if .Values.initContainers }}
       initContainers:
