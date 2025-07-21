@@ -363,10 +363,7 @@ ui:
   labels: {}
 
 workflows:
-  # enabled by default from Chart version 6.0.2 and Retool image 3.6.11 onwards
-  # explicitly set other fields as needed
-
-  # enabled: true
+  enabled: false
 
   # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services-helm/values.yaml)
   # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
@@ -518,12 +515,12 @@ multiplayer:
     labels: {}
 
 codeExecutor:
-  # enabled by default from Chart version 6.0.15 and Retool image 3.20.15 onwards
+  # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed
 
-  # this field is deprecated as of Chart version 6.5.0 and is now controlled with
-  #   the `workflows.enabled` flag
-  # enabled: true
+  image:
+    repository: tryretool/code-executor-service
+    pullPolicy: IfNotPresent
 
   replicaCount: 1
 
@@ -559,12 +556,6 @@ codeExecutor:
   # use nsjail. Without nsjail, all code is run without sandboxing within your deployment.
   securityContext:
     privileged: true
-
-  image:
-    repository: tryretool/code-executor-service
-    # defaults to image.tag if >= 3.20.15, otherwise defaults to 1.1.0; explicitly set to override.
-    # tag:
-    pullPolicy: IfNotPresent
 
 agents:
   # Enable AI Agents
