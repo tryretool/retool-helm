@@ -363,7 +363,10 @@ ui:
   labels: {}
 
 workflows:
-  enabled: false
+  # enabled by default from Chart version 6.0.2 and Retool image 3.6.11 onwards
+  # explicitly set other fields as needed
+
+  # enabled: true
 
   # ADVANCED: The temporal cluster can be scaled separately in the subchart (charts/retool-temporal-services-helm/values.yaml)
   # If your needs require scaling temporal, reach out to us for guidance -- it is likely the bottleneck is DB or worker replicaCount
