@@ -568,7 +568,6 @@ codeExecutor:
 
 agents:
   # Enable AI Agents
-  # NOTE: at present, agents may only be used in combination with the `agents-preview` image tag
   enabled: false
 
   # Labels for agent worker pods
