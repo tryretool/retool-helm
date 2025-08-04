@@ -50,7 +50,7 @@ spec:
 {{- end }}
       containers:
       - name: code-executor
-        image: "{{ .Values.codeExecutor.image.repository }}:{{ .Values.image.tag }}"
+        image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           {{ if .Values.codeExecutor.securityContext }}

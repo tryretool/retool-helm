@@ -403,3 +403,52 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- end -}}
 {{- $output -}}
 {{- end -}}
+
+{{/*
+Set Code Executor enabled
+Usage: (include "retool.codeExecutor.enabled" .)
+*/}}
+{{- define "retool.codeExecutor.enabled" -}}
+{{- $output := "" -}}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ) ) }}
+{{- if or
+    (eq (toString .Values.codeExecutor.enabled) "true")
+    (eq (toString .Values.codeExecutor.enabled) "false")
+-}}
+  {{- if (eq (toString .Values.codeExecutor.enabled) "true") -}}
+    {{- $output = "1" -}}
+  {{- else -}}
+    {{- $output = "" -}}
+  {{- end -}}
+{{- else if empty (include "retool.codeExecutor.image.tag" .) -}}
+  {{- $output = "" -}}
+{{- else if (or (contains "stable" (include "retool.codeExecutor.image.tag" .)) (contains "edge" (include "retool.codeExecutor.image.tag" .))) -}}
+  {{- $output = "1" -}}
+{{- else if $retool_version_with_ce -}}
+  {{- $output = "1" -}}
+{{- else -}}
+  {{- $output = "" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Set code executor image tag
+Usage: (template "retool.codeExecutor.image.tag" .)
+*/}}
+{{- define "retool.codeExecutor.image.tag" -}}
+{{- if .Values.codeExecutor.image.tag -}}
+  {{- .Values.codeExecutor.image.tag -}}
+{{- else if .Values.image.tag  -}}
+  {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
+  {{- if $retool_version_with_ce -}}
+    {{- .Values.image.tag -}}
+  {{- else -}}
+    {{- "1.1.0" -}}
+  {{- end -}}
+{{- else -}}
+  {{- fail "Please set a value for .Values.image.tag" }}
+{{- end -}}
+{{- end -}}
