@@ -518,7 +518,7 @@ multiplayer:
     labels: {}
 
 codeExecutor:
-  # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
+  # as of Chart version 6.8.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed
 
   image:
