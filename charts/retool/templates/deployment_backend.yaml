@@ -151,6 +151,8 @@ spec:
           {{- if include "retool.workflows.enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
           {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
@@ -170,8 +172,6 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
-          - name: CODE_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.codeExecutor.name" . }}
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
