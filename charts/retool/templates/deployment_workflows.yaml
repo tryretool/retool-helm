@@ -99,6 +99,10 @@ spec:
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}
+          {{- if not (or (hasKey .Values.env "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE") (hasKey .Values.environmentVariables "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE")) }}
+          - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+            value: "100"
+          {{- end }}
           - name: DBCONNECTOR_QUERY_TIMEOUT_MS
           {{- if .Values.workflows.dbConnectorTimeout }}
             value: {{ .Values.workflows.dbConnectorTimeout | quote}}
