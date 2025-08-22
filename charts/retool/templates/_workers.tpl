@@ -115,7 +115,13 @@ spec:
           - name: WORKER_TEMPORAL_TASKQUEUE
             value: {{ $taskqueue }}
           {{- end }}
-          {{- if not (or (hasKey .Values.env "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE") (hasKey .Values.environmentVariables "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE")) }}
+          {{- $poolMaxSet := false }}
+          {{- range .Values.environmentVariables }}
+          {{- if eq .name "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE" }}
+          {{- $poolMaxSet = true }}
+          {{- end }}
+          {{- end }}
+          {{- if not (or (hasKey .Values.env "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE") $poolMaxSet) }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
           {{- end }}
