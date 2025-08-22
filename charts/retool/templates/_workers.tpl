@@ -115,8 +115,9 @@ spec:
           - name: WORKER_TEMPORAL_TASKQUEUE
             value: {{ $taskqueue }}
           {{- end }}
+          {{- $envVars := default (list) .Values.environmentVariables }}
           {{- $poolMaxSet := false }}
-          {{- range .Values.environmentVariables }}
+          {{- range $envVars }}
           {{- if eq .name "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE" }}
           {{- $poolMaxSet = true }}
           {{- end }}
