@@ -135,7 +135,7 @@ spec:
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
           {{- end }}
-          {{- if .Values.config.postgresPoolMaxSize t }}
+          {{- if .Values.config.postgresPoolMaxSize }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: {{ .Values.config.postgresPoolMaxSize | quote }}
           {{- end }}
