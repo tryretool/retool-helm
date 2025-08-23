@@ -115,17 +115,8 @@ spec:
           - name: WORKER_TEMPORAL_TASKQUEUE
             value: {{ $taskqueue }}
           {{- end }}
-          {{- $envVars := default (list) .Values.environmentVariables }}
-          {{- $poolMaxSet := false }}
-          {{- range $envVars }}
-          {{- if eq .name "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE" }}
-          {{- $poolMaxSet = true }}
-          {{- end }}
-          {{- end }}
-          {{- if not (or (hasKey .Values.env "DBCONNECTOR_POSTGRES_POOL_MAX_SIZE") $poolMaxSet) }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
             value: "100"
-          {{- end }}
           {{- if $.Values.dbconnector.enabled }}
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" $ }}-dbconnector
