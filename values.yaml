@@ -10,6 +10,8 @@ config:
   useInsecureCookies: false
   # Timeout for queries, in ms.
   # dbConnectorTimeout: 120000
+  # max postgres pool connections for backend
+  postgresPoolMaxSize: 10
   auth:
     google:
       clientId:
