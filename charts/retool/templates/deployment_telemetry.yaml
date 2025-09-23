@@ -58,6 +58,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: PROCFS_ROOT
+            value: "/host/proc"
+          - name: SYSFS_ROOT
+            value: "/host/sys"
           {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
@@ -116,6 +120,18 @@ spec:
             subPath: "grafana-agent-custom.river"
             readOnly: true
           {{- end }}
+          # - name: var-log
+          #   mountPath: "/var/log/"
+          #   readOnly: true
+          # - name: var-lib
+          #   mountPath: "/var/lib"
+          #   readOnly: true
+          # - name: procfs
+          #   mountPath: "/host/proc"
+          #   readOnly: true
+          # - name: sysfs
+          #   mountPath: "/host/sys"
+          #   readOnly: true
           {{- if .Values.telemetry.extraVolumeMounts }}
           {{- .Values.telemetry.extraVolumeMounts | toYaml | nindent 10 }}
           {{- end }}
@@ -141,6 +157,18 @@ spec:
           configMap:
             name: {{ include "retool.fullname" . }}-telemetry
         {{- end }}
+        # - name: var-log
+        #   hostPath:
+        #     path: "/var/log/"
+        # - name: var-lib
+        #   hostPath:
+        #     path: "/var/lib/"
+        # - name: procfs
+        #   hostPath:
+        #     path: "/proc"
+        # - name: sysfs
+        #   hostPath:
+        #     path: "/sys"
         {{- if .Values.telemetry.extraVolumes }}
         {{- .Values.telemetry.extraVolumes | toYaml | nindent 8 }}
         {{- end }}

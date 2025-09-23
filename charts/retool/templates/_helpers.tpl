@@ -125,6 +125,39 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 telemetry.retool.com/service-name: code-executor
 {{- end }}
 
+{{/*
+Selector labels for agent worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.agentWorker.selectorLabels" -}}
+retoolService: {{ include "retool.agentWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for agent worker.
+*/}}
+{{- define "retool.agentWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: agent-worker
+{{- end }}
+
+{{/*
+Selector labels for agent eval worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.agentEvalWorker.selectorLabels" -}}
+retoolService: {{ include "retool.agentEvalWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for agent eval worker.
+*/}}
+{{- define "retool.agentEvalWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentEvalWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: agent-eval-worker
+{{- end }}
 
 {{/*
 Create the name of the service account to use
@@ -237,45 +270,48 @@ Usage: (include "retool.workflows.enabled" .)
 {{- else -}}
   {{- $output = "" -}}
 {{- end -}}
+{{- if (eq (toString .Values.agents.enabled) "true") -}} {{/* workflows (backend) is required to use agents */}}
+  {{- $output = "1" -}}
+{{- end -}}
 {{- $output -}}
 {{- end -}}
 
 {{/*
-Set Code Executor enabled
-Usage: (include "retool.codeExecutor.enabled" .)
+Set agents enabled
+Usage: (include "retool.agents.enabled" .)
 */}}
-{{- define "retool.codeExecutor.enabled" -}}
+{{- define "retool.agents.enabled" -}}
 {{- $output := "" -}}
-{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
-{{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp (include "retool.codeExecutor.image.tag" .) ) ) ) }}
-{{- if or
-    (eq (toString .Values.codeExecutor.enabled) "true")
-    (eq (toString .Values.codeExecutor.enabled) "false")
--}}
-  {{- if (eq (toString .Values.codeExecutor.enabled) "true") -}}
-    {{- $output = "1" -}}
-  {{- else -}}
-    {{- $output = "" -}}
-  {{- end -}}
-{{- else if empty (include "retool.codeExecutor.image.tag" .) -}}
-  {{- $output = "" -}}
-{{- else if (or (contains "stable" (include "retool.codeExecutor.image.tag" .)) (contains "edge" (include "retool.codeExecutor.image.tag" .))) -}}
+{{- if (eq (toString .Values.agents.enabled) "true") -}}
   {{- $output = "1" -}}
-{{- else if $retool_version_with_ce -}}
-  {{- $output = "1" -}}
-{{- else -}}
-  {{- $output = "" -}}
 {{- end -}}
 {{- $output -}}
 {{- end -}}
 
+{{/*
+Set agents enabled
+Usage: (include "retool.agents.enabled" .)
+*/}}
+{{- define "retool.agents.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.agents.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/* Global Temporal configuration */}}
+{{- define "retool.temporalConfig" -}}
+{{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
+{{- end -}}
 
 {{/*
 Set Temporal frontend host
 */}}
 {{- define "retool.temporal.host" -}}
-{{- if (.Values.workflows.temporal).enabled -}}
-{{- .Values.workflows.temporal.host | quote -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if $temporalConfig.enabled -}}
+{{- $temporalConfig.host | quote -}}
 {{- else -}}
 {{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" -}}
 {{- end -}}
@@ -285,8 +321,9 @@ Set Temporal frontend host
 Set Temporal frontend port
 */}}
 {{- define "retool.temporal.port" -}}
-{{- if (.Values.workflows.temporal).enabled -}}
-{{- .Values.workflows.temporal.port | quote -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if $temporalConfig.enabled -}}
+{{- $temporalConfig.port | quote -}}
 {{- else -}}
 {{- "7233" | quote -}}
 {{- end -}}
@@ -296,8 +333,9 @@ Set Temporal frontend port
 Set Temporal namespace
 */}}
 {{- define "retool.temporal.namespace" -}}
-{{- if (.Values.workflows.temporal).enabled -}}
-{{- .Values.workflows.temporal.namespace | quote -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if $temporalConfig.enabled -}}
+{{- $temporalConfig.namespace | quote -}}
 {{- else -}}
 {{- "workflows" | quote -}}
 {{- end -}}
@@ -338,22 +376,29 @@ Set multiplayer service name
 {{ template "retool.fullname" . }}-multiplayer-ws
 {{- end -}}
 
+{{/*
+Set agent worker service name
+*/}}
+{{- define "retool.agentWorker.name" -}}
+{{ template "retool.fullname" . }}-agent-worker
+{{- end -}}
+
+{{/*
+Set agent eval worker service name
+*/}}
+{{- define "retool.agentEvalWorker.name" -}}
+{{ template "retool.fullname" . }}-agent-eval-worker
+{{- end -}}
 
 {{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
 {{- define "retool.codeExecutor.image.tag" -}}
-{{- if .Values.codeExecutor.image.tag -}}
-  {{- .Values.codeExecutor.image.tag -}}
-{{- else if .Values.image.tag  -}}
+{{- if .Values.image.tag -}}
   {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
   {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
-  {{- if and (eq .Values.image.tag "latest") (eq (toString .Values.codeExecutor.enabled) "true") -}}
-    {{- fail "If using image.tag=latest (not recommended, select an explicit tag instead) and enabling codeExecutor, explicitly set codeExecutor.image.tag" }}
-  {{- else if (eq .Values.image.tag "latest") -}}
-    {{- "" -}}
-  {{- else if $retool_version_with_ce -}}
+  {{- if $retool_version_with_ce -}}
     {{- .Values.image.tag -}}
   {{- else -}}
     {{- "1.1.0" -}}

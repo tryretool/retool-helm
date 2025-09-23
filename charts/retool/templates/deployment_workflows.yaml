@@ -82,7 +82,7 @@ spec:
           {{- if and ( not ( include "retool_version_with_java_dbconnector_opt_out" . ) ) ( $.Values.dbconnector.java.enabled ) }}
             {{- $serviceType = append $serviceType "JAVA_DBCONNECTOR" }}
           {{- end }}
-          {{- /* 
+          {{- /*
             The dbconnector.enabled setting is to enable a standalone dbconnector deployment.
             If it is not enabled (default), the main backend acts as its own dbconnector.
           */ -}}
@@ -95,9 +95,19 @@ spec:
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" . }}-dbconnector
           - name: DB_CONNECTOR_PORT
+            value: {{ $.Values.dbconnector.port | quote }}
+          - name: DB_SSH_CONNECTOR_HOST
+            value: http://{{ template "retool.fullname" . }}-dbconnector
+          - name: DB_SSH_CONNECTOR_PORT
             value: {{ .Values.dbconnector.port | quote }}
+          {{- if $.Values.dbconnector.java.enabled }}
+          - name: JAVA_DBCONNECTOR_HOST
+            value: http://{{ template "retool.fullname" . }}-dbconnector
+          - name: JAVA_DBCONNECTOR_PORT
+            value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
-          {{ if and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) }}
+          {{- end }}
+          {{ if and ( not $.Values.dbconnector.enabled ) ( and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) ) }}
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}
@@ -113,7 +123,8 @@ spec:
           {{- end }}
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
-          {{- if or (index .Values "retool-temporal-services-helm" "enabled") (.Values.workflows.temporal.enabled) }}
+          {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
+          {{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" . }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
@@ -121,18 +132,18 @@ spec:
           - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
             value: {{ template "retool.temporal.namespace" . }}
           {{- end }}
-          {{- if (.Values.workflows.temporal).sslEnabled }}
+          {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"
-          {{- if (and (.Values.workflows.temporal).sslCert (.Values.workflows.temporal).sslKey) }}
+          {{- if (and ($temporalConfig).sslCert ($temporalConfig).sslKey) }}
           - name: WORKFLOW_TEMPORAL_TLS_CRT
-            value: {{ .Values.workflows.temporal.sslCert }}
+            value: {{ $temporalConfig.sslCert }}
           - name: WORKFLOW_TEMPORAL_TLS_KEY
             valueFrom:
               secretKeyRef:
-              {{- if (.Values.workflows.temporal).sslKeySecretName }}
-                name: {{ .Values.workflows.temporal.sslKeySecretName }}
-                key: {{ .Values.workflows.temporal.sslKeySecretKey | default "temporal-tls-key" }}
+              {{- if ($temporalConfig).sslKeySecretName }}
+                name: {{ $temporalConfig.sslKeySecretName }}
+                key: {{ ($temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
               {{- else }}
                 name: {{ template "retool.fullname" . }}
                 key: "temporal-tls-key"
@@ -158,10 +169,8 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ include "retool.workflowBackend.name" . }}
-          {{- if include "retool.codeExecutor.enabled" . }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
-          {{- end }}
           {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
@@ -247,6 +256,7 @@ spec:
         {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
         - secretRef:
             name: {{ .name }}
+            optional: {{ .optional | default false }}
         {{- end }}
         {{- end }}
         ports:

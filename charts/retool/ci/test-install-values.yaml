@@ -52,7 +52,9 @@ image:
 commandline:
   args: []
 
-env: {}
+env:
+  # required env var for backend to start up, but not actually registered
+  BASE_DOMAIN: "https://helm-ci.retool.dev"
 
 # Optionally specify additional environment variables to be populated from Kubernetes secrets.
 # Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
