@@ -288,6 +288,18 @@ Usage: (include "retool.agents.enabled" .)
 {{- $output -}}
 {{- end -}}
 
+{{/*
+Set agents enabled
+Usage: (include "retool.agents.enabled" .)
+*/}}
+{{- define "retool.agents.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.agents.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
