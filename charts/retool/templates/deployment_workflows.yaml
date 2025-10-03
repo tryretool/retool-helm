@@ -343,7 +343,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ include "retool.workflowBackend.name" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
       {{- include "retool.workflowBackend.selectorLabels" . | nindent 6 }}

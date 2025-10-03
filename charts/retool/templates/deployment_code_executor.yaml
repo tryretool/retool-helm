@@ -155,7 +155,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ template "retool.codeExecutor.name" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
   {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}

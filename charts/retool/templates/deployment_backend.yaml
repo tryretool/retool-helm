@@ -387,7 +387,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ template "retool.fullname" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
   {{- include "retool.selectorLabels" . | nindent 6 }}
