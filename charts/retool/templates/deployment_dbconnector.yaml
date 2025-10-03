@@ -258,7 +258,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ include "retool.dbconnector.name" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
       {{- include "retool.dbconnector.selectorLabels" . | nindent 6 }}

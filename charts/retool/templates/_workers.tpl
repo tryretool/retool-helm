@@ -386,7 +386,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ include (printf "retool.%sWorker.name" $workerType) $ }}
 spec:
-  {{ toYaml $.Values.podDisruptionBudget }}
+  {{- toYaml $.Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
       {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 6 }}
