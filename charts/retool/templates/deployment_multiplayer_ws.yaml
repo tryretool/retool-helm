@@ -148,15 +148,15 @@ spec:
               key: jwt-secret
               {{- end }}
         {{- range $key, $value := .Values.multiplayer.environmentVariables }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
         {{- range .Values.environmentSecrets }}
         - name: {{ .name }}
           valueFrom:
             secretKeyRef:
               name: {{ .secretKeyRef.name }}
               key: {{ .secretKeyRef.key }}
-        {{- end }}
-        - name: "{{ $key }}"
-          value: "{{ $value }}"
         {{- end }}
         ports:
           - containerPort: 3001
