@@ -815,11 +815,11 @@ telemetry:
 
   resources:
     requests:
-      cpu: 128m
-      memory: 128Mi
-    limits:
       cpu: 256m
       memory: 256Mi
+    limits:
+      cpu: 512m
+      memory: 512Mi
 
   # When present, any vector config here gets added to the telemetry pod (via a
   # created configmap) and added to the internal [vector](https://vector.dev/)
