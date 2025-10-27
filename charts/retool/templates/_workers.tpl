@@ -42,6 +42,9 @@ metadata:
     {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 4 }}
     {{- include (printf "retool.%sWorker.labels" $workerType) $ | nindent 4 }}
     {{- include "retool.labels" $ | nindent 4 }}
+{{- if $.Values.deployment.labels }}
+{{ toYaml $.Values.deployment.labels | indent 4 }}
+{{- end }}
 {{- if $.Values.deployment.annotations }}
   annotations:
 {{ toYaml $.Values.deployment.annotations | indent 4 }}
