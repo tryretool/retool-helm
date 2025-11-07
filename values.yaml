@@ -20,6 +20,8 @@ config:
       # clientSecretSecretName:
       # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
       # clientSecretSecretKey:
+      # clientSecretOptional allows the pod to start even if the google client secret is not present (default: false)
+      # clientSecretOptional: false
   encryptionKey:
   # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:

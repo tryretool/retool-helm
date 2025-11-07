@@ -241,6 +241,7 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: google-client-secret
                 {{- end }}
+                optional: {{ .Values.config.auth.google.clientSecretOptional | default false }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
