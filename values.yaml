@@ -14,14 +14,14 @@ config:
   postgresPoolMaxSize: 10
   auth:
     google:
+      # whether to populate CLIENT_ID and CLIENT_SECRET env vars (default: true for backwards compatibility)
+      enabled: true
       clientId:
       clientSecret:
       # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
       # clientSecretSecretName:
       # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
       # clientSecretSecretKey:
-      # clientSecretOptional allows the pod to start even if the google client secret is not present (default: false)
-      # clientSecretOptional: false
   encryptionKey:
   # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
   # encryptionKeySecretName:

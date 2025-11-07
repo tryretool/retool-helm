@@ -88,8 +88,10 @@ spec:
             value: "true"
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
+          {{- end }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
 
@@ -150,6 +152,7 @@ spec:
                 key: postgresql-password
                 {{- end }}
               {{- end }}
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -160,6 +163,7 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: google-client-secret
                 {{- end }}
+          {{- end }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
