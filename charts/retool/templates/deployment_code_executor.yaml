@@ -7,6 +7,9 @@ metadata:
     {{- include "retool.codeExecutor.selectorLabels" . | nindent 4 }}
     {{- include "retool.codeExecutor.labels" . | nindent 4 }}
     {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
