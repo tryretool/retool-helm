@@ -499,7 +499,7 @@ multiplayer:
 
   # Set environment variables for multiplayer pods, e.g. defining which origin to use
   # environmentVariables:
-  #   MAIN_DOMAIN: "retool.foo.com"
+  #   WEBSOCKET_ALLOWED_ORIGIN: "retool.foo.com"
 
   # Annotations for multiplayer pods
   annotations: {}
