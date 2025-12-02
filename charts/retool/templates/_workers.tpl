@@ -29,6 +29,13 @@
   {{- $workerValues = $parentValues.evalWorker -}}
 {{- end -}}
 
+{{- $workerPoolMaxSize := 100 -}}
+{{- if and $workerValues $workerValues.config }}
+  {{- if $workerValues.config.postgresPoolMaxSize }}
+    {{- $workerPoolMaxSize = $workerValues.config.postgresPoolMaxSize }}
+  {{- end }}
+{{- end -}}
+
 {{- $healthcheckPort := ternary 3012 3005 (eq $workerType "agentEval") -}}
 {{- $serviceType := ternary "AGENT_EVAL_TEMPORAL_WORKER" "WORKFLOW_TEMPORAL_WORKER" (eq $workerType "agentEval") -}}
 {{- $taskqueue := ternary "agent-eval" (ternary "agent" "" (eq $workerType "agent")) (eq $workerType "agentEval") -}}
@@ -119,7 +126,7 @@ spec:
             value: {{ $taskqueue }}
           {{- end }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
-            value: "100"
+            value: {{ $workerPoolMaxSize | quote }}
           {{- if $.Values.dbconnector.enabled }}
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" $ }}-dbconnector
