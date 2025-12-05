@@ -30,9 +30,9 @@
 {{- end -}}
 
 {{- $workerPoolMaxSize := 100 -}}
-{{- if and $workerValues $workerValues.config }}
-  {{- if $workerValues.config.postgresPoolMaxSize }}
-    {{- $workerPoolMaxSize = $workerValues.config.postgresPoolMaxSize }}
+{{- if $workerValues }}
+  {{- if $workerValues.postgresPoolMaxSize }}
+    {{- $workerPoolMaxSize = $workerValues.postgresPoolMaxSize }}
   {{- end }}
 {{- end -}}
 

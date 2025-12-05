@@ -65,10 +65,8 @@ spec:
         {{- $workflowBackendPoolMaxSize := 100 -}}
         {{- with .Values.workflows }}
           {{- with .backend }}
-            {{- with .config }}
-              {{- if .postgresPoolMaxSize }}
-                {{- $workflowBackendPoolMaxSize = .postgresPoolMaxSize }}
-              {{- end }}
+            {{- if .postgresPoolMaxSize }}
+              {{- $workflowBackendPoolMaxSize = .postgresPoolMaxSize }}
             {{- end }}
           {{- end }}
         {{- end }}
