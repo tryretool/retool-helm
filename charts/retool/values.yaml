@@ -233,6 +233,7 @@ serviceAccount:
   # If set and create is false, the service account must be existing
   name:
   annotations: {}
+  labels: {}
   automountToken: false
 
 livenessProbe:
