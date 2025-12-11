@@ -234,6 +234,7 @@ serviceAccount:
   # If set and create is false, the service account must be existing
   name:
   annotations: {}
+  labels: {}
   automountToken: false
 
 livenessProbe:
@@ -380,12 +381,16 @@ workflows:
     # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
     # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
     replicaCount: 1
+    # Override the connection pool size used by workflow workers when calling the dbconnector service
+    postgresPoolMaxSize: 100
 
   backend:
     # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
     # will launch 9 pods -- 4 workflow backend, 1 workflow workers, and 4 for temporal cluster
     replicaCount: 1
+    # Override the connection pool size used by workflow backends when calling the dbconnector service
+    postgresPoolMaxSize: 100
 
     # If necessary, specify the resources to provision the workflows-backend pod separately from the main backend pods.
     # resources:
@@ -500,7 +505,7 @@ multiplayer:
 
   # Set environment variables for multiplayer pods, e.g. defining which origin to use
   # environmentVariables:
-  #   MAIN_DOMAIN: "retool.foo.com"
+  #   WEBSOCKET_ALLOWED_ORIGIN: "retool.foo.com"
 
   # Annotations for multiplayer pods
   annotations: {}

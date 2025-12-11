@@ -7,6 +7,9 @@ metadata:
     {{- include "retool.dbconnector.selectorLabels" . | nindent 4 }}
     {{- include "retool.dbconnector.labels" . | nindent 4 }}
     {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
   {{- if .Values.deployment.annotations }}
   annotations:
     {{- toYaml .Values.deployment.annotations | nindent 4 }}
