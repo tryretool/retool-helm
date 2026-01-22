@@ -251,7 +251,8 @@ Usage: (include "retool.workflows.enabled" .)
 {{- define "retool.workflows.enabled" -}}
 {{- $output := "" -}}
 {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
-{{- $retool_version_with_workflows := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.6.11-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
+{{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+{{- $retool_version_with_workflows := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.6.11-0" ( regexFind $semver_version_regexp $.Values.image.tag ) ) ) }}
 {{- if or
     (eq (toString .Values.workflows.enabled) "true")
     (eq (toString .Values.workflows.enabled) "false")
@@ -385,7 +386,8 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- define "retool.codeExecutor.image.tag" -}}
 {{- if .Values.image.tag -}}
   {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
-  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $valid_retool_version_regexp $.Values.image.tag ) ) ) }}
+  {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $semver_version_regexp $.Values.image.tag ) ) ) }}
   {{- if $retool_version_with_ce -}}
     {{- .Values.image.tag -}}
   {{- else -}}
@@ -399,9 +401,10 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- define "retool_version_with_java_dbconnector_opt_out" -}}
 {{- $output := "" -}}
 {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
 {{- if not ( regexMatch $valid_retool_version_regexp .Values.image.tag ) -}}
   {{- $output = "1" -}}
-{{- else if semverCompare ">= 3.93.0-0" ( regexFind $valid_retool_version_regexp .Values.image.tag ) -}}
+{{- else if semverCompare ">= 3.93.0-0" ( regexFind $semver_version_regexp .Values.image.tag ) -}}
   {{- $output = "1" -}}
 {{- else -}}
   {{- $output = "" -}}
