@@ -127,6 +127,16 @@ spec:
               key: postgresql-password
               {{- end }}
         {{- end }}
+        - name: LICENSE_KEY
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.config.licenseKeySecretName }}
+              name: {{ .Values.config.licenseKeySecretName }}
+              key: {{ .Values.config.licenseKeySecretKey | default "license-key" }}
+              {{- else }}
+              name: {{ template "retool.fullname" . }}
+              key: license-key
+              {{- end }}
         - name: ENCRYPTION_KEY
           valueFrom:
             secretKeyRef:
