@@ -200,6 +200,30 @@ ingress:
   #             name: use-annotation
   #       pathType: ImplementationSpecific
 
+# Gateway API HTTPRoute resource (alternative to ingress)
+# Requires a Gateway API implementation (e.g., GKE Gateway Controller, Istio, Envoy Gateway, NGINX Gateway Fabric)
+httpRoute:
+  enabled: false
+  labels: {}
+  annotations: {}
+  # parentRefs defines which Gateway(s) this route attaches to
+  # parentRefs:
+  #   - name: my-gateway
+  #     namespace: default
+  #     sectionName: https
+  # hostnames:
+  #   - retool.example.com
+  # rules allows full customization of HTTPRoute rules; when omitted, a default
+  # catch-all rule routes all traffic to the retool backend service
+  # rules:
+  #   - matches:
+  #       - path:
+  #           type: PathPrefix
+  #           value: /
+  #     backendRefs:
+  #       - name: my-service
+  #         port: 3000
+
 postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
@@ -517,6 +541,14 @@ multiplayer:
     # This conditional is dependent on multiplayer.enabled.
     enabled: true
     paths:
+      - path: /api/multiplayer
+        port: 80
+
+  # HTTPRoute rules for multiplayer when using Gateway API instead of ingress
+  httpRoute:
+    # This conditional is dependent on multiplayer.enabled.
+    enabled: true
+    rules:
       - path: /api/multiplayer
         port: 80
 
