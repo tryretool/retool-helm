@@ -7,6 +7,9 @@ metadata:
     {{- include "retool.dbconnector.selectorLabels" . | nindent 4 }}
     {{- include "retool.dbconnector.labels" . | nindent 4 }}
     {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
   {{- if .Values.deployment.annotations }}
   annotations:
     {{- toYaml .Values.deployment.annotations | nindent 4 }}
@@ -88,8 +91,10 @@ spec:
             value: "true"
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
+          {{- end }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
 
@@ -150,6 +155,7 @@ spec:
                 key: postgresql-password
                 {{- end }}
               {{- end }}
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -160,6 +166,7 @@ spec:
                 name: {{ template "retool.fullname" . }}
                 key: google-client-secret
                 {{- end }}
+          {{- end }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
@@ -189,6 +196,7 @@ spec:
         {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
         - secretRef:
             name: {{ .name }}
+            optional: {{ .optional | default false }}
         {{- end }}
         {{- end }}
         volumeMounts:
@@ -257,7 +265,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ include "retool.dbconnector.name" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
       {{- include "retool.dbconnector.selectorLabels" . | nindent 6 }}

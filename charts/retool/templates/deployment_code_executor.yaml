@@ -1,4 +1,4 @@
-{{- if include "retool.codeExecutor.enabled" . }}
+{{- if include "retool.workflows.enabled" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,6 +7,9 @@ metadata:
     {{- include "retool.codeExecutor.selectorLabels" . | nindent 4 }}
     {{- include "retool.codeExecutor.labels" . | nindent 4 }}
     {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
@@ -155,7 +158,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ template "retool.codeExecutor.name" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
   {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}

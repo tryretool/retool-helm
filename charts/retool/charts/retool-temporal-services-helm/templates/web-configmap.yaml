@@ -11,6 +11,9 @@ metadata:
     app.kubernetes.io/version: {{ .Chart.AppVersion | replace "+" "_" }}
     app.kubernetes.io/component: web
     app.kubernetes.io/part-of: {{ .Chart.Name }}
+  {{- range $key, $value := $.Values.server.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
 data:
   config.yml: |
     {{- toYaml .Values.web.config | nindent 4  }}
