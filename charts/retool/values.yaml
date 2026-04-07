@@ -384,6 +384,10 @@ backend:
   # Labels for backend pods
   labels: {}
 
+  # (Optional) If set, make backend pods wait the specified time before
+  # kubernetes will forcibly kill them when they need to be rescheduled.
+  # terminationGracePeriodSeconds: 30
+
 ui:
   # Annotations for ui pods
   annotations: {}
