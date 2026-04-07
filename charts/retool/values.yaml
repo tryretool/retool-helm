@@ -384,6 +384,11 @@ backend:
   # Labels for backend pods
   labels: {}
 
+  # Make backend pods wait the specified time before kubernetes will forcibly kill them when they need to be rescheduled
+  # By default this is a 2 minutes + 15 seconds + 1 second (136) grace period to allow outstanding queries to complete
+  # Change this to 10 minutes 15 seconds + 1 second (616) if you are using long-running queries with a 10 minute timeout
+  terminationGracePeriodSeconds: 136
+
 ui:
   # Annotations for ui pods
   annotations: {}
