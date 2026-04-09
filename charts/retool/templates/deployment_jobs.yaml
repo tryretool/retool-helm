@@ -190,7 +190,8 @@ spec:
 {{ toYaml .Values.resources | indent 10 }}
 {{- end }}
         {{- if regexMatch "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" .Values.image.tag }}
-        {{- if semverCompare ">=2.110.0-0" .Values.image.tag }}
+        {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+        {{- if semverCompare ">=2.110.0-0" (regexFind $semver_version_regexp .Values.image.tag) }}
         livenessProbe:
           httpGet:
             path: /api/checkJobsRunnerHealth
