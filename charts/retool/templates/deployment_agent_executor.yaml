@@ -629,8 +629,6 @@ spec:
 {{- end }}
 {{- /*
 =======================================================================
-{{- /*
-=======================================================================
   Headless Service for direct pod addressing (sandbox routing).
   Executor Job pods use subdomain to register DNS:
   <podName>.<svc>.<namespace>.svc.cluster.local:<port>
