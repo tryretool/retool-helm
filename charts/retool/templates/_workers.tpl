@@ -3,6 +3,8 @@
   type: agent
 - parent: agents
   type: agentEval
+- parent: agents
+  type: r2Agent
 - parent: workflows
   type: workflow
 {{- end -}}
@@ -27,6 +29,8 @@
 {{- $workerValues := $parentValues.worker -}}
 {{- if eq $workerType "agentEval" -}}
   {{- $workerValues = $parentValues.evalWorker -}}
+{{- else if eq $workerType "r2Agent" -}}
+  {{- $workerValues = $parentValues.r2AgentWorker -}}
 {{- end -}}
 
 {{- $workerPoolMaxSize := 100 -}}
@@ -36,9 +40,20 @@
   {{- end }}
 {{- end -}}
 
-{{- $healthcheckPort := ternary 3012 3005 (eq $workerType "agentEval") -}}
-{{- $serviceType := ternary "AGENT_EVAL_TEMPORAL_WORKER" "WORKFLOW_TEMPORAL_WORKER" (eq $workerType "agentEval") -}}
-{{- $taskqueue := ternary "agent-eval" (ternary "agent" "" (eq $workerType "agent")) (eq $workerType "agentEval") -}}
+{{- $healthcheckPort := 3005 -}}
+{{- $serviceType := "WORKFLOW_TEMPORAL_WORKER" -}}
+{{- $taskqueue := "" -}}
+{{- if eq $workerType "agentEval" -}}
+  {{- $healthcheckPort = 3012 -}}
+  {{- $serviceType = "AGENT_EVAL_TEMPORAL_WORKER" -}}
+  {{- $taskqueue = "agent-eval" -}}
+{{- else if eq $workerType "r2Agent" -}}
+  {{- $healthcheckPort = 3016 -}}
+  {{- $serviceType = "R2_AGENT_TEMPORAL_WORKER" -}}
+  {{- $taskqueue = "r2-agent" -}}
+{{- else if eq $workerType "agent" -}}
+  {{- $taskqueue = "agent" -}}
+{{- end -}}
 
 {{/* yaml starts here */}}
 apiVersion: apps/v1
@@ -100,7 +115,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else }}{{ $workerType }}-worker{{ end }}
+      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else if eq $workerType "r2Agent" }}r2-agent-worker{{ else }}{{ $workerType }}-worker{{ end }}
         image: "{{ $.Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" $.Values.image.tag }}"
         imagePullPolicy: {{ $.Values.image.pullPolicy }}
         args:
@@ -200,6 +215,7 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" $ }}
+          {{- include "retool.agentExecutor.backendEnvVars" $ | nindent 10 }}
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
 
