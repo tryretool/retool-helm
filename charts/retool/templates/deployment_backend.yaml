@@ -179,6 +179,10 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
+          {{- if .Values.jsExecutor.enabled }}
+          - name: JS_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.jsExecutor.name" . }}
+          {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
