@@ -3,7 +3,7 @@
   type: agent
 - parent: agents
   type: agentEval
-- parent: agents
+- parent: r2Agent
   type: r2Agent
 - parent: workflows
   type: workflow
@@ -29,8 +29,6 @@
 {{- $workerValues := $parentValues.worker -}}
 {{- if eq $workerType "agentEval" -}}
   {{- $workerValues = $parentValues.evalWorker -}}
-{{- else if eq $workerType "r2Agent" -}}
-  {{- $workerValues = $parentValues.r2AgentWorker -}}
 {{- end -}}
 
 {{- $workerPoolMaxSize := 100 -}}

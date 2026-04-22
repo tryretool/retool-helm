@@ -274,6 +274,9 @@ Usage: (include "retool.workflows.enabled" .)
 {{- if (eq (toString .Values.agents.enabled) "true") -}} {{/* workflows (backend) is required to use agents */}}
   {{- $output = "1" -}}
 {{- end -}}
+{{- if (eq (toString .Values.r2Agent.enabled) "true") -}} {{/* workflows (backend) is required to use r2 agent */}}
+  {{- $output = "1" -}}
+{{- end -}}
 {{- $output -}}
 {{- end -}}
 
@@ -284,6 +287,18 @@ Usage: (include "retool.agents.enabled" .)
 {{- define "retool.agents.enabled" -}}
 {{- $output := "" -}}
 {{- if (eq (toString .Values.agents.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Set R2 agent enabled
+Usage: (include "retool.r2Agent.enabled" .)
+*/}}
+{{- define "retool.r2Agent.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.r2Agent.enabled) "true") -}}
   {{- $output = "1" -}}
 {{- end -}}
 {{- $output -}}

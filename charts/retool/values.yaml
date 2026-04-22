@@ -640,8 +640,24 @@ agents:
         cpu: 1000m
         memory: 2048Mi
 
+  # Annotations for agent worker pods
+  annotations: {}
+
+# R2 Agent: server-side agent loop worker (independent from agents above).
+r2Agent:
+  enabled: false
+
+  # Labels for R2 agent worker pods
+  labels: {}
+
+  # R2 agent configuration
+  config: {}
+
+  # Annotations for R2 agent worker pods
+  annotations: {}
+
   # R2 agent worker configuration
-  r2AgentWorker:
+  worker:
     replicaCount: 1
 
     resources:
@@ -651,9 +667,6 @@ agents:
       requests:
         cpu: 1000m
         memory: 2048Mi
-
-  # Annotations for agent worker pods
-  annotations: {}
 
 # Agent Executor Service: sandboxed code execution for AI agents.
 # Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
