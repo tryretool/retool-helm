@@ -126,6 +126,23 @@ telemetry.retool.com/service-name: code-executor
 {{- end }}
 
 {{/*
+Selector labels for js executor. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.jsExecutor.selectorLabels" -}}
+retoolService: {{ include "retool.jsExecutor.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for js executor.
+*/}}
+{{- define "retool.jsExecutor.labels" -}}
+app.kubernetes.io/name: {{ include "retool.jsExecutor.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: js-executor
+{{- end }}
+
+{{/*
 Selector labels for agent worker. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
@@ -356,6 +373,13 @@ Set code executor service name
 */}}
 {{- define "retool.codeExecutor.name" -}}
 {{ template "retool.fullname" . }}-code-executor
+{{- end -}}
+
+{{/*
+Set JS executor service name
+*/}}
+{{- define "retool.jsExecutor.name" -}}
+{{ template "retool.fullname" . }}-js-executor
 {{- end -}}
 
 {{/*
