@@ -608,8 +608,6 @@ codeExecutor:
 
 # JS Executor
 jsExecutor:
-  # dcm - is it optional?
-  enabled: true
   # dcm - does this need to always align with the backend/CE image
   image:
     repository: tryretool/js-executor-service
@@ -617,21 +615,16 @@ jsExecutor:
 
   replicaCount: 1
 
-  # Annotations for code executor pods
+  # Annotations for JS executor pods
   annotations: {}
 
-  # Labels for code executor pods
+  # Labels for JS executor pods
   labels: {}
 
-  # Config for code executor. Node heap size limits can be overridden here
-  config: {}
-  # config: {
-  #   nodeOptions: --max_old_space_size=1024
-  # }
   volumes: {}
   volumeMounts: {}
 
-  # Config affinity and anti-affinity rules for the code executor pods
+  # Config affinity and anti-affinity rules for the JS executor pods
   affinity: {}
 
   # Resources for the JS executor. Most common issues will be seen with CPU usage as this will
@@ -645,9 +638,9 @@ jsExecutor:
       memory: 1024Mi
 
   #dcm - should this be configurable?
-  # code executor uses nsjail to sandbox code execution. nsjail requires privileged container access.
+  # JS executor uses nsjail to sandbox JS execution. nsjail requires privileged container access.
   # If your deployment does not support privileged access, you can set `privileged` to false to not
-  # use nsjail. Without nsjail, all code is run without sandboxing within your deployment.
+  # use nsjail. Without nsjail, all JS is run without sandboxing within your deployment.
   securityContext:
     privileged: true
 
