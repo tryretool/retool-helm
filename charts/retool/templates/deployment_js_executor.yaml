@@ -1,4 +1,3 @@
-{{- if include "retool.workflows.enabled" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +22,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
@@ -44,11 +44,38 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
       {{- end }}
-{{- if .Values.initContainers }}
       initContainers:
+        - name: install-seccomp
+          image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              DEST="/host-seccomp/{{ .Values.jsExecutor.seccompLocalhostProfile }}"
+              mkdir -p "$(dirname "$DEST")"
+              cp /seccomp-profile/nsjail-seccomp.json "$DEST"
+              echo "seccomp profile installed at $DEST"
+          volumeMounts:
+            - name: seccomp-profile
+              mountPath: /seccomp-profile
+            - name: host-seccomp
+              mountPath: /host-seccomp
+{{- if .Values.initContainers }}
 {{- range $key, $value := .Values.initContainers }}
       - name: "{{ $key }}"
-{{ toYaml $value | indent 8 }}
+{{ toYaml $value | indent 10 }}
 {{- end }}
 {{- end }}
       containers:
@@ -56,14 +83,11 @@ spec:
         image: "{{ .Values.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
-          {{ if .Values.jsExecutor.securityContext }}
-{{ toYaml .Values.jsExecutor.securityContext | indent 10 }}
-          {{ else }}
-          privileged: true
-          {{ end }}
-          {{- if .Values.securityContext.extraContainerSecurityContext }}
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
-          {{- end }}
+          capabilities:
+            add: ["NET_ADMIN"]
+          seccompProfile:
+            type: Localhost
+            localhostProfile: {{ .Values.jsExecutor.seccompLocalhostProfile }}
         env:
           - name: DEPLOYMENT_TEMPLATE_TYPE
             value: {{ template "retool.deploymentTemplateType" . }}
@@ -94,25 +118,21 @@ spec:
         - containerPort: 3004
           name: http-server
           protocol: TCP
-{{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
-            path: {{ .Values.livenessProbe.path }}
-            port: 3004
+            path: /api/readiness
+            port: 3000
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
-{{- end }}
-{{- if .Values.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
-            path: {{ .Values.readinessProbe.path }}
-            port: 3004
+            path: /api/health
+            port: 3000
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-{{- end }}
         resources:
 {{ toYaml .Values.jsExecutor.resources | indent 10 }}
         volumeMounts:
@@ -131,6 +151,13 @@ spec:
 {{ tpl . $ | indent 6 }}
 {{- end }}
       volumes:
+        - name: seccomp-profile
+          configMap:
+            name: "js-executor-seccomp"
+        - name: host-seccomp
+          hostPath:
+            path: /var/lib/kubelet/seccomp
+            type: DirectoryOrCreate
 {{- if .Values.jsExecutor.volumes }}
 {{ toYaml .Values.jsExecutor.volumes | indent 8 }}
 {{- end }}
@@ -186,4 +213,3 @@ spec:
   {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
 {{- end }}
 ---
-{{- end }}

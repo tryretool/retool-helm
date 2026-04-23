@@ -422,6 +422,25 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{- end -}}
 {{- end -}}
 
+{{/*
+Set JS executor image tag
+Usage: (template "retool.jsExecutor.image.tag" .)
+*/}}
+{{- define "retool.jsExecutor.image.tag" -}}
+{{- if .Values.image.tag -}}
+  {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+  {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $semver_version_regexp $.Values.image.tag ) ) ) }}
+  {{- if $retool_version_with_ce -}}
+    {{- .Values.image.tag -}}
+  {{- else -}}
+    {{- "1.1.0" -}}
+  {{- end -}}
+{{- else -}}
+  {{- fail "Please set a value for .Values.image.tag" }}
+{{- end -}}
+{{- end -}}
+
 {{- define "retool_version_with_java_dbconnector_opt_out" -}}
 {{- $output := "" -}}
 {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
