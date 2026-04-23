@@ -643,6 +643,196 @@ agents:
   # Annotations for agent worker pods
   annotations: {}
 
+# R2 Agent: server-side agent loop worker (independent from agents above).
+r2Agent:
+  enabled: false
+
+  # Labels for R2 agent worker pods
+  labels: {}
+
+  # R2 agent configuration
+  config: {}
+
+  # Annotations for R2 agent worker pods
+  annotations: {}
+
+  # R2 agent worker configuration
+  worker:
+    replicaCount: 1
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
+# Agent Executor Service: sandboxed code execution for AI agents.
+# Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
+# and ephemeral Job-based sandboxes. Requires Redis for controller/proxy state.
+agentExecutor:
+  enabled: false
+
+  image:
+    repository: tryretool/agent-executor-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Annotations for agent executor pods
+  annotations: {}
+
+  # Labels for agent executor pods
+  labels: {}
+
+  # Pre-existing K8s Secret. When set, the chart skips creating its own Secret
+  # and references this for keys: jwt-public-key, jwt-private-key, encryption-key,
+  # api-secret, redis-password.
+  externalSecret:
+    name: ''
+
+  # Secrets (ignored when externalSecret.name is set)
+  # JWT key pair (ES256) for sandbox token authentication.
+  jwtPublicKey: ''
+  jwtPrivateKey: ''
+  # Hex-encoded 256-bit key for encrypting credentials stored in Redis.
+  # Must match the backend's AGENT_EXECUTOR_ENCRYPTION_KEY.
+  encryptionKey: ''
+  # API secret for admin/test endpoints.
+  apiSecret: ''
+
+  # Redis configuration (shared by controller and proxy for state coordination)
+  redis:
+    host: ''
+    port: 6379
+    password: ''
+    tls: false
+    keyPrefix: 'ae'
+
+  # Sandbox network access via pasta userspace networking.
+  # When enabled, sandboxes get isolated outbound access with L7 filtering.
+  sandboxNetwork:
+    enabled: true
+    # Deploy smarter-device-manager to register /dev/net/tun with the kubelet.
+    # Required because containerd's default device cgroup blocks /dev/net/tun;
+    # the device plugin's DeviceSpec path is the only reliable way to grant
+    # device cgroup access without privileged mode.
+    devicePlugin: true
+    # HTTP proxy for sandbox egress L7 filtering. Defaults to the in-cluster
+    # agent-executor-proxy service URL when empty.
+    httpProxy: ''
+
+  # smarter-device-manager: registers /dev/net/tun with the kubelet so executor
+  # pods can request it via resources.limits.
+  devicePlugin:
+    image:
+      repository: ghcr.io/smarter-project/smarter-device-manager
+      tag: v1.20.12
+    # Number of /dev/net/tun device slots to register.
+    # Set high enough to accommodate maxTotalJobs + prewarm pool.
+    maxDevices: 130
+
+  # Seccomp profile path relative to /var/lib/kubelet/seccomp/.
+  # The seccomp node-installer DaemonSet copies the profile to this path
+  # on every node automatically.
+  seccompProfile: retool/gvisor-seccomp.json
+
+  # Executor (sandbox Job) configuration
+  executor:
+    port: 3017
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: '2'
+        memory: 4Gi
+    # Idle timeout (ms) before an unassigned sandbox self-terminates.
+    sandboxIdleTimeoutMs: 300000
+    tmpDirSizeLimit: 20Gi
+    # Additional environment variables for executor containers.
+    extraEnv: []
+
+  # Controller: tracks capacity, assigns sandbox pods, manages scaling
+  controller:
+    replicaCount: 1
+    port: 3018
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    scaling:
+      slotsPerPod: 4
+      minReplicas: 1
+      maxReplicas: 10
+      scaleUpThreshold: 2
+      scaleDownThreshold: 8
+      scaleDownGracePeriodMs: 300000
+      prewarmPoolSize: 5
+      maxTotalJobs: 50
+      maxConcurrentCreates: 3
+      jobRetentionSeconds: 300
+      assignedSandboxTtlSeconds: 600
+      reconcileIntervalMs: 5000
+      leaderTtlMs: 10000
+      leaderRenewMs: 3000
+
+  # Proxy: HTTP proxy for sandbox egress with credential injection.
+  # The proxy must be reachable by frontend browsers for WebSocket connections.
+  proxy:
+    replicaCount: 1
+    port: 3019
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    allowedDomains: ''
+    # URL the proxy uses to reach the Retool backend for token exchange.
+    # Defaults to http://<fullname>:3000 (same-cluster backend service).
+    backendUrl: ''
+    backendDomainSuffixes: ''
+    sandboxProxyTimeoutMs: ''
+    service:
+      # Set to LoadBalancer or NodePort to expose the proxy externally.
+      type: ClusterIP
+      annotations: {}
+    # Optional ingress to expose the proxy to frontend browsers for WebSocket connections.
+    # This is separate from the main Retool ingress since the proxy typically runs on its own domain.
+    ingress:
+      enabled: false
+      # ingressClassName:
+      annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      host: ''
+      # e.g. sandbox.yourdomain.com
+      tls: []
+      # - secretName: sandbox-tls
+      #   hosts:
+      #     - sandbox.yourdomain.com
+
+  # Backend integration: these tell the Retool backend how to reach agent executor.
+  # controllerUrl and proxyUrl default to internal service URLs when empty.
+  controllerUrl: ''
+  proxyUrl: ''
+  # Required: public URL for frontend browsers to reach the proxy via WebSocket.
+  # e.g. https://sandbox.yourdomain.com
+  frontendWsProxyDomain: ''
+  # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
+  proxyDomain: ''
+
+  # Node placement overrides (falls back to global nodeSelector/tolerations if empty)
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
 # SHARED TEMPORAL CONFIGURATION
 # This configuration is shared between all workers.
 # In order to use workers, temporal must be configured.

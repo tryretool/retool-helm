@@ -2,7 +2,7 @@ apiVersion: v2
 name: retool
 description: A Helm chart for Kubernetes
 type: application
-version: 6.10.3
+version: 6.11.0
 maintainers:
   - name: Retool Engineering
     email: engineering+helm@retool.com
@@ -13,4 +13,4 @@ dependencies:
     condition: postgresql.enabled
   - name: retool-temporal-services-helm
     version: 1.1.5
-    condition: retool-temporal-services-helm.enabled,workflows.enabled
+    condition: retool-temporal-services-helm.enabled

@@ -1,0 +1,93 @@
+{{- if and .Values.agentExecutor.enabled .Values.agentExecutor.sandboxNetwork.devicePlugin }}
+{{- $ae := .Values.agentExecutor -}}
+{{- $nodeSelector := $ae.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := $ae.tolerations | default .Values.tolerations -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.agentExecutor.name" . }}-device-plugin
+  labels:
+    {{- include "retool.agentExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: device-plugin
+data:
+  conf.yaml: |
+    - devicematch: ^net/tun$
+      nummaxdevices: {{ $ae.devicePlugin.maxDevices | default 130 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "retool.agentExecutor.name" . }}-device-plugin
+  labels:
+    {{- include "retool.agentExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: device-plugin
+spec:
+  selector:
+    matchLabels:
+      retoolService: {{ include "retool.agentExecutor.name" . }}-device-plugin
+  template:
+    metadata:
+      labels:
+        retoolService: {{ include "retool.agentExecutor.name" . }}-device-plugin
+        app.kubernetes.io/name: {{ include "retool.agentExecutor.name" . }}-device-plugin
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+    spec:
+      automountServiceAccountToken: false
+      serviceAccountName: {{ template "retool.serviceAccountName" . }}
+      priorityClassName: system-node-critical
+      hostPID: true
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+      containers:
+        - name: smarter-device-manager
+          image: "{{ $ae.devicePlugin.image.repository }}:{{ $ae.devicePlugin.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          terminationMessagePath: /tmp/termination-log
+          terminationMessagePolicy: FallbackToLogsOnError
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: config
+              mountPath: /root/config
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: config
+          configMap:
+            name: {{ include "retool.agentExecutor.name" . }}-device-plugin
+{{- end }}

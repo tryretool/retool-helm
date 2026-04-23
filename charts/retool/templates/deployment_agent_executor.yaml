@@ -1,0 +1,696 @@
+{{- if .Values.agentExecutor.enabled }}
+{{- $ae := .Values.agentExecutor -}}
+{{- $secretName := include "retool.agentExecutor.secretName" . -}}
+{{- $nodeSelector := $ae.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := $ae.tolerations | default .Values.tolerations -}}
+{{- /*
+=======================================================================
+  Secret (skipped when externalSecret.name is set)
+=======================================================================
+*/}}
+{{- if not $ae.externalSecret.name }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ template "retool.agentExecutor.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+type: Opaque
+data:
+  jwt-public-key: {{ $ae.jwtPublicKey | default "" | b64enc | quote }}
+  jwt-private-key: {{ $ae.jwtPrivateKey | default "" | b64enc | quote }}
+  encryption-key: {{ $ae.encryptionKey | default "" | b64enc | quote }}
+  api-secret: {{ $ae.apiSecret | default "" | b64enc | quote }}
+  redis-password: {{ $ae.redis.password | default "" | b64enc | quote }}
+---
+{{- end }}
+{{- /*
+=======================================================================
+  RBAC for the controller (needs to manage Jobs, Pods, ConfigMaps)
+=======================================================================
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "retool.agentExecutor.controller.name" . }}
+    namespace: {{ .Release.Namespace }}
+---
+{{- /*
+=======================================================================
+  Job Template ConfigMap — defines the K8s Job spec the controller uses
+  to create sandbox executor pods.
+=======================================================================
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.agentExecutor.name" . }}-job-template
+  labels:
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+data:
+  job-template.json: |
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "labels": {
+          "retoolService": "{{ include "retool.agentExecutor.name" . }}"
+        }
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "ttlSecondsAfterFinished": {{ $ae.controller.scaling.jobRetentionSeconds }},
+        "template": {
+          "metadata": {
+            "labels": {
+              "retoolService": "{{ include "retool.agentExecutor.name" . }}"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "subdomain": "{{ include "retool.agentExecutor.name" . }}-pods",
+            "automountServiceAccountToken": false,
+            {{- if $nodeSelector }}
+            "nodeSelector": {{ toJson $nodeSelector }},
+            {{- end }}
+            {{- if $tolerations }}
+            "tolerations": {{ toJson $tolerations }},
+            {{- end }}
+            "initContainers": [
+              {
+                "name": "rootfs-etc-copy",
+                "image": "{{ $ae.image.repository }}:__IMAGE_TAG__",
+                "command": ["/bin/sh", "-c", "cp -r /opt/sandbox-env/rootfs/etc/. /mnt/etc/"],
+                "securityContext": {
+                  "runAsUser": 0,
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"], "add": ["DAC_READ_SEARCH"]}
+                },
+                "volumeMounts": [
+                  {"name": "rootfs-etc", "mountPath": "/mnt/etc"}
+                ],
+                "resources": {
+                  "requests": {"cpu": "10m", "memory": "16Mi"},
+                  "limits": {"cpu": "100m", "memory": "32Mi"}
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "agent-executor",
+                "image": "{{ $ae.image.repository }}:__IMAGE_TAG__",
+                "ports": [{"containerPort": {{ $ae.executor.port }}, "protocol": "TCP"}],
+                "securityContext": {
+                  "runAsUser": 1001,
+                  "runAsGroup": 1001,
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"]},
+                  "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $ae.seccompProfile }}"}
+                },
+                "env": [
+                  {"name": "NODE_ENV", "value": "production"},
+                  {"name": "EXECUTOR_PORT", "value": "{{ $ae.executor.port }}"},
+                  {"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}},
+                  {"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}},
+                  {"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}},
+                  {"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $ae.sandboxNetwork.enabled }}"},
+                  {"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $ae.executor.sandboxIdleTimeoutMs }}"}
+                  {{- if or $ae.jwtPublicKey $ae.externalSecret.name }}
+                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $secretName }}", "key": "jwt-public-key"}}}
+                  {{- end }}
+                  {{- if $ae.proxy.backendDomainSuffixes }}
+                  ,{"name": "BACKEND_DOMAIN_SUFFIXES", "value": "{{ $ae.proxy.backendDomainSuffixes }}"}
+                  {{- end }}
+                  {{- if $ae.sandboxNetwork.enabled }}
+                  ,{"name": "SANDBOX_HTTP_PROXY", "value": "{{ $ae.sandboxNetwork.httpProxy | default (printf "http://%s:%s" (include "retool.agentExecutor.proxy.name" .) (toString $ae.proxy.port)) }}"}
+                  {{- end }}
+                  {{- range $ae.executor.extraEnv }}
+                  ,{{ toJson . }}
+                  {{- end }}
+                ],
+                "volumeMounts": [
+                  {{- if and $ae.sandboxNetwork.enabled (not $ae.sandboxNetwork.devicePlugin) }}
+                  {"name": "dev-tun", "mountPath": "/dev/net/tun"},
+                  {{- end }}
+                  {"name": "run", "mountPath": "/run"},
+                  {"name": "tmp", "mountPath": "/tmp"},
+                  {"name": "rootfs-appjob", "mountPath": "/opt/sandbox-env/rootfs/app/job"},
+                  {"name": "rootfs-etc", "mountPath": "/opt/sandbox-env/rootfs/etc"}
+                ],
+                {{- $res := deepCopy $ae.executor.resources }}
+                {{- if $ae.sandboxNetwork.devicePlugin }}
+                {{- $_ := set $res.limits "smarter-devices/net_tun" 1 }}
+                {{- end }}
+                "resources": {{ toJson $res }}
+              }
+            ],
+            "volumes": [
+              {{- if and $ae.sandboxNetwork.enabled (not $ae.sandboxNetwork.devicePlugin) }}
+              {"name": "dev-tun", "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"}},
+              {{- end }}
+              {"name": "run", "emptyDir": {"medium": "Memory", "sizeLimit": "64Mi"}},
+              {"name": "tmp", "emptyDir": {"sizeLimit": "{{ $ae.executor.tmpDirSizeLimit | default "20Gi" }}"}},
+              {"name": "rootfs-appjob", "emptyDir": {"medium": "Memory", "sizeLimit": "1Mi"}},
+              {"name": "rootfs-etc", "emptyDir": {"medium": "Memory", "sizeLimit": "4Mi"}}
+            ]
+          }
+        }
+      }
+    }
+---
+{{- /*
+=======================================================================
+  Controller Deployment
+=======================================================================
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.controller.selectorLabels" . | nindent 4 }}
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ $ae.controller.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "retool.agentExecutor.controller.selectorLabels" . | nindent 6 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+{{- if $ae.annotations }}
+{{ toYaml $ae.annotations | indent 8 }}
+{{- end }}
+      labels:
+        {{- include "retool.agentExecutor.controller.selectorLabels" . | nindent 8 }}
+        {{- include "retool.agentExecutor.controller.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if $ae.labels }}
+{{ toYaml $ae.labels | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "retool.agentExecutor.controller.name" . }}
+      automountServiceAccountToken: true
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: controller
+          image: "{{ $ae.image.repository }}:{{ $ae.image.tag }}"
+          imagePullPolicy: {{ $ae.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $ae.controller.port }}
+              protocol: TCP
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: AGENT_EXECUTOR_ROLE
+              value: "controller"
+            - name: CONTROLLER_PORT
+              value: {{ $ae.controller.port | quote }}
+            - name: REDIS_KEY_PREFIX
+              value: {{ $ae.redis.keyPrefix | quote }}
+            - name: REDIS_HOST
+              value: {{ $ae.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ $ae.redis.port | quote }}
+            {{- if or $ae.redis.password $ae.externalSecret.name }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: redis-password
+            {{- end }}
+            {{- if $ae.redis.tls }}
+            - name: REDIS_TLS
+              value: "true"
+            {{- end }}
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: JOB_NAME_PREFIX
+              value: {{ include "retool.agentExecutor.name" . }}-job
+            - name: JOB_APP_LABEL
+              value: {{ include "retool.agentExecutor.name" . }}
+            - name: EXECUTOR_DEPLOYMENT_NAME
+              value: {{ include "retool.agentExecutor.name" . }}
+            - name: EXECUTOR_SERVICE_NAME
+              value: {{ include "retool.agentExecutor.name" . }}-pods
+            - name: SLOTS_PER_POD
+              value: {{ $ae.controller.scaling.slotsPerPod | quote }}
+            - name: EXECUTOR_MIN_REPLICAS
+              value: {{ $ae.controller.scaling.minReplicas | quote }}
+            - name: EXECUTOR_MAX_REPLICAS
+              value: {{ $ae.controller.scaling.maxReplicas | quote }}
+            - name: SCALE_UP_THRESHOLD
+              value: {{ $ae.controller.scaling.scaleUpThreshold | quote }}
+            - name: SCALE_DOWN_THRESHOLD
+              value: {{ $ae.controller.scaling.scaleDownThreshold | quote }}
+            - name: SCALE_DOWN_GRACE_PERIOD_MS
+              value: {{ $ae.controller.scaling.scaleDownGracePeriodMs | quote }}
+            - name: PREWARM_POOL_SIZE
+              value: {{ $ae.controller.scaling.prewarmPoolSize | quote }}
+            - name: MAX_TOTAL_JOBS
+              value: {{ $ae.controller.scaling.maxTotalJobs | quote }}
+            - name: MAX_CONCURRENT_CREATES
+              value: {{ $ae.controller.scaling.maxConcurrentCreates | quote }}
+            - name: JOB_RETENTION_SECONDS
+              value: {{ $ae.controller.scaling.jobRetentionSeconds | quote }}
+            - name: ASSIGNED_SANDBOX_TTL_SECONDS
+              value: {{ $ae.controller.scaling.assignedSandboxTtlSeconds | quote }}
+            - name: RECONCILE_INTERVAL_MS
+              value: {{ $ae.controller.scaling.reconcileIntervalMs | quote }}
+            - name: LEADER_TTL_MS
+              value: {{ $ae.controller.scaling.leaderTtlMs | quote }}
+            - name: LEADER_RENEW_MS
+              value: {{ $ae.controller.scaling.leaderRenewMs | quote }}
+            - name: DEPLOYED_IMAGE_TAG
+              value: {{ $ae.image.tag | quote }}
+            - name: JOB_TEMPLATE_CONFIGMAP
+              value: {{ include "retool.agentExecutor.name" . }}-job-template
+            {{- if or $ae.jwtPublicKey $ae.externalSecret.name }}
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: jwt-public-key
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $ae.controller.resources | nindent 12 }}
+{{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+{{- end }}
+{{- if $ae.affinity }}
+      affinity:
+{{ toYaml $ae.affinity | indent 8 }}
+{{- end }}
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+---
+{{- /*
+=======================================================================
+  Controller Service (ClusterIP)
+=======================================================================
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $ae.controller.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retool.agentExecutor.controller.selectorLabels" . | nindent 4 }}
+---
+{{- /*
+=======================================================================
+  Proxy Deployment
+=======================================================================
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retool.agentExecutor.proxy.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.proxy.selectorLabels" . | nindent 4 }}
+    {{- include "retool.agentExecutor.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ $ae.proxy.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "retool.agentExecutor.proxy.selectorLabels" . | nindent 6 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+{{- if $ae.annotations }}
+{{ toYaml $ae.annotations | indent 8 }}
+{{- end }}
+      labels:
+        {{- include "retool.agentExecutor.proxy.selectorLabels" . | nindent 8 }}
+        {{- include "retool.agentExecutor.proxy.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if $ae.labels }}
+{{ toYaml $ae.labels | indent 8 }}
+{{- end }}
+    spec:
+      automountServiceAccountToken: false
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: proxy
+          image: "{{ $ae.image.repository }}:{{ $ae.image.tag }}"
+          imagePullPolicy: {{ $ae.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $ae.proxy.port }}
+              protocol: TCP
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: AGENT_EXECUTOR_ROLE
+              value: "proxy"
+            - name: PROXY_PORT
+              value: {{ $ae.proxy.port | quote }}
+            - name: REDIS_HOST
+              value: {{ $ae.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ $ae.redis.port | quote }}
+            {{- if or $ae.redis.password $ae.externalSecret.name }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: redis-password
+            {{- end }}
+            {{- if $ae.redis.tls }}
+            - name: REDIS_TLS
+              value: "true"
+            {{- end }}
+            {{- if $ae.proxy.allowedDomains }}
+            - name: ALLOWED_DOMAINS
+              value: {{ $ae.proxy.allowedDomains | quote }}
+            {{- end }}
+            - name: BACKEND_URL
+              value: {{ $ae.proxy.backendUrl | default (printf "http://%s:%s" (include "retool.fullname" .) (toString .Values.service.internalPort)) | quote }}
+            {{- if $ae.proxy.backendDomainSuffixes }}
+            - name: BACKEND_DOMAIN_SUFFIXES
+              value: {{ $ae.proxy.backendDomainSuffixes | quote }}
+            {{- end }}
+            {{- if or $ae.encryptionKey $ae.externalSecret.name }}
+            - name: AGENT_EXECUTOR_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: encryption-key
+            {{- end }}
+            {{- if or $ae.jwtPublicKey $ae.externalSecret.name }}
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: jwt-public-key
+            {{- end }}
+            - name: EXECUTOR_PORT
+              value: {{ $ae.executor.port | quote }}
+            - name: EXECUTOR_SERVICE_NAME
+              value: {{ include "retool.agentExecutor.name" . }}-pods
+            - name: K8S_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: REDIS_KEY_PREFIX
+              value: {{ $ae.redis.keyPrefix | quote }}
+            {{- if $ae.proxy.sandboxProxyTimeoutMs }}
+            - name: SANDBOX_PROXY_TIMEOUT_MS
+              value: {{ $ae.proxy.sandboxProxyTimeoutMs | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $ae.proxy.resources | nindent 12 }}
+{{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+{{- end }}
+{{- if $ae.affinity }}
+      affinity:
+{{ toYaml $ae.affinity | indent 8 }}
+{{- end }}
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+---
+{{- /*
+=======================================================================
+  Proxy Service
+=======================================================================
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.agentExecutor.proxy.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- with ($ae.proxy.service).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  type: {{ ($ae.proxy.service).type | default "ClusterIP" }}
+  ports:
+    - port: {{ $ae.proxy.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retool.agentExecutor.proxy.selectorLabels" . | nindent 4 }}
+---
+{{- /*
+=======================================================================
+  Proxy Ingress (optional — exposes proxy to frontend for WebSocket)
+=======================================================================
+*/}}
+{{- if ($ae.proxy.ingress).enabled }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version }}
+apiVersion: networking.k8s.io/v1
+{{- else }}
+apiVersion: networking.k8s.io/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ include "retool.agentExecutor.proxy.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- with $ae.proxy.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  {{- if and $ae.proxy.ingress.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.Version) }}
+  ingressClassName: {{ $ae.proxy.ingress.ingressClassName }}
+  {{- end }}
+  rules:
+    - host: {{ $ae.proxy.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            {{- if semverCompare ">=1.18-0" .Capabilities.KubeVersion.Version }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ include "retool.agentExecutor.proxy.name" . }}
+                port:
+                  number: {{ $ae.proxy.port }}
+              {{- else }}
+              serviceName: {{ include "retool.agentExecutor.proxy.name" . }}
+              servicePort: {{ $ae.proxy.port }}
+              {{- end }}
+{{- with $ae.proxy.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- /*
+=======================================================================
+  Headless Service for direct pod addressing (sandbox routing).
+  Executor Job pods use subdomain to register DNS:
+  <podName>.<svc>.<namespace>.svc.cluster.local:<port>
+=======================================================================
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.agentExecutor.name" . }}-pods
+  labels:
+    {{- include "retool.agentExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ $ae.executor.port }}
+      targetPort: {{ $ae.executor.port }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retool.agentExecutor.selectorLabels" . | nindent 4 }}
+---
+{{- /*
+=======================================================================
+  PodDisruptionBudget for controller (when replicas > 1)
+=======================================================================
+*/}}
+{{- if gt (int $ae.controller.replicaCount) 1 }}
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version -}}
+apiVersion: policy/v1
+{{- else -}}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retool.agentExecutor.controller.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "retool.agentExecutor.controller.selectorLabels" . | nindent 6 }}
+---
+{{- end }}
+{{- if .Values.podDisruptionBudget }}
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version -}}
+apiVersion: policy/v1
+{{- else -}}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retool.agentExecutor.proxy.name" . }}
+  labels:
+    {{- include "retool.agentExecutor.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
+  selector:
+    matchLabels:
+      {{- include "retool.agentExecutor.proxy.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- end }}
