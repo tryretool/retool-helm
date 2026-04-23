@@ -415,6 +415,22 @@ Usage: (template "retool.codeExecutor.image.tag" .)
 {{/*
 Checks whether or not ExternalSecret definitions are enabled and can potentially clobber secrets or explicitly allow additional direct secret refs.
 */}}
+{{/*
+Render env vars from .Values.env, handling both string values and object values (e.g. valueFrom).
+Usage: {{- include "retool.env" .Values.env | nindent 10 }}
+*/}}
+{{- define "retool.env" -}}
+{{- range $key, $value := . }}
+{{- if kindIs "string" $value }}
+- name: "{{ $key }}"
+  value: "{{ $value }}"
+{{- else }}
+- name: "{{ $key }}"
+{{ toYaml $value | indent 2 }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
 {{- define "shouldIncludeConfigSecretsEnvVars" -}}
 {{- $output := "" -}}
 {{- if or (not (or (.Values.externalSecrets.enabled) (.Values.externalSecrets.externalSecretsOperator.enabled))) .Values.externalSecrets.includeConfigSecrets -}}
