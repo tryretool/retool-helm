@@ -637,13 +637,6 @@ jsExecutor:
       cpu: 1000m
       memory: 1024Mi
 
-  #dcm - should this be configurable?
-  # JS executor uses nsjail to sandbox JS execution. nsjail requires privileged container access.
-  # If your deployment does not support privileged access, you can set `privileged` to false to not
-  # use nsjail. Without nsjail, all JS is run without sandboxing within your deployment.
-  securityContext:
-    privileged: true
-
 agents:
   # Enable AI Agents
   enabled: false
