@@ -615,6 +615,8 @@ jsExecutor:
 
   replicaCount: 1
 
+  seccompLocalhostProfile: profiles/nsjail-seccomp.json
+
   # Annotations for JS executor pods
   annotations: {}
 
@@ -627,8 +629,7 @@ jsExecutor:
   # Config affinity and anti-affinity rules for the JS executor pods
   affinity: {}
 
-  # Resources for the JS executor. Most common issues will be seen with CPU usage as this will
-  # most likely be CPU bound. Adjust the CPU if latency increases under load.
+  # Resources for the JS executor
   resources:
     limits:
       cpu: 2000m
