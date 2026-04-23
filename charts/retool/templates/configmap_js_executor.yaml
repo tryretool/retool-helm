@@ -1,4 +1,3 @@
-{{- if $.Values.jsExecutorDefault.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,4 +5,3 @@ metadata:
 data:
   nsjail-seccomp.json: |
     {{- .Files.Get "files/nsjail-seccomp.json" | nindent 4 }}
-{{- end }}
