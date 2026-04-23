@@ -1,0 +1,8 @@
+
+env:
+  # test to ensure dynamic env vars render valid schema
+  FOOBAR:
+    valueFrom:
+      secretKeyRef:
+        name: mysecret
+        key: mysecret-key
