@@ -606,6 +606,38 @@ codeExecutor:
   securityContext:
     privileged: true
 
+# JS Executor
+jsExecutor:
+  # dcm - does this need to always align with the backend/CE image
+  image:
+    repository: tryretool/js-executor-service
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  seccompLocalhostProfile: profiles/nsjail-seccomp.json
+
+  # Annotations for JS executor pods
+  annotations: {}
+
+  # Labels for JS executor pods
+  labels: {}
+
+  volumes: {}
+  volumeMounts: {}
+
+  # Config affinity and anti-affinity rules for the JS executor pods
+  affinity: {}
+
+  # Resources for the JS executor
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+    requests:
+      cpu: 1000m
+      memory: 1024Mi
+
 agents:
   # Enable AI Agents
   enabled: false

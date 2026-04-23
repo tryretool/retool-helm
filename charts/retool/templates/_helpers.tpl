@@ -126,6 +126,23 @@ telemetry.retool.com/service-name: code-executor
 {{- end }}
 
 {{/*
+Selector labels for js executor. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.jsExecutor.selectorLabels" -}}
+retoolService: {{ include "retool.jsExecutor.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for js executor.
+*/}}
+{{- define "retool.jsExecutor.labels" -}}
+app.kubernetes.io/name: {{ include "retool.jsExecutor.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: js-executor
+{{- end }}
+
+{{/*
 Selector labels for agent worker. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
@@ -359,6 +376,13 @@ Set code executor service name
 {{- end -}}
 
 {{/*
+Set JS executor service name
+*/}}
+{{- define "retool.jsExecutor.name" -}}
+{{ template "retool.fullname" . }}-js-executor
+{{- end -}}
+
+{{/*
 Set multiplayer service name
 */}}
 {{- define "retool.multiplayer.name" -}}
@@ -384,6 +408,25 @@ Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
 {{- define "retool.codeExecutor.image.tag" -}}
+{{- if .Values.image.tag -}}
+  {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+  {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+  {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $semver_version_regexp $.Values.image.tag ) ) ) }}
+  {{- if $retool_version_with_ce -}}
+    {{- .Values.image.tag -}}
+  {{- else -}}
+    {{- "1.1.0" -}}
+  {{- end -}}
+{{- else -}}
+  {{- fail "Please set a value for .Values.image.tag" }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Set JS executor image tag
+Usage: (template "retool.jsExecutor.image.tag" .)
+*/}}
+{{- define "retool.jsExecutor.image.tag" -}}
 {{- if .Values.image.tag -}}
   {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
   {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
