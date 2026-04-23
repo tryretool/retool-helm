@@ -507,6 +507,8 @@ Usage: {{- include "retool.agentExecutor.backendEnvVars" . | nindent 10 }}
 {{- if .Values.agentExecutor.enabled }}
 - name: AGENT_EXECUTOR_ENABLED
   value: "true"
+- name: RR_AGENT_PUBSUB_BACKEND
+  value: "postgres"
 - name: AGENT_EXECUTOR_CONTROLLER_INGRESS_DOMAIN
   value: {{ .Values.agentExecutor.controllerUrl | default (printf "http://%s:%s" (include "retool.agentExecutor.controller.name" .) (toString .Values.agentExecutor.controller.port)) | quote }}
 - name: AGENT_EXECUTOR_PROXY_INGRESS_DOMAIN

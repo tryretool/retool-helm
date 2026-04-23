@@ -670,7 +670,7 @@ r2Agent:
 
 # Agent Executor Service: sandboxed code execution for AI agents.
 # Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
-# and ephemeral Job-based sandboxes. Requires Redis for controller/proxy state.
+# and ephemeral Job-based sandboxes. Uses Postgres for controller/proxy state.
 agentExecutor:
   enabled: false
 
@@ -687,7 +687,7 @@ agentExecutor:
 
   # Pre-existing K8s Secret. When set, the chart skips creating its own Secret
   # and references this for keys: jwt-public-key, jwt-private-key, encryption-key,
-  # api-secret, redis-password.
+  # api-secret, postgres-url.
   externalSecret:
     name: ''
 
@@ -695,19 +695,19 @@ agentExecutor:
   # JWT key pair (ES256) for sandbox token authentication.
   jwtPublicKey: ''
   jwtPrivateKey: ''
-  # Hex-encoded 256-bit key for encrypting credentials stored in Redis.
+  # Hex-encoded 256-bit key for encrypting credentials stored in state backend.
   # Must match the backend's AGENT_EXECUTOR_ENCRYPTION_KEY.
   encryptionKey: ''
   # API secret for admin/test endpoints.
   apiSecret: ''
 
-  # Redis configuration (shared by controller and proxy for state coordination)
-  redis:
-    host: ''
-    port: 6379
-    password: ''
-    tls: false
-    keyPrefix: 'ae'
+  # Postgres state backend (shared by controller and proxy for state coordination).
+  # Connection string for the agent executor's state database.
+  postgres:
+    url: ''
+    schema: 'agent_executor'
+    poolMax: 10
+    sweeperIntervalMs: 60000
 
   # Sandbox network access via pasta userspace networking.
   # When enabled, sandboxes get isolated outbound access with L7 filtering.

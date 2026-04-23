@@ -22,7 +22,7 @@ data:
   jwt-private-key: {{ $ae.jwtPrivateKey | default "" | b64enc | quote }}
   encryption-key: {{ $ae.encryptionKey | default "" | b64enc | quote }}
   api-secret: {{ $ae.apiSecret | default "" | b64enc | quote }}
-  redis-password: {{ $ae.redis.password | default "" | b64enc | quote }}
+  postgres-url: {{ $ae.postgres.url | default "" | b64enc | quote }}
 ---
 {{- end }}
 {{- /*
@@ -272,23 +272,19 @@ spec:
               value: "controller"
             - name: CONTROLLER_PORT
               value: {{ $ae.controller.port | quote }}
-            - name: REDIS_KEY_PREFIX
-              value: {{ $ae.redis.keyPrefix | quote }}
-            - name: REDIS_HOST
-              value: {{ $ae.redis.host | quote }}
-            - name: REDIS_PORT
-              value: {{ $ae.redis.port | quote }}
-            {{- if or $ae.redis.password $ae.externalSecret.name }}
-            - name: REDIS_PASSWORD
+            - name: STATE_BACKEND
+              value: "postgres"
+            - name: AGENT_EXECUTOR_POSTGRES_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: redis-password
-            {{- end }}
-            {{- if $ae.redis.tls }}
-            - name: REDIS_TLS
-              value: "true"
-            {{- end }}
+                  key: postgres-url
+            - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
+              value: {{ $ae.postgres.schema | quote }}
+            - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
+              value: {{ $ae.postgres.poolMax | quote }}
+            - name: STATE_SWEEPER_INTERVAL_MS
+              value: {{ $ae.postgres.sweeperIntervalMs | quote }}
             - name: K8S_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -470,21 +466,19 @@ spec:
               value: "proxy"
             - name: PROXY_PORT
               value: {{ $ae.proxy.port | quote }}
-            - name: REDIS_HOST
-              value: {{ $ae.redis.host | quote }}
-            - name: REDIS_PORT
-              value: {{ $ae.redis.port | quote }}
-            {{- if or $ae.redis.password $ae.externalSecret.name }}
-            - name: REDIS_PASSWORD
+            - name: STATE_BACKEND
+              value: "postgres"
+            - name: AGENT_EXECUTOR_POSTGRES_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: redis-password
-            {{- end }}
-            {{- if $ae.redis.tls }}
-            - name: REDIS_TLS
-              value: "true"
-            {{- end }}
+                  key: postgres-url
+            - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
+              value: {{ $ae.postgres.schema | quote }}
+            - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
+              value: {{ $ae.postgres.poolMax | quote }}
+            - name: STATE_SWEEPER_INTERVAL_MS
+              value: {{ $ae.postgres.sweeperIntervalMs | quote }}
             {{- if $ae.proxy.allowedDomains }}
             - name: ALLOWED_DOMAINS
               value: {{ $ae.proxy.allowedDomains | quote }}
@@ -515,8 +509,6 @@ spec:
               value: {{ include "retool.agentExecutor.name" . }}-pods
             - name: K8S_NAMESPACE
               value: {{ .Release.Namespace | quote }}
-            - name: REDIS_KEY_PREFIX
-              value: {{ $ae.redis.keyPrefix | quote }}
             {{- if $ae.proxy.sandboxProxyTimeoutMs }}
             - name: SANDBOX_PROXY_TIMEOUT_MS
               value: {{ $ae.proxy.sandboxProxyTimeoutMs | quote }}
