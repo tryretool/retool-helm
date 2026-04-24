@@ -289,6 +289,18 @@ Usage: (include "retool.agents.enabled" .)
 {{- $output -}}
 {{- end -}}
 
+{{/*
+Set R2 agent enabled
+Usage: (include "retool.r2Agent.enabled" .)
+*/}}
+{{- define "retool.r2Agent.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.r2Agent.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
@@ -377,6 +389,160 @@ Set agent eval worker service name
 */}}
 {{- define "retool.agentEvalWorker.name" -}}
 {{ template "retool.fullname" . }}-agent-eval-worker
+{{- end -}}
+
+{{/*
+Set R2 agent worker service name
+*/}}
+{{- define "retool.r2AgentWorker.name" -}}
+{{ template "retool.fullname" . }}-r2-agent-worker
+{{- end -}}
+
+{{/*
+Selector labels for R2 agent worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.r2AgentWorker.selectorLabels" -}}
+retoolService: {{ include "retool.r2AgentWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for R2 agent worker.
+*/}}
+{{- define "retool.r2AgentWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.r2AgentWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: r2-agent-worker
+{{- end }}
+
+{{/*
+Set agent executor base name
+*/}}
+{{- define "retool.agentExecutor.name" -}}
+{{ template "retool.fullname" . }}-agent-executor
+{{- end -}}
+
+{{/*
+Set agent executor controller name
+*/}}
+{{- define "retool.agentExecutor.controller.name" -}}
+{{ template "retool.fullname" . }}-agent-executor-controller
+{{- end -}}
+
+{{/*
+Set agent executor proxy name
+*/}}
+{{- define "retool.agentExecutor.proxy.name" -}}
+{{ template "retool.fullname" . }}-agent-executor-proxy
+{{- end -}}
+
+{{/*
+Secret name for agent executor.
+Uses externalSecret.name if set, otherwise the auto-generated name.
+*/}}
+{{- define "retool.agentExecutor.secretName" -}}
+{{- if .Values.agentExecutor.externalSecret.name -}}
+{{ .Values.agentExecutor.externalSecret.name }}
+{{- else -}}
+{{ template "retool.agentExecutor.name" . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Selector labels for agent executor (executor pods / headless service).
+*/}}
+{{- define "retool.agentExecutor.selectorLabels" -}}
+retoolService: {{ include "retool.agentExecutor.name" . }}
+{{- end -}}
+
+{{/*
+Extra labels for agent executor.
+*/}}
+{{- define "retool.agentExecutor.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentExecutor.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: agent-executor
+{{- end -}}
+
+{{/*
+Selector labels for agent executor controller.
+*/}}
+{{- define "retool.agentExecutor.controller.selectorLabels" -}}
+retoolService: {{ include "retool.agentExecutor.controller.name" . }}
+{{- end -}}
+
+{{/*
+Extra labels for agent executor controller.
+*/}}
+{{- define "retool.agentExecutor.controller.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentExecutor.controller.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: controller
+telemetry.retool.com/service-name: agent-executor-controller
+{{- end -}}
+
+{{/*
+Selector labels for agent executor proxy.
+*/}}
+{{- define "retool.agentExecutor.proxy.selectorLabels" -}}
+retoolService: {{ include "retool.agentExecutor.proxy.name" . }}
+{{- end -}}
+
+{{/*
+Extra labels for agent executor proxy.
+*/}}
+{{- define "retool.agentExecutor.proxy.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentExecutor.proxy.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: proxy
+telemetry.retool.com/service-name: agent-executor-proxy
+{{- end -}}
+
+{{/*
+Agent executor env vars for the Retool backend, workflow backend, and workers.
+Outputs env entries that tell the backend how to reach the agent executor services.
+Usage: {{- include "retool.agentExecutor.backendEnvVars" . | nindent 10 }}
+*/}}
+{{- define "retool.agentExecutor.backendEnvVars" -}}
+{{- if .Values.agentExecutor.enabled }}
+- name: AGENT_EXECUTOR_ENABLED
+  value: "true"
+- name: RR_AGENT_PUBSUB_BACKEND
+  value: "postgres"
+- name: AGENT_EXECUTOR_CONTROLLER_INGRESS_DOMAIN
+  value: {{ .Values.agentExecutor.controllerUrl | default (printf "http://%s:%s" (include "retool.agentExecutor.controller.name" .) (toString .Values.agentExecutor.controller.port)) | quote }}
+- name: AGENT_EXECUTOR_PROXY_INGRESS_DOMAIN
+  value: {{ .Values.agentExecutor.proxyUrl | default (printf "http://%s:%s" (include "retool.agentExecutor.proxy.name" .) (toString .Values.agentExecutor.proxy.port)) | quote }}
+{{- if .Values.agentExecutor.frontendWsProxyDomain }}
+- name: AGENT_EXECUTOR_FRONTEND_WS_PROXY_DOMAIN
+  value: {{ .Values.agentExecutor.frontendWsProxyDomain | quote }}
+{{- end }}
+{{- if or .Values.agentExecutor.proxyDomain .Values.agentExecutor.frontendWsProxyDomain }}
+- name: AGENT_EXECUTOR_PROXY_DOMAIN
+  value: {{ .Values.agentExecutor.proxyDomain | default .Values.agentExecutor.frontendWsProxyDomain | quote }}
+{{- end }}
+{{- if or .Values.agentExecutor.jwtPrivateKey .Values.agentExecutor.externalSecret.name }}
+- name: AGENT_EXECUTOR_JWT_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "retool.agentExecutor.secretName" . }}
+      key: jwt-private-key
+{{- end }}
+{{- if or .Values.agentExecutor.jwtPublicKey .Values.agentExecutor.externalSecret.name }}
+- name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "retool.agentExecutor.secretName" . }}
+      key: jwt-public-key
+{{- end }}
+{{- if or .Values.agentExecutor.encryptionKey .Values.agentExecutor.externalSecret.name }}
+- name: AGENT_EXECUTOR_ENCRYPTION_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "retool.agentExecutor.secretName" . }}
+      key: encryption-key
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*

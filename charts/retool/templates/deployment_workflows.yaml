@@ -176,6 +176,7 @@ spec:
             value: http://{{ include "retool.workflowBackend.name" . }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
+          {{- include "retool.agentExecutor.backendEnvVars" . | nindent 10 }}
           {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
