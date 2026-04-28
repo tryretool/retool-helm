@@ -116,19 +116,19 @@ spec:
 {{ toYaml . | indent 10 }}
           {{- end }}
         ports:
-        - containerPort: 3004
+        - containerPort: 3000
           name: http-server
           protocol: TCP
         livenessProbe:
           httpGet:
-            path: /api/readiness
+            path: /api/health
             port: 3000
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
         readinessProbe:
           httpGet:
-            path: /api/health
+            path: /api/readiness
             port: 3000
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
@@ -195,7 +195,7 @@ spec:
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 3004
+    targetPort: 3000
     name: http-server
 ---
 {{- if .Values.podDisruptionBudget }}
