@@ -613,7 +613,7 @@ jsExecutor:
     repository: tryretool/js-executor-service
     pullPolicy: IfNotPresent
 
-  replicaCount: 1
+  replicaCount: 2
 
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
