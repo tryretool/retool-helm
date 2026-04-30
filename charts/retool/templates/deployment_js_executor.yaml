@@ -80,8 +80,7 @@ spec:
 {{- end }}
       containers:
       - name: js-executor
-        image: "753800337063.dkr.ecr.us-west-2.amazonaws.com/js-executor-service:dev-3.376.0-1580847"
-        #image: "{{ .Values.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
+        image: "{{ .Values.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           capabilities:
@@ -96,11 +95,7 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          - name: NODE_OPTIONS
-            value: {{(.Values.jsExecutor.config).nodeOptions | default "--max_old_space_size=1024" }}
-
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
-
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
             value: "{{ $value }}"

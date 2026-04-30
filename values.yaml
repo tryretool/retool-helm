@@ -608,7 +608,6 @@ codeExecutor:
 
 # JS Executor
 jsExecutor:
-  # dcm - does this need to always align with the backend/CE image
   image:
     repository: tryretool/js-executor-service
     pullPolicy: IfNotPresent
@@ -633,7 +632,7 @@ jsExecutor:
   resources:
     limits:
       cpu: 2000m
-      memory: 2048Mi
+      memory: 4096Mi
     requests:
       cpu: 1000m
       memory: 1024Mi
