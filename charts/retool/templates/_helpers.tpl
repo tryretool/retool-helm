@@ -289,6 +289,18 @@ Usage: (include "retool.agents.enabled" .)
 {{- $output -}}
 {{- end -}}
 
+{{/*
+Set R2 agent enabled
+Usage: (include "retool.r2Agent.enabled" .)
+*/}}
+{{- define "retool.r2Agent.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.r2Agent.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
@@ -377,6 +389,160 @@ Set agent eval worker service name
 */}}
 {{- define "retool.agentEvalWorker.name" -}}
 {{ template "retool.fullname" . }}-agent-eval-worker
+{{- end -}}
+
+{{/*
+Set R2 agent worker service name
+*/}}
+{{- define "retool.r2AgentWorker.name" -}}
+{{ template "retool.fullname" . }}-r2-agent-worker
+{{- end -}}
+
+{{/*
+Selector labels for R2 agent worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.r2AgentWorker.selectorLabels" -}}
+retoolService: {{ include "retool.r2AgentWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for R2 agent worker.
+*/}}
+{{- define "retool.r2AgentWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.r2AgentWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: r2-agent-worker
+{{- end }}
+
+{{/*
+Set agent sandbox base name
+*/}}
+{{- define "retool.agentSandbox.name" -}}
+{{ template "retool.fullname" . }}-agent-sandbox
+{{- end -}}
+
+{{/*
+Set agent sandbox controller name
+*/}}
+{{- define "retool.agentSandbox.controller.name" -}}
+{{ template "retool.fullname" . }}-agent-sandbox-controller
+{{- end -}}
+
+{{/*
+Set agent sandbox proxy name
+*/}}
+{{- define "retool.agentSandbox.proxy.name" -}}
+{{ template "retool.fullname" . }}-agent-sandbox-proxy
+{{- end -}}
+
+{{/*
+Secret name for agent sandbox.
+Uses externalSecret.name if set, otherwise the auto-generated name.
+*/}}
+{{- define "retool.agentSandbox.secretName" -}}
+{{- if .Values.agentSandbox.externalSecret.name -}}
+{{ .Values.agentSandbox.externalSecret.name }}
+{{- else -}}
+{{ template "retool.agentSandbox.name" . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Selector labels for agent sandbox (sandbox pods / headless service).
+*/}}
+{{- define "retool.agentSandbox.selectorLabels" -}}
+retoolService: {{ include "retool.agentSandbox.name" . }}
+{{- end -}}
+
+{{/*
+Extra labels for agent sandbox.
+*/}}
+{{- define "retool.agentSandbox.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentSandbox.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: agent-sandbox
+{{- end -}}
+
+{{/*
+Selector labels for agent sandbox controller.
+*/}}
+{{- define "retool.agentSandbox.controller.selectorLabels" -}}
+retoolService: {{ include "retool.agentSandbox.controller.name" . }}
+{{- end -}}
+
+{{/*
+Extra labels for agent sandbox controller.
+*/}}
+{{- define "retool.agentSandbox.controller.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentSandbox.controller.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: controller
+telemetry.retool.com/service-name: agent-sandbox-controller
+{{- end -}}
+
+{{/*
+Selector labels for agent sandbox proxy.
+*/}}
+{{- define "retool.agentSandbox.proxy.selectorLabels" -}}
+retoolService: {{ include "retool.agentSandbox.proxy.name" . }}
+{{- end -}}
+
+{{/*
+Extra labels for agent sandbox proxy.
+*/}}
+{{- define "retool.agentSandbox.proxy.labels" -}}
+app.kubernetes.io/name: {{ include "retool.agentSandbox.proxy.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: proxy
+telemetry.retool.com/service-name: agent-sandbox-proxy
+{{- end -}}
+
+{{/*
+Agent sandbox env vars for the Retool backend, workflow backend, and workers.
+Outputs env entries that tell the backend how to reach the agent sandbox services.
+Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
+*/}}
+{{- define "retool.agentSandbox.backendEnvVars" -}}
+{{- if .Values.agentSandbox.enabled }}
+- name: AGENT_EXECUTOR_ENABLED
+  value: "true"
+- name: RR_AGENT_PUBSUB_BACKEND
+  value: "postgres"
+- name: AGENT_EXECUTOR_CONTROLLER_INGRESS_DOMAIN
+  value: {{ .Values.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.agentSandbox.controller.port)) | quote }}
+- name: AGENT_EXECUTOR_PROXY_INGRESS_DOMAIN
+  value: {{ .Values.agentSandbox.proxyUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.proxy.name" .) (toString .Values.agentSandbox.proxy.port)) | quote }}
+{{- if .Values.agentSandbox.frontendWsProxyDomain }}
+- name: AGENT_EXECUTOR_FRONTEND_WS_PROXY_DOMAIN
+  value: {{ .Values.agentSandbox.frontendWsProxyDomain | quote }}
+{{- end }}
+{{- if or .Values.agentSandbox.proxyDomain .Values.agentSandbox.frontendWsProxyDomain }}
+- name: AGENT_EXECUTOR_PROXY_DOMAIN
+  value: {{ .Values.agentSandbox.proxyDomain | default .Values.agentSandbox.frontendWsProxyDomain | quote }}
+{{- end }}
+{{- if or .Values.agentSandbox.jwtPrivateKey .Values.agentSandbox.externalSecret.name }}
+- name: AGENT_EXECUTOR_JWT_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "retool.agentSandbox.secretName" . }}
+      key: jwt-private-key
+{{- end }}
+{{- if or .Values.agentSandbox.jwtPublicKey .Values.agentSandbox.externalSecret.name }}
+- name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "retool.agentSandbox.secretName" . }}
+      key: jwt-public-key
+{{- end }}
+{{- if or .Values.agentSandbox.encryptionKey .Values.agentSandbox.externalSecret.name }}
+- name: AGENT_EXECUTOR_ENCRYPTION_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "retool.agentSandbox.secretName" . }}
+      key: encryption-key
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*

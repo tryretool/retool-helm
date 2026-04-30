@@ -643,6 +643,255 @@ agents:
   # Annotations for agent worker pods
   annotations: {}
 
+# R2 Agent: server-side agent loop worker (independent from agents above).
+r2Agent:
+  enabled: false
+
+  # Labels for R2 agent worker pods
+  labels: {}
+
+  # R2 agent configuration
+  config: {}
+
+  # Annotations for R2 agent worker pods
+  annotations: {}
+
+  # R2 agent worker configuration
+  worker:
+    replicaCount: 1
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
+# Agent Sandbox Service: sandboxed code execution for AI agents.
+# Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
+# and ephemeral Job-based sandboxes. Uses Postgres for controller/proxy state.
+agentSandbox:
+  enabled: false
+
+  image:
+    repository: tryretool/agent-sandbox-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Lightweight init image used by the prepuller and seccomp DaemonSets.
+  # Pinning by digest is recommended for production.
+  initImage:
+    repository: busybox
+    tag: '1.37.0'
+    # Manifest list digest — set to '' in test environments where images are
+    # pre-loaded (containerd 2.0 can't resolve digest references for side-loaded images).
+    digest: ''
+
+  # Annotations for agent sandbox pods
+  annotations: {}
+
+  # Labels for agent sandbox pods
+  labels: {}
+
+  # Pre-existing K8s Secret. When set, the chart skips creating its own Secret
+  # and references this for keys: jwt-public-key, jwt-private-key, encryption-key,
+  # api-secret, postgres-url.
+  externalSecret:
+    name: ''
+
+  # Secrets (ignored when externalSecret.name is set)
+  # JWT key pair (ES256) for sandbox token authentication.
+  jwtPublicKey: ''
+  jwtPrivateKey: ''
+  # Hex-encoded 256-bit key for encrypting credentials stored in state backend.
+  # Must match the backend's AGENT_EXECUTOR_ENCRYPTION_KEY.
+  encryptionKey: ''
+  # API secret for admin/test endpoints.
+  apiSecret: ''
+
+  # Postgres state backend (shared by controller and proxy for state coordination).
+  # Connection string for the agent sandbox's state database.
+  postgres:
+    url: ''
+    schema: 'agent_executor'
+    poolMax: 10
+    sweeperIntervalMs: 60000
+
+  # Sandbox network access via pasta userspace networking.
+  # When enabled, sandboxes get isolated outbound access with L7 filtering.
+  sandboxNetwork:
+    enabled: true
+    # Deploy smarter-device-manager to register /dev/net/tun with the kubelet.
+    # Required because containerd's default device cgroup blocks /dev/net/tun;
+    # the device plugin's DeviceSpec path is the only reliable way to grant
+    # device cgroup access without privileged mode.
+    devicePlugin: true
+    # HTTP proxy for sandbox egress L7 filtering. Defaults to the in-cluster
+    # agent-sandbox-proxy service URL when empty.
+    httpProxy: ''
+
+  # smarter-device-manager: registers /dev/net/tun with the kubelet so sandbox
+  # pods can request it via resources.limits.
+  devicePlugin:
+    image:
+      repository: ghcr.io/smarter-project/smarter-device-manager
+      tag: v1.20.12
+    # Number of /dev/net/tun device slots to register.
+    # Set high enough to accommodate maxTotalJobs + prewarm pool.
+    maxDevices: 130
+
+  # Seccomp profile path relative to /var/lib/kubelet/seccomp/.
+  # The seccomp node-installer DaemonSet copies the profile to this path
+  # on every node automatically.
+  seccompProfile: retool/gvisor-seccomp.json
+
+  # S3-compatible snapshot storage.
+  # When s3Bucket is set, snapshots are persisted to S3 and survive pod restarts.
+  snapshotStorage:
+    s3Bucket: ''
+    s3Endpoint: ''
+    s3Region: 'us-east-1'
+    # Name of a K8s Secret containing keys awsAccessKeyId and awsSecretAccessKey.
+    # If empty, falls back to the main agent sandbox secret.
+    credentialsSecretName: ''
+
+  # Sandbox (Job) configuration
+  sandbox:
+    port: 3017
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: '2'
+        memory: 4Gi
+    # Per-sandbox cgroup memory.max limit in bytes.
+    sandboxMemoryLimit: '1610612736'  # 1.5 GB
+    # Idle timeout (ms) before an unassigned sandbox self-terminates.
+    sandboxIdleTimeoutMs: 300000
+    tmpDirSizeLimit: 20Gi
+    # Separate limit for the rootfs-appjob volume — the sandbox root filesystem
+    # is a static ~600MB extraction, so 2Gi provides headroom without the 20Gi
+    # allocated for /tmp.
+    rootfsSizeLimit: 2Gi
+    # Additional environment variables for sandbox containers.
+    extraEnv: []
+
+  # Controller: tracks capacity, assigns sandbox pods, manages scaling
+  controller:
+    replicaCount: 1
+    port: 3018
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    scaling:
+      slotsPerPod: 4
+      minReplicas: 1
+      maxReplicas: 10
+      scaleUpThreshold: 2
+      scaleDownThreshold: 8
+      scaleDownGracePeriodMs: 300000
+      prewarmPoolSize: 5
+      maxTotalJobs: 50
+      maxConcurrentCreates: 3
+      jobRetentionSeconds: 300
+      assignedSandboxTtlSeconds: 3600
+      reconcileIntervalMs: 5000
+      leaderTtlMs: 10000
+      leaderRenewMs: 3000
+
+  # Proxy: HTTP proxy for sandbox egress with credential injection.
+  # The proxy must be reachable by frontend browsers for WebSocket connections.
+  proxy:
+    replicaCount: 1
+    port: 3019
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    allowedDomains: ''
+    # URL the proxy uses to reach the Retool backend for token exchange.
+    # Defaults to http://<fullname>:3000 (same-cluster backend service).
+    backendUrl: ''
+    backendDomainSuffixes: ''
+    sandboxProxyTimeoutMs: ''
+    service:
+      # Set to LoadBalancer or NodePort to expose the proxy externally.
+      type: ClusterIP
+      annotations: {}
+    # Optional ingress to expose the proxy to frontend browsers for WebSocket connections.
+    # This is separate from the main Retool ingress since the proxy typically runs on its own domain.
+    ingress:
+      enabled: false
+      # ingressClassName:
+      annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      host: ''
+      # e.g. sandbox.yourdomain.com
+      tls: []
+      # - secretName: sandbox-tls
+      #   hosts:
+      #     - sandbox.yourdomain.com
+
+  # Backend integration: these tell the Retool backend how to reach agent executor.
+  # controllerUrl and proxyUrl default to internal service URLs when empty.
+  controllerUrl: ''
+  proxyUrl: ''
+  # Required: public URL for frontend browsers to reach the proxy via WebSocket.
+  # e.g. https://sandbox.yourdomain.com
+  frontendWsProxyDomain: ''
+  # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
+  proxyDomain: ''
+
+  # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
+  # Strongly recommended for production to isolate sandbox egress.
+  networkPolicy:
+    enabled: false
+    # CIDR ranges to block in proxy egress rules. Must stay in sync with
+    # DEFAULT_BLOCKED_CIDRS in the agent-executor source.
+    blockedRanges:
+      - 169.254.0.0/16    # link-local / cloud metadata
+      - 10.0.0.0/8        # private (RFC 1918)
+      - 172.16.0.0/12     # private (RFC 1918)
+      - 192.168.0.0/16    # private (RFC 1918)
+      - 100.64.0.0/10     # carrier-grade NAT (RFC 6598)
+      - 127.0.0.0/8       # loopback
+      - 0.0.0.0/8         # "this network" (RFC 791)
+    blockedRanges6:
+      - fc00::/7           # IPv6 unique local addresses
+      - fe80::/10          # IPv6 link-local
+      - '::1/128'         # IPv6 loopback
+    # Restrict DNS egress to pods matching this selector (typically kube-dns/coredns).
+    # Set to empty to allow DNS to any destination (not recommended).
+    dnsSelector:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    extraEgress: []
+    # CIDRs allowed in proxy egress even if they fall within blockedRanges
+    # (e.g. private backend endpoint).
+    backendAllowlist: []
+    # Override sandbox ingress source selector (defaults to retool backend pods).
+    ingressFrom: []
+
+  # Node placement overrides (falls back to global nodeSelector/tolerations if empty)
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
 # SHARED TEMPORAL CONFIGURATION
 # This configuration is shared between all workers.
 # In order to use workers, temporal must be configured.
