@@ -612,7 +612,7 @@ jsExecutor:
     repository: tryretool/js-executor-service
     pullPolicy: IfNotPresent
 
-  replicaCount: 2
+  replicaCount: 1
 
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
@@ -632,7 +632,7 @@ jsExecutor:
   resources:
     limits:
       cpu: 2000m
-      memory: 4096Mi
+      memory: 2048Mi
     requests:
       cpu: 1000m
       memory: 1024Mi
