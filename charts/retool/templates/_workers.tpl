@@ -213,6 +213,8 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" $ }}
+          - name: JS_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.jsExecutor.name" $ }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
