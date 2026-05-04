@@ -76,10 +76,7 @@ spec:
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
-          {{- range $key, $value := .Values.env }}
-          - name: "{{ $key }}"
-            value: "{{ $value }}"
-          {{- end }}
+          {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
