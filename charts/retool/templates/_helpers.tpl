@@ -421,7 +421,7 @@ Usage: {{- include "retool.env" .Values.env | nindent 10 }}
 */}}
 {{- define "retool.env" -}}
 {{- range $key, $value := . }}
-{{- if kindIs "string" $value }}
+{{- if not (kindIs "map" $value) }}
 - name: "{{ $key }}"
   value: "{{ $value }}"
 {{- else }}

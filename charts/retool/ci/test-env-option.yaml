@@ -1,5 +1,10 @@
 
 env:
+  # string-valued vars should obviously work
+  STRINGVAR: "mystring"
+  # tests to ensure non-string primitives still print as strings
+  BOOLVAR: true
+  INTVAR: 1000
   # test to ensure dynamic env vars render valid schema
   FOOBAR:
     valueFrom:
