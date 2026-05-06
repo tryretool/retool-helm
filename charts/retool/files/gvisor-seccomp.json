@@ -1,7 +1,7 @@
 {
   "comment": "Docker default seccomp profile extended with syscalls required by gVisor runsc (systrap platform, rootless mode). Use with: docker run --security-opt seccomp=gvisor-seccomp.json",
   "defaultAction": "SCMP_ACT_ERRNO",
-  "defaultErrnoRet": 1,
+  "defaultErrnoRet": 38,
   "archMap": [
     {
       "architecture": "SCMP_ARCH_X86_64",
