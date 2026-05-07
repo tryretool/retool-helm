@@ -187,6 +187,28 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
+{{/*
+Render map-style env values as Kubernetes EnvVar entries.
+Scalar values are always quoted so YAML booleans and numbers become strings.
+Map values allow structured EnvVar fields such as valueFrom.
+*/}}
+{{- define "retool.env" -}}
+{{- range $key, $value := . }}
+- name: {{ $key | quote }}
+{{- if kindIs "map" $value }}
+{{- if hasKey $value "value" }}
+  value: {{ get $value "value" | quote }}
+{{- end }}
+{{- range $field, $fieldValue := omit $value "value" }}
+  {{ $field }}:
+{{ toYaml $fieldValue | indent 4 }}
+{{- end }}
+{{- else }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 {{- define "retool.postgresql.fullname" -}}
 {{- $name := default "postgresql" .Values.postgresql.nameOverride -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
@@ -570,6 +592,13 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- end -}}
 
 {{/*
+Set MCP server service name
+*/}}
+{{- define "retool.mcp.name" -}}
+{{ template "retool.fullname" . }}-mcp
+{{- end -}}
+
+{{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
@@ -626,22 +655,6 @@ Usage: (template "retool.jsExecutor.image.tag" .)
 {{/*
 Checks whether or not ExternalSecret definitions are enabled and can potentially clobber secrets or explicitly allow additional direct secret refs.
 */}}
-{{/*
-Render env vars from .Values.env, handling both string values and object values (e.g. valueFrom).
-Usage: {{- include "retool.env" .Values.env | nindent 10 }}
-*/}}
-{{- define "retool.env" -}}
-{{- range $key, $value := . }}
-{{- if not (kindIs "map" $value) }}
-- name: "{{ $key }}"
-  value: "{{ $value }}"
-{{- else }}
-- name: "{{ $key }}"
-{{ toYaml $value | indent 2 }}
-{{- end }}
-{{- end }}
-{{- end -}}
-
 {{- define "shouldIncludeConfigSecretsEnvVars" -}}
 {{- $output := "" -}}
 {{- if or (not (or (.Values.externalSecrets.enabled) (.Values.externalSecrets.externalSecretsOperator.enabled))) .Values.externalSecrets.includeConfigSecrets -}}

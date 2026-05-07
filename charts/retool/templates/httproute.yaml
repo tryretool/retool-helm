@@ -35,6 +35,17 @@ spec:
           port: {{ .port }}
     {{- end }}
     {{- end }}
+    {{- if ( and ((.Values.mcp).enabled) (((.Values.mcp).httpRoute).enabled) ) }}
+    {{- range .Values.mcp.httpRoute.rules }}
+    - matches:
+        - path:
+            type: {{ .pathType | default "PathPrefix" }}
+            value: {{ .path }}
+      backendRefs:
+        - name: {{ template "retool.mcp.name" $ }}
+          port: {{ .port }}
+    {{- end }}
+    {{- end }}
     {{- if .Values.httpRoute.rules }}
     {{- toYaml .Values.httpRoute.rules | nindent 4 }}
     {{- else }}

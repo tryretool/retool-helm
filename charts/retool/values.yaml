@@ -563,6 +563,79 @@ multiplayer:
     annotations: {}
     labels: {}
 
+mcp:
+  # Enable this to run Retool's MCP server as a separate deployment.
+  enabled: false
+
+  replicaCount: 1
+
+  # Annotations for MCP server pods
+  annotations: {}
+
+  # Labels for MCP server pods
+  labels: {}
+
+  # MCP-specific environment variables. Can include valueFrom entries.
+  environmentVariables: []
+
+  # MCP server configuration.
+  config: {}
+  # config:
+  #   # Internal URL used by the MCP server to call the Retool backend.
+  #   # Defaults to the main Retool service when unset.
+  #   retoolBackendUrl:
+  #
+  #   # Public Retool URL used for links. Set explicitly when the request
+  #   # origin is not the right public URL.
+  #   retoolUrl:
+  #
+  #   # Optional Node.js options for the MCP server process.
+  #   nodeOptions: --max_old_space_size=1024
+  #
+  #   # Optional MCP service configuration.
+  #   enabledToolsets:
+  #     - apps
+  #     - resources
+  #   maxTransportSessions: 1000
+  #   sessionIdleTimeoutMs: 1800000
+  #   sessionSweepIntervalMs: 60000
+  #   sessionGaugeEmitIntervalMs: 30000
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  # Paths to route to MCP server pods. Defaults include both the MCP endpoint
+  # and OAuth protected resource metadata endpoint.
+  ingress:
+    # This conditional is dependent on mcp.enabled.
+    enabled: true
+    paths:
+      - path: /mcp
+        port: 4010
+      - path: /.well-known/oauth-protected-resource
+        port: 4010
+
+  # HTTPRoute rules for MCP when using Gateway API instead of ingress.
+  httpRoute:
+    # This conditional is dependent on mcp.enabled.
+    enabled: true
+    rules:
+      - path: /mcp
+        port: 4010
+      - path: /.well-known/oauth-protected-resource
+        port: 4010
+
+  service:
+    externalPort: 4010
+    internalPort: 4010
+    annotations: {}
+    labels: {}
+
 codeExecutor:
   # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed

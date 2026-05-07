@@ -44,6 +44,25 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
+          # The MCP paths must be added before the main path to avoid less specific paths being matched first.
+          {{- if ( and ((.Values.mcp).enabled) (((.Values.mcp).ingress).enabled) ) }}
+          {{- range .Values.mcp.ingress.paths }}
+          - path: {{ .path }}
+            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
+            pathType: {{ .pathType | default "ImplementationSpecific" }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ template "retool.mcp.name" $ }}
+                port:
+                  number: {{ .port }}
+              {{- else }}
+              serviceName: {{ template "retool.mcp.name" $ }}
+              servicePort: {{ .port }}
+              {{- end }}
+          {{- end }}
+          {{- end }}
           - path:
             {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
             pathType: {{ $pathType }}
@@ -78,6 +97,25 @@ spec:
                 name: {{ template "retool.multiplayer.name" $ }}
                 port:
                   number: {{ .port }}
+          {{- end }}
+          {{- end }}
+          # The MCP paths must be added before the main path to avoid less specific paths being matched first.
+          {{- if ( and (($.Values.mcp).enabled) ((($.Values.mcp).ingress).enabled) ) }}
+          {{- range (($.Values.mcp).ingress).paths }}
+          - path: {{ .path }}
+            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
+            pathType: {{ .pathType | default "ImplementationSpecific" }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ template "retool.mcp.name" $ }}
+                port:
+                  number: {{ .port }}
+              {{- else }}
+              serviceName: {{ template "retool.mcp.name" $ }}
+              servicePort: {{ .port }}
+              {{- end }}
           {{- end }}
           {{- end }}
           {{- range .paths }}
