@@ -96,7 +96,10 @@ spec:
           - name: NODE_ENV
             value: production
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
-          {{- include "retool.env" .Values.env | nindent 10 }}
+          {{- range $key, $value := .Values.env }}
+          - name: "{{ $key }}"
+            value: "{{ $value }}"
+          {{- end }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
