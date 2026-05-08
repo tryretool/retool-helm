@@ -576,6 +576,7 @@ mcp:
   labels: {}
 
   # MCP-specific environment variables. Can include valueFrom entries.
+  # Use this for MCP-only secrets such as OAUTH_INTROSPECTION_AUTH_TOKEN.
   environmentVariables: []
 
   # MCP server configuration.

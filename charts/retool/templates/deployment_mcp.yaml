@@ -89,7 +89,7 @@ spec:
         args:
           - bash
           - -c
-          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 {{ template "retool.postgresql.host" . }}:{{ template "retool.postgresql.port" . }}; ./docker_scripts/start_api.sh
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/start_api.sh
         {{- if .Values.commandline.args }}
 {{ toYaml .Values.commandline.args | indent 10 }}
         {{- end }}
@@ -133,70 +133,6 @@ spec:
           {{- if hasKey $mcpConfig "sessionGaugeEmitIntervalMs" }}
           - name: MCP_SESSION_GAUGE_EMIT_INTERVAL_MS
             value: {{ $mcpConfig.sessionGaugeEmitIntervalMs | quote }}
-          {{- end }}
-          - name: COOKIE_INSECURE
-            value: {{ .Values.config.useInsecureCookies | quote }}
-          - name: POSTGRES_HOST
-            value: {{ template "retool.postgresql.host" . }}
-          - name: POSTGRES_PORT
-            value: {{ template "retool.postgresql.port" . }}
-          - name: POSTGRES_DB
-            value: {{ template "retool.postgresql.database" . }}
-          - name: POSTGRES_USER
-            value: {{ template "retool.postgresql.user" . }}
-          - name: POSTGRES_SSL_ENABLED
-            value: {{ template "retool.postgresql.ssl_enabled" . }}
-          - name: POSTGRES_PASSWORD
-            valueFrom:
-              secretKeyRef:
-          {{- if  .Values.postgresql.enabled }}
-                name: {{ template "retool.postgresql.fullname" . }}
-                key: postgres-password
-          {{- else }}
-                {{- if .Values.config.postgresql.passwordSecretName }}
-                name: {{ .Values.config.postgresql.passwordSecretName }}
-                key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
-                {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: postgresql-password
-                {{- end }}
-          {{- end }}
-          - name: LICENSE_KEY
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.config.licenseKeySecretName }}
-                name: {{ .Values.config.licenseKeySecretName }}
-                key: {{ .Values.config.licenseKeySecretKey | default "license-key" }}
-                {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: license-key
-                {{- end }}
-          - name: ENCRYPTION_KEY
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.config.encryptionKeySecretName }}
-                name: {{ .Values.config.encryptionKeySecretName }}
-                key: {{ .Values.config.encryptionKeySecretKey | default "encryption-key" }}
-                {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: encryption-key
-                {{- end }}
-          - name: JWT_SECRET
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.config.jwtSecretSecretName }}
-                name: {{ .Values.config.jwtSecretSecretName }}
-                key: {{ .Values.config.jwtSecretSecretKey | default "jwt-secret" }}
-                {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: jwt-secret
-                {{- end }}
-          {{- range .Values.environmentSecrets }}
-          - name: {{ .name }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ .secretKeyRef.name }}
-                key: {{ .secretKeyRef.key }}
           {{- end }}
           {{- with .Values.mcp.environmentVariables }}
 {{ toYaml . | indent 10 }}
