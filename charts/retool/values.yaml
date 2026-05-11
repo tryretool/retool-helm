@@ -576,24 +576,45 @@ mcp:
   labels: {}
 
   # MCP-specific environment variables. Can include valueFrom entries.
-  # Use this for MCP-only secrets such as OAUTH_INTROSPECTION_AUTH_TOKEN.
+  # Use this for MCP-only env vars that are not exposed under mcp.config.
   environmentVariables: []
 
   # MCP server configuration.
+  # The chart always sets RETOOL_BACKEND_URL, defaulting to the release's
+  # internal Retool service, e.g. http://<fullname>:<service.externalPort>.
+  # For other config keys, the chart only emits environment variables when you set
+  # them. When unset, the MCP service uses its runtime defaults:
+  #   enabledToolsets: all available toolsets
+  #     apps, resources, workflows, folders, environments, users,
+  #     organization, user_invites, feedback
+  #   maxTransportSessions: 1000
+  #   sessionIdleTimeoutMs: 1800000 (30 minutes)
+  #   sessionSweepIntervalMs: 60000 (1 minute)
+  #   sessionGaugeEmitIntervalMs: 30000 (30 seconds)
   config: {}
+  # Example overrides:
   # config:
   #   # Internal URL used by the MCP server to call the Retool backend.
-  #   # Defaults to the main Retool service when unset.
+  #   # Defaults to the release's internal Retool service when unset.
   #   retoolBackendUrl:
   #
   #   # Public Retool URL used for links. Set explicitly when the request
   #   # origin is not the right public URL.
   #   retoolUrl:
   #
-  #   # Optional Node.js options for the MCP server process.
+  #   # Secret-backed token used by MCP to call /api/oauth2/introspect.
+  #   oauthIntrospectionAuthTokenSecretName:
+  #   oauthIntrospectionAuthTokenSecretKey: oauthIntrospectionAuthToken
+  #
+  #   # Literal token override for development/testing only. Prefer the
+  #   # secret-backed setting above for real deployments.
+  #   oauthIntrospectionAuthToken:
+  #
+  #   # Optional Node.js options for the MCP server process. Unset by default.
   #   nodeOptions: --max_old_space_size=1024
   #
-  #   # Optional MCP service configuration.
+  #   # Optional MCP service configuration. If unset, all available toolsets
+  #   # are enabled by default.
   #   enabledToolsets:
   #     - apps
   #     - resources
@@ -602,13 +623,57 @@ mcp:
   #   sessionSweepIntervalMs: 60000
   #   sessionGaugeEmitIntervalMs: 30000
 
+  # Resources for MCP server pods. MCP runs from the backend image and has a
+  # similar baseline memory profile to multiplayer.
   resources:
     requests:
-      cpu: "250m"
+      cpu: "200m"
       memory: "256Mi"
     limits:
-      cpu: "500m"
-      memory: "512Mi"
+      memory: "2048Mi"
+
+  # MCP OAuth metadata routes served by the main Retool backend, not the MCP
+  # pod. They route to the backend API listener directly, bypassing the static
+  # frontend server, and must be more specific than the /mcp route so discovery
+  # paths do not get swallowed by MCP traffic routing.
+  backendMetadata:
+    service:
+      # ClusterIP service that exposes the backend API listener for metadata
+      # paths that should not fall through to the static frontend server.
+      externalPort: 3001
+      internalPort: 3001
+      annotations: {}
+      labels: {}
+
+    ingress:
+      # This conditional is dependent on mcp.enabled.
+      enabled: true
+      paths:
+        - path: /.well-known/oauth-authorization-server
+          pathType: Exact
+          port: 3001
+        - path: /.well-known/oauth-protected-resource/mcp
+          pathType: Exact
+          port: 3001
+        - path: /mcp/.well-known/oauth-protected-resource
+          pathType: Exact
+          port: 3001
+
+    # HTTPRoute rules for MCP OAuth metadata when using Gateway API instead of
+    # ingress.
+    httpRoute:
+      # This conditional is dependent on mcp.enabled.
+      enabled: true
+      rules:
+        - path: /.well-known/oauth-authorization-server
+          pathType: Exact
+          port: 3001
+        - path: /.well-known/oauth-protected-resource/mcp
+          pathType: Exact
+          port: 3001
+        - path: /mcp/.well-known/oauth-protected-resource
+          pathType: Exact
+          port: 3001
 
   # Paths to route to MCP server pods. Defaults include both the MCP endpoint
   # and OAuth protected resource metadata endpoint.
@@ -619,6 +684,7 @@ mcp:
       - path: /mcp
         port: 4010
       - path: /.well-known/oauth-protected-resource
+        pathType: Exact
         port: 4010
 
   # HTTPRoute rules for MCP when using Gateway API instead of ingress.
@@ -629,6 +695,7 @@ mcp:
       - path: /mcp
         port: 4010
       - path: /.well-known/oauth-protected-resource
+        pathType: Exact
         port: 4010
 
   service:

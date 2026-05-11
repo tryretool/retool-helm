@@ -1,0 +1,27 @@
+{{- if (and ((.Values.mcp).enabled) (or ((((.Values.mcp).backendMetadata).ingress).enabled) ((((.Values.mcp).backendMetadata).httpRoute).enabled))) }}
+{{- $service := ((((.Values.mcp).backendMetadata).service) | default dict) -}}
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- range $key, $value := $service.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  name: {{ template "retool.backendApi.name" . }}
+  {{- with $service.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: {{ $service.portName | default "http-api" }}
+      port: {{ $service.externalPort | default 3001 }}
+      targetPort: {{ $service.internalPort | default 3001 }}
+      protocol: TCP
+  selector:
+{{- include "retool.selectorLabels" . | nindent 4 }}
+{{- end }}
