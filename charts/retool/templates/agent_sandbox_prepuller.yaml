@@ -40,7 +40,7 @@ spec:
       terminationGracePeriodSeconds: 5
       initContainers:
         - name: pull-image
-          image: "{{ $as.image.repository }}:{{ $as.image.tag }}"
+          image: "{{ $as.image.repository }}:{{ $as.image.tag | default .Values.image.tag }}"
           imagePullPolicy: {{ $as.image.pullPolicy }}
           command: ["true"]
           securityContext:

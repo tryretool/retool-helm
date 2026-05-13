@@ -754,6 +754,8 @@ jsExecutor:
 
   image:
     repository: tryretool/js-executor-service
+    # defaults to top level image.tag
+    tag: null
     pullPolicy: IfNotPresent
 
   replicaCount: 1
@@ -851,7 +853,8 @@ agentSandbox:
 
   image:
     repository: tryretool/agent-sandbox-service
-    tag: latest
+    # defaults to top level image.tag
+    tag: null
     pullPolicy: IfNotPresent
 
   # Lightweight init image used by the prepuller and seccomp DaemonSets.
