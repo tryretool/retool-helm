@@ -24,6 +24,97 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
+Whether MCP routing needs the main Retool Service to expose the backend API
+listener in addition to the primary frontend-facing port.
+*/}}
+{{- define "retool.mcp.needsBackendApi" -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpIngress := $mcp.ingress | default dict -}}
+{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $needsBackendApi := false -}}
+{{- if and .Values.ingress.enabled $mcp.enabled $mcpIngress.enabled -}}
+{{- range ($mcpIngress.paths | default list) -}}
+{{- if eq (.target | default "mcp") "backendApi" -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if and .Values.httpRoute.enabled $mcp.enabled $mcpHttpRoute.enabled -}}
+{{- range ($mcpHttpRoute.rules | default list) -}}
+{{- if eq (.target | default "mcp") "backendApi" -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $needsBackendApi -}}true{{- else -}}false{{- end -}}
+{{- end }}
+
+{{/*
+Render an MCP-related Ingress path. By default paths route to the MCP service;
+target: backendApi routes to the main backend API listener instead.
+*/}}
+{{- define "retool.ingress.mcpPath" -}}
+{{- $root := .root -}}
+{{- $path := .path -}}
+{{- $target := .target | default ($path.target | default "mcp") -}}
+{{- if not (or (eq $target "mcp") (eq $target "backendApi")) -}}
+{{- fail (printf "Invalid mcp.ingress.paths target %q for path %q. Valid targets are \"mcp\" and \"backendApi\"." $target $path.path) -}}
+{{- end -}}
+{{- $mcpService := (($root.Values.mcp).service) | default dict -}}
+{{- $serviceName := include "retool.mcp.name" $root -}}
+{{- $servicePort := $path.port | default ($mcpService.externalPort | default 4010) -}}
+{{- $pathType := $path.pathType | default "ImplementationSpecific" -}}
+{{- if eq $target "backendApi" -}}
+{{- $serviceName = include "retool.fullname" $root -}}
+{{- $servicePort = $path.port | default (.backendApiPort | default 3001) -}}
+{{- $pathType = $path.pathType | default "Exact" -}}
+{{- end -}}
+- path: {{ $path.path }}
+  {{- if (semverCompare ">=1.18-0" $root.Capabilities.KubeVersion.Version) }}
+  pathType: {{ $pathType }}
+  {{- end }}
+  backend:
+    {{- if semverCompare ">=1.19-0" $root.Capabilities.KubeVersion.Version }}
+    service:
+      name: {{ $serviceName }}
+      port:
+        number: {{ $servicePort }}
+    {{- else }}
+    serviceName: {{ $serviceName }}
+    servicePort: {{ $servicePort }}
+    {{- end }}
+{{- end }}
+
+{{/*
+Render an MCP-related HTTPRoute rule. By default rules route to the MCP service;
+target: backendApi routes to the main backend API listener instead.
+*/}}
+{{- define "retool.httpRoute.mcpRule" -}}
+{{- $root := .root -}}
+{{- $rule := .rule -}}
+{{- $target := .target | default ($rule.target | default "mcp") -}}
+{{- if not (or (eq $target "mcp") (eq $target "backendApi")) -}}
+{{- fail (printf "Invalid mcp.httpRoute.rules target %q for path %q. Valid targets are \"mcp\" and \"backendApi\"." $target $rule.path) -}}
+{{- end -}}
+{{- $mcpService := (($root.Values.mcp).service) | default dict -}}
+{{- $serviceName := include "retool.mcp.name" $root -}}
+{{- $servicePort := $rule.port | default ($mcpService.externalPort | default 4010) -}}
+{{- $pathType := $rule.pathType | default "PathPrefix" -}}
+{{- if eq $target "backendApi" -}}
+{{- $serviceName = include "retool.fullname" $root -}}
+{{- $servicePort = $rule.port | default (.backendApiPort | default 3001) -}}
+{{- $pathType = $rule.pathType | default "Exact" -}}
+{{- end -}}
+- matches:
+    - path:
+        type: {{ $pathType }}
+        value: {{ $rule.path }}
+  backendRefs:
+    - name: {{ $serviceName }}
+      port: {{ $servicePort }}
+{{- end }}
+
+{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "retool.chart" -}}
@@ -184,6 +275,28 @@ Create the name of the service account to use
 {{- default (include "retool.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Render map-style env values as Kubernetes EnvVar entries.
+Scalar values are always quoted so YAML booleans and numbers become strings.
+Map values allow structured EnvVar fields such as valueFrom.
+*/}}
+{{- define "retool.env" -}}
+{{- range $key, $value := . }}
+- name: {{ $key | quote }}
+{{- if kindIs "map" $value }}
+{{- if hasKey $value "value" }}
+  value: {{ get $value "value" | quote }}
+{{- end }}
+{{- range $field, $fieldValue := omit $value "value" }}
+  {{ $field }}:
+{{ toYaml $fieldValue | indent 4 }}
+{{- end }}
+{{- else }}
+  value: {{ $value | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -570,6 +683,13 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- end -}}
 
 {{/*
+Set MCP server service name
+*/}}
+{{- define "retool.mcp.name" -}}
+{{ template "retool.fullname" . }}-mcp
+{{- end -}}
+
+{{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
@@ -626,22 +746,6 @@ Usage: (template "retool.jsExecutor.image.tag" .)
 {{/*
 Checks whether or not ExternalSecret definitions are enabled and can potentially clobber secrets or explicitly allow additional direct secret refs.
 */}}
-{{/*
-Render env vars from .Values.env, handling both string values and object values (e.g. valueFrom).
-Usage: {{- include "retool.env" .Values.env | nindent 10 }}
-*/}}
-{{- define "retool.env" -}}
-{{- range $key, $value := . }}
-{{- if not (kindIs "map" $value) }}
-- name: "{{ $key }}"
-  value: "{{ $value }}"
-{{- else }}
-- name: "{{ $key }}"
-{{ toYaml $value | indent 2 }}
-{{- end }}
-{{- end }}
-{{- end -}}
-
 {{- define "shouldIncludeConfigSecretsEnvVars" -}}
 {{- $output := "" -}}
 {{- if or (not (or (.Values.externalSecrets.enabled) (.Values.externalSecrets.externalSecretsOperator.enabled))) .Values.externalSecrets.includeConfigSecrets -}}
