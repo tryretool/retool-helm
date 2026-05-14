@@ -929,6 +929,12 @@ agentSandbox:
     # Number of /dev/net/tun device slots to register.
     # Set high enough to accommodate maxTotalJobs + prewarm pool.
     maxDevices: 130
+    
+    # When possible, we want the devicePlugin daemonset to preempt normal pods.
+    # Note: in some cases this is inconvenient or unsupported, i.e. in GKE which
+    # requires a custom ResourceQuota to use the `system-node-critical`
+    # PriorityClass in user namespaces. In those cases, set this to `null`.
+    priorityClassName: system-node-critical
 
   # Seccomp profile path relative to /var/lib/kubelet/seccomp/.
   # The seccomp node-installer DaemonSet copies the profile to this path
