@@ -1,3 +1,10 @@
+{{- $needsBackendApi := eq (include "retool.mcp.needsBackendApi" .) "true" -}}
+{{- $backendApiService := (((.Values.mcp).backendMetadata).service) | default dict -}}
+{{- $servicePortName := .Values.service.portName | default "http" -}}
+{{- $backendApiPortName := $backendApiService.portName | default "http-api" -}}
+{{- if and $needsBackendApi (eq $servicePortName $backendApiPortName) -}}
+{{- fail "When MCP backend API routing is enabled, .Values.service.portName and .Values.mcp.backendMetadata.service.portName must be different" -}}
+{{- end -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -28,11 +35,17 @@ spec:
     - port: {{ .Values.service.externalPort }}
       targetPort: {{ .Values.service.internalPort }}
       protocol: TCP
-{{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
+{{- if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{ .Values.service.nodePort }}
-{{ end }}
-{{- if .Values.service.portName }}
-      name: {{ .Values.service.portName }}
+{{- end }}
+{{- if or .Values.service.portName $needsBackendApi }}
+      name: {{ $servicePortName }}
+{{- end }}
+{{- if $needsBackendApi }}
+    - name: {{ $backendApiPortName }}
+      port: {{ $backendApiService.externalPort | default 3001 }}
+      targetPort: {{ $backendApiService.internalPort | default 3001 }}
+      protocol: TCP
 {{- end }}
 {{- if .Values.service.externalIPs }}
   externalIPs:

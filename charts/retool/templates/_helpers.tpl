@@ -24,11 +24,29 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Name of the main backend API service. This routes directly to the backend API
-listener, bypassing the static frontend server on the primary service port.
+Whether MCP routing needs the main Retool Service to expose the backend API
+listener in addition to the primary frontend-facing port.
 */}}
-{{- define "retool.backendApi.name" -}}
-{{- printf "%s-api" (include "retool.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- define "retool.mcp.needsBackendApi" -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpIngress := $mcp.ingress | default dict -}}
+{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $needsBackendApi := false -}}
+{{- if and .Values.ingress.enabled $mcp.enabled $mcpIngress.enabled -}}
+{{- range ($mcpIngress.paths | default list) -}}
+{{- if eq (.target | default "mcp") "backendApi" -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if and .Values.httpRoute.enabled $mcp.enabled $mcpHttpRoute.enabled -}}
+{{- range ($mcpHttpRoute.rules | default list) -}}
+{{- if eq (.target | default "mcp") "backendApi" -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $needsBackendApi -}}true{{- else -}}false{{- end -}}
 {{- end }}
 
 {{/*
@@ -47,7 +65,7 @@ target: backendApi routes to the main backend API listener instead.
 {{- $servicePort := $path.port | default ($mcpService.externalPort | default 4010) -}}
 {{- $pathType := $path.pathType | default "ImplementationSpecific" -}}
 {{- if eq $target "backendApi" -}}
-{{- $serviceName = include "retool.backendApi.name" $root -}}
+{{- $serviceName = include "retool.fullname" $root -}}
 {{- $servicePort = $path.port | default (.backendApiPort | default 3001) -}}
 {{- $pathType = $path.pathType | default "Exact" -}}
 {{- end -}}
@@ -83,7 +101,7 @@ target: backendApi routes to the main backend API listener instead.
 {{- $servicePort := $rule.port | default ($mcpService.externalPort | default 4010) -}}
 {{- $pathType := $rule.pathType | default "PathPrefix" -}}
 {{- if eq $target "backendApi" -}}
-{{- $serviceName = include "retool.backendApi.name" $root -}}
+{{- $serviceName = include "retool.fullname" $root -}}
 {{- $servicePort = $rule.port | default (.backendApiPort | default 3001) -}}
 {{- $pathType = $rule.pathType | default "Exact" -}}
 {{- end -}}

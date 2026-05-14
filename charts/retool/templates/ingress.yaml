@@ -4,9 +4,6 @@
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
 {{- $mcpIngress := $mcp.ingress | default dict -}}
-{{- $legacyBackendMetadataIngress := $mcpBackendMetadata.ingress | default dict -}}
-{{- $hasLegacyBackendMetadataIngress := hasKey $mcpBackendMetadata "ingress" -}}
-{{- $useLegacyBackendMetadataIngress := and $hasLegacyBackendMetadataIngress $legacyBackendMetadataIngress.enabled -}}
 {{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
 {{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 {{- $pathType := .Values.ingress.pathType -}}
@@ -53,16 +50,9 @@ spec:
           {{- end }}
           {{- end }}
           # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
-          {{- if ( and ((.Values.mcp).enabled) $useLegacyBackendMetadataIngress ) }}
-          {{- range $legacyBackendMetadataIngress.paths }}
-          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "target" "backendApi" "backendApiPort" $backendApiPort) | nindent 10 }}
-          {{- end }}
-          {{- end }}
           {{- if ( and ((.Values.mcp).enabled) $mcpIngress.enabled ) }}
           {{- range $mcpIngress.paths }}
-          {{- if not (and $hasLegacyBackendMetadataIngress (eq (.target | default "mcp") "backendApi")) }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendApiPort" $backendApiPort) | nindent 10 }}
-          {{- end }}
           {{- end }}
           {{- end }}
           - path:
@@ -102,16 +92,9 @@ spec:
           {{- end }}
           {{- end }}
           # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
-          {{- if ( and (($.Values.mcp).enabled) $useLegacyBackendMetadataIngress ) }}
-          {{- range $legacyBackendMetadataIngress.paths }}
-          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "target" "backendApi" "backendApiPort" $backendApiPort) | nindent 10 }}
-          {{- end }}
-          {{- end }}
           {{- if ( and (($.Values.mcp).enabled) $mcpIngress.enabled ) }}
           {{- range $mcpIngress.paths }}
-          {{- if not (and $hasLegacyBackendMetadataIngress (eq (.target | default "mcp") "backendApi")) }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendApiPort" $backendApiPort) | nindent 10 }}
-          {{- end }}
           {{- end }}
           {{- end }}
           {{- range .paths }}

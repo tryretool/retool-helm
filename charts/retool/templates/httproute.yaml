@@ -4,9 +4,6 @@
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
 {{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
-{{- $legacyBackendMetadataHttpRoute := $mcpBackendMetadata.httpRoute | default dict -}}
-{{- $hasLegacyBackendMetadataHttpRoute := hasKey $mcpBackendMetadata "httpRoute" -}}
-{{- $useLegacyBackendMetadataHttpRoute := and $hasLegacyBackendMetadataHttpRoute $legacyBackendMetadataHttpRoute.enabled -}}
 {{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
 {{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 apiVersion: gateway.networking.k8s.io/v1
@@ -43,16 +40,9 @@ spec:
           port: {{ .port }}
     {{- end }}
     {{- end }}
-    {{- if ( and ((.Values.mcp).enabled) $useLegacyBackendMetadataHttpRoute ) }}
-    {{- range $legacyBackendMetadataHttpRoute.rules }}
-    {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "target" "backendApi" "backendApiPort" $backendApiPort) | nindent 4 }}
-    {{- end }}
-    {{- end }}
     {{- if ( and ((.Values.mcp).enabled) $mcpHttpRoute.enabled ) }}
     {{- range $mcpHttpRoute.rules }}
-    {{- if not (and $hasLegacyBackendMetadataHttpRoute (eq (.target | default "mcp") "backendApi")) }}
     {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "backendApiPort" $backendApiPort) | nindent 4 }}
-    {{- end }}
     {{- end }}
     {{- end }}
     {{- if .Values.httpRoute.rules }}

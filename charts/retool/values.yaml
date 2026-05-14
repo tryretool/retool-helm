@@ -637,16 +637,15 @@ mcp:
       memory: "2048Mi"
 
   # MCP OAuth metadata routes are served by the main Retool backend, not the MCP
-  # pod. This service exposes the backend API listener for those routes,
-  # bypassing the static frontend server on the primary service port.
+  # pod. This config exposes the backend API listener as an additional port on
+  # the main Retool service when a route uses target: backendApi.
   backendMetadata:
     service:
-      # ClusterIP service that exposes the backend API listener for metadata
-      # paths that should not fall through to the static frontend server.
+      # Service port that exposes the backend API listener for metadata paths
+      # that should not fall through to the static frontend server.
+      portName: http-api
       externalPort: 3001
       internalPort: 3001
-      annotations: {}
-      labels: {}
 
   # Public MCP-related ingress paths. Paths are emitted in order before the main
   # Retool route. Use target: backendApi for OAuth metadata routes that must hit
