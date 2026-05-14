@@ -1,8 +1,13 @@
 {{- if .Values.ingress.enabled }}
 {{- $fullName := include "retool.fullname" . -}}
 {{- $svcPort := .Values.service.externalPort -}}
-{{- $backendApiName := include "retool.backendApi.name" . -}}
-{{- $backendApiService := (((.Values.mcp).backendMetadata).service) | default dict -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
+{{- $mcpIngress := $mcp.ingress | default dict -}}
+{{- $legacyBackendMetadataIngress := $mcpBackendMetadata.ingress | default dict -}}
+{{- $hasLegacyBackendMetadataIngress := hasKey $mcpBackendMetadata "ingress" -}}
+{{- $useLegacyBackendMetadataIngress := and $hasLegacyBackendMetadataIngress $legacyBackendMetadataIngress.enabled -}}
+{{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
 {{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 {{- $pathType := .Values.ingress.pathType -}}
 {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version -}}
@@ -47,42 +52,17 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
-          # MCP OAuth metadata paths served by the backend API must be added before the MCP path.
-          {{- if ( and ((.Values.mcp).enabled) ((((.Values.mcp).backendMetadata).ingress).enabled) ) }}
-          {{- range (((.Values.mcp).backendMetadata).ingress).paths }}
-          - path: {{ .path }}
-            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
-            pathType: {{ .pathType | default "Exact" }}
-            {{- end }}
-            backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
-              service:
-                name: {{ $backendApiName }}
-                port:
-                  number: {{ .port | default $backendApiPort }}
-              {{- else }}
-              serviceName: {{ $backendApiName }}
-              servicePort: {{ .port | default $backendApiPort }}
-              {{- end }}
+          # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
+          {{- if ( and ((.Values.mcp).enabled) $useLegacyBackendMetadataIngress ) }}
+          {{- range $legacyBackendMetadataIngress.paths }}
+          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "target" "backendApi" "backendApiPort" $backendApiPort) | nindent 10 }}
           {{- end }}
           {{- end }}
-          # The MCP paths must be added before the main path to avoid less specific paths being matched first.
-          {{- if ( and ((.Values.mcp).enabled) (((.Values.mcp).ingress).enabled) ) }}
-          {{- range .Values.mcp.ingress.paths }}
-          - path: {{ .path }}
-            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
-            pathType: {{ .pathType | default "ImplementationSpecific" }}
-            {{- end }}
-            backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
-              service:
-                name: {{ template "retool.mcp.name" $ }}
-                port:
-                  number: {{ .port }}
-              {{- else }}
-              serviceName: {{ template "retool.mcp.name" $ }}
-              servicePort: {{ .port }}
-              {{- end }}
+          {{- if ( and ((.Values.mcp).enabled) $mcpIngress.enabled ) }}
+          {{- range $mcpIngress.paths }}
+          {{- if not (and $hasLegacyBackendMetadataIngress (eq (.target | default "mcp") "backendApi")) }}
+          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendApiPort" $backendApiPort) | nindent 10 }}
+          {{- end }}
           {{- end }}
           {{- end }}
           - path:
@@ -121,42 +101,17 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
-          # MCP OAuth metadata paths served by the backend API must be added before the MCP path.
-          {{- if ( and (($.Values.mcp).enabled) ((((($.Values.mcp).backendMetadata).ingress).enabled)) ) }}
-          {{- range (((($.Values.mcp).backendMetadata).ingress).paths) }}
-          - path: {{ .path }}
-            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
-            pathType: {{ .pathType | default "Exact" }}
-            {{- end }}
-            backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
-              service:
-                name: {{ $backendApiName }}
-                port:
-                  number: {{ .port | default $backendApiPort }}
-              {{- else }}
-              serviceName: {{ $backendApiName }}
-              servicePort: {{ .port | default $backendApiPort }}
-              {{- end }}
+          # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
+          {{- if ( and (($.Values.mcp).enabled) $useLegacyBackendMetadataIngress ) }}
+          {{- range $legacyBackendMetadataIngress.paths }}
+          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "target" "backendApi" "backendApiPort" $backendApiPort) | nindent 10 }}
           {{- end }}
           {{- end }}
-          # The MCP paths must be added before the main path to avoid less specific paths being matched first.
-          {{- if ( and (($.Values.mcp).enabled) ((($.Values.mcp).ingress).enabled) ) }}
-          {{- range (($.Values.mcp).ingress).paths }}
-          - path: {{ .path }}
-            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
-            pathType: {{ .pathType | default "ImplementationSpecific" }}
-            {{- end }}
-            backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
-              service:
-                name: {{ template "retool.mcp.name" $ }}
-                port:
-                  number: {{ .port }}
-              {{- else }}
-              serviceName: {{ template "retool.mcp.name" $ }}
-              servicePort: {{ .port }}
-              {{- end }}
+          {{- if ( and (($.Values.mcp).enabled) $mcpIngress.enabled ) }}
+          {{- range $mcpIngress.paths }}
+          {{- if not (and $hasLegacyBackendMetadataIngress (eq (.target | default "mcp") "backendApi")) }}
+          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendApiPort" $backendApiPort) | nindent 10 }}
+          {{- end }}
           {{- end }}
           {{- end }}
           {{- range .paths }}

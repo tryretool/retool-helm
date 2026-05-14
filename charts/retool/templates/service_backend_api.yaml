@@ -1,5 +1,34 @@
-{{- if (and ((.Values.mcp).enabled) (or ((((.Values.mcp).backendMetadata).ingress).enabled) ((((.Values.mcp).backendMetadata).httpRoute).enabled))) }}
-{{- $service := ((((.Values.mcp).backendMetadata).service) | default dict) -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
+{{- $mcpIngress := $mcp.ingress | default dict -}}
+{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $legacyBackendMetadataIngress := $mcpBackendMetadata.ingress | default dict -}}
+{{- $legacyBackendMetadataHttpRoute := $mcpBackendMetadata.httpRoute | default dict -}}
+{{- $hasLegacyBackendMetadataIngress := hasKey $mcpBackendMetadata "ingress" -}}
+{{- $hasLegacyBackendMetadataHttpRoute := hasKey $mcpBackendMetadata "httpRoute" -}}
+{{- $needsBackendApi := false -}}
+{{- if and $mcp.enabled $mcpIngress.enabled (not $hasLegacyBackendMetadataIngress) -}}
+{{- range ($mcpIngress.paths | default list) -}}
+{{- if eq (.target | default "mcp") "backendApi" -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if and $mcp.enabled $mcpHttpRoute.enabled (not $hasLegacyBackendMetadataHttpRoute) -}}
+{{- range ($mcpHttpRoute.rules | default list) -}}
+{{- if eq (.target | default "mcp") "backendApi" -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if and $mcp.enabled $hasLegacyBackendMetadataIngress $legacyBackendMetadataIngress.enabled -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- if and $mcp.enabled $hasLegacyBackendMetadataHttpRoute $legacyBackendMetadataHttpRoute.enabled -}}
+{{- $needsBackendApi = true -}}
+{{- end -}}
+{{- if and $mcp.enabled $needsBackendApi }}
+{{- $service := ($mcpBackendMetadata.service | default dict) -}}
 apiVersion: v1
 kind: Service
 metadata:

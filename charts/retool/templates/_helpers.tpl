@@ -32,6 +32,71 @@ listener, bypassing the static frontend server on the primary service port.
 {{- end }}
 
 {{/*
+Render an MCP-related Ingress path. By default paths route to the MCP service;
+target: backendApi routes to the main backend API listener instead.
+*/}}
+{{- define "retool.ingress.mcpPath" -}}
+{{- $root := .root -}}
+{{- $path := .path -}}
+{{- $target := .target | default ($path.target | default "mcp") -}}
+{{- if not (or (eq $target "mcp") (eq $target "backendApi")) -}}
+{{- fail (printf "Invalid mcp.ingress.paths target %q for path %q. Valid targets are \"mcp\" and \"backendApi\"." $target $path.path) -}}
+{{- end -}}
+{{- $mcpService := (($root.Values.mcp).service) | default dict -}}
+{{- $serviceName := include "retool.mcp.name" $root -}}
+{{- $servicePort := $path.port | default ($mcpService.externalPort | default 4010) -}}
+{{- $pathType := $path.pathType | default "ImplementationSpecific" -}}
+{{- if eq $target "backendApi" -}}
+{{- $serviceName = include "retool.backendApi.name" $root -}}
+{{- $servicePort = $path.port | default (.backendApiPort | default 3001) -}}
+{{- $pathType = $path.pathType | default "Exact" -}}
+{{- end -}}
+- path: {{ $path.path }}
+  {{- if (semverCompare ">=1.18-0" $root.Capabilities.KubeVersion.Version) }}
+  pathType: {{ $pathType }}
+  {{- end }}
+  backend:
+    {{- if semverCompare ">=1.19-0" $root.Capabilities.KubeVersion.Version }}
+    service:
+      name: {{ $serviceName }}
+      port:
+        number: {{ $servicePort }}
+    {{- else }}
+    serviceName: {{ $serviceName }}
+    servicePort: {{ $servicePort }}
+    {{- end }}
+{{- end }}
+
+{{/*
+Render an MCP-related HTTPRoute rule. By default rules route to the MCP service;
+target: backendApi routes to the main backend API listener instead.
+*/}}
+{{- define "retool.httpRoute.mcpRule" -}}
+{{- $root := .root -}}
+{{- $rule := .rule -}}
+{{- $target := .target | default ($rule.target | default "mcp") -}}
+{{- if not (or (eq $target "mcp") (eq $target "backendApi")) -}}
+{{- fail (printf "Invalid mcp.httpRoute.rules target %q for path %q. Valid targets are \"mcp\" and \"backendApi\"." $target $rule.path) -}}
+{{- end -}}
+{{- $mcpService := (($root.Values.mcp).service) | default dict -}}
+{{- $serviceName := include "retool.mcp.name" $root -}}
+{{- $servicePort := $rule.port | default ($mcpService.externalPort | default 4010) -}}
+{{- $pathType := $rule.pathType | default "PathPrefix" -}}
+{{- if eq $target "backendApi" -}}
+{{- $serviceName = include "retool.backendApi.name" $root -}}
+{{- $servicePort = $rule.port | default (.backendApiPort | default 3001) -}}
+{{- $pathType = $rule.pathType | default "Exact" -}}
+{{- end -}}
+- matches:
+    - path:
+        type: {{ $pathType }}
+        value: {{ $rule.path }}
+  backendRefs:
+    - name: {{ $serviceName }}
+      port: {{ $servicePort }}
+{{- end }}
+
+{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "retool.chart" -}}

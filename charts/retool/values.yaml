@@ -636,10 +636,9 @@ mcp:
     limits:
       memory: "2048Mi"
 
-  # MCP OAuth metadata routes served by the main Retool backend, not the MCP
-  # pod. They route to the backend API listener directly, bypassing the static
-  # frontend server, and must be more specific than the /mcp route so discovery
-  # paths do not get swallowed by MCP traffic routing.
+  # MCP OAuth metadata routes are served by the main Retool backend, not the MCP
+  # pod. This service exposes the backend API listener for those routes,
+  # bypassing the static frontend server on the primary service port.
   backendMetadata:
     service:
       # ClusterIP service that exposes the backend API listener for metadata
@@ -649,46 +648,31 @@ mcp:
       annotations: {}
       labels: {}
 
-    ingress:
-      # This conditional is dependent on mcp.enabled.
-      enabled: true
-      paths:
-        - path: /.well-known/oauth-authorization-server
-          pathType: Exact
-          port: 3001
-        - path: /.well-known/oauth-protected-resource/mcp
-          pathType: Exact
-          port: 3001
-        - path: /mcp/.well-known/oauth-protected-resource
-          pathType: Exact
-          port: 3001
-
-    # HTTPRoute rules for MCP OAuth metadata when using Gateway API instead of
-    # ingress.
-    httpRoute:
-      # This conditional is dependent on mcp.enabled.
-      enabled: true
-      rules:
-        - path: /.well-known/oauth-authorization-server
-          pathType: Exact
-          port: 3001
-        - path: /.well-known/oauth-protected-resource/mcp
-          pathType: Exact
-          port: 3001
-        - path: /mcp/.well-known/oauth-protected-resource
-          pathType: Exact
-          port: 3001
-
-  # Paths to route to MCP server pods. Defaults include both the MCP endpoint
-  # and OAuth protected resource metadata endpoint.
+  # Public MCP-related ingress paths. Paths are emitted in order before the main
+  # Retool route. Use target: backendApi for OAuth metadata routes that must hit
+  # the main backend API listener; use target: mcp for MCP server routes.
   ingress:
     # This conditional is dependent on mcp.enabled.
     enabled: true
     paths:
+      - path: /.well-known/oauth-authorization-server
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /.well-known/oauth-protected-resource/mcp
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp/.well-known/oauth-protected-resource
+        pathType: Exact
+        target: backendApi
+        port: 3001
       - path: /mcp
+        target: mcp
         port: 4010
       - path: /.well-known/oauth-protected-resource
         pathType: Exact
+        target: mcp
         port: 4010
 
   # HTTPRoute rules for MCP when using Gateway API instead of ingress.
@@ -696,10 +680,24 @@ mcp:
     # This conditional is dependent on mcp.enabled.
     enabled: true
     rules:
+      - path: /.well-known/oauth-authorization-server
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /.well-known/oauth-protected-resource/mcp
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp/.well-known/oauth-protected-resource
+        pathType: Exact
+        target: backendApi
+        port: 3001
       - path: /mcp
+        target: mcp
         port: 4010
       - path: /.well-known/oauth-protected-resource
         pathType: Exact
+        target: mcp
         port: 4010
 
   service:

@@ -1,8 +1,13 @@
 {{- if .Values.httpRoute.enabled }}
 {{- $fullName := include "retool.fullname" . -}}
 {{- $svcPort := .Values.service.externalPort -}}
-{{- $backendApiName := include "retool.backendApi.name" . -}}
-{{- $backendApiService := (((.Values.mcp).backendMetadata).service) | default dict -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
+{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $legacyBackendMetadataHttpRoute := $mcpBackendMetadata.httpRoute | default dict -}}
+{{- $hasLegacyBackendMetadataHttpRoute := hasKey $mcpBackendMetadata "httpRoute" -}}
+{{- $useLegacyBackendMetadataHttpRoute := and $hasLegacyBackendMetadataHttpRoute $legacyBackendMetadataHttpRoute.enabled -}}
+{{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
 {{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -38,26 +43,16 @@ spec:
           port: {{ .port }}
     {{- end }}
     {{- end }}
-    {{- if ( and ((.Values.mcp).enabled) ((((.Values.mcp).backendMetadata).httpRoute).enabled) ) }}
-    {{- range (((.Values.mcp).backendMetadata).httpRoute).rules }}
-    - matches:
-        - path:
-            type: {{ .pathType | default "Exact" }}
-            value: {{ .path }}
-      backendRefs:
-        - name: {{ $backendApiName }}
-          port: {{ .port | default $backendApiPort }}
+    {{- if ( and ((.Values.mcp).enabled) $useLegacyBackendMetadataHttpRoute ) }}
+    {{- range $legacyBackendMetadataHttpRoute.rules }}
+    {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "target" "backendApi" "backendApiPort" $backendApiPort) | nindent 4 }}
     {{- end }}
     {{- end }}
-    {{- if ( and ((.Values.mcp).enabled) (((.Values.mcp).httpRoute).enabled) ) }}
-    {{- range .Values.mcp.httpRoute.rules }}
-    - matches:
-        - path:
-            type: {{ .pathType | default "PathPrefix" }}
-            value: {{ .path }}
-      backendRefs:
-        - name: {{ template "retool.mcp.name" $ }}
-          port: {{ .port }}
+    {{- if ( and ((.Values.mcp).enabled) $mcpHttpRoute.enabled ) }}
+    {{- range $mcpHttpRoute.rules }}
+    {{- if not (and $hasLegacyBackendMetadataHttpRoute (eq (.target | default "mcp") "backendApi")) }}
+    {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "backendApiPort" $backendApiPort) | nindent 4 }}
+    {{- end }}
     {{- end }}
     {{- end }}
     {{- if .Values.httpRoute.rules }}
