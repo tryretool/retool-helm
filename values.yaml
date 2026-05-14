@@ -627,14 +627,14 @@ mcp:
   #   sessionSweepIntervalMs: 60000
   #   sessionGaugeEmitIntervalMs: 30000
 
-  # Resources for MCP server pods. MCP runs from the backend image and has a
-  # similar baseline memory profile to multiplayer.
+  # Resources for MCP server pods. MCP runs from the backend image and does not
+  # horizontally scale yet, so its default memory limit is higher than multiplayer.
   resources:
     requests:
       cpu: "200m"
       memory: "256Mi"
     limits:
-      memory: "2048Mi"
+      memory: "4096Mi"
 
   # MCP OAuth metadata routes are served by the main Retool backend, not the MCP
   # pod. This config exposes the backend API listener as an additional port on
