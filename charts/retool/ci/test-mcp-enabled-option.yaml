@@ -2,6 +2,7 @@ mcp:
   enabled: true
   replicaCount: 2
   config:
+    oauthIntrospectionAuthToken: test-oauth-introspection-token
     enabledToolsets:
       - apps
       - resources

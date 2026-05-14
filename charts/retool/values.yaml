@@ -603,11 +603,15 @@ mcp:
   #   retoolUrl:
   #
   #   # Secret-backed token used by MCP to call /api/oauth2/introspect.
+  #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
+  #   # is provided directly in mcp.environmentVariables.
   #   oauthIntrospectionAuthTokenSecretName:
   #   oauthIntrospectionAuthTokenSecretKey: oauthIntrospectionAuthToken
   #
   #   # Literal token override for development/testing only. Prefer the
   #   # secret-backed setting above for real deployments.
+  #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
+  #   # is provided directly in mcp.environmentVariables.
   #   oauthIntrospectionAuthToken:
   #
   #   # Optional Node.js options for the MCP server process. Unset by default.
