@@ -563,6 +563,148 @@ multiplayer:
     annotations: {}
     labels: {}
 
+mcp:
+  # Enable this to run Retool's MCP server as a separate deployment.
+  enabled: false
+
+  replicaCount: 1
+
+  # Annotations for MCP server pods
+  annotations: {}
+
+  # Labels for MCP server pods
+  labels: {}
+
+  # MCP-specific environment variables. Can include valueFrom entries.
+  # Use this for MCP-only env vars that are not exposed under mcp.config.
+  environmentVariables: []
+
+  # MCP server configuration.
+  # The chart always sets RETOOL_BACKEND_URL, defaulting to the release's
+  # internal Retool service, e.g. http://<fullname>:<service.externalPort>.
+  # For other config keys, the chart only emits environment variables when you set
+  # them. When unset, the MCP service uses its runtime defaults:
+  #   enabledToolsets: all available toolsets
+  #     apps, resources, workflows, folders, environments, users,
+  #     organization, user_invites, feedback
+  #   maxTransportSessions: 1000
+  #   sessionIdleTimeoutMs: 1800000 (30 minutes)
+  #   sessionSweepIntervalMs: 60000 (1 minute)
+  #   sessionGaugeEmitIntervalMs: 30000 (30 seconds)
+  config: {}
+  # Example overrides:
+  # config:
+  #   # Internal URL used by the MCP server to call the Retool backend.
+  #   # Defaults to the release's internal Retool service when unset.
+  #   retoolBackendUrl:
+  #
+  #   # Public Retool URL used for links. Set explicitly when the request
+  #   # origin is not the right public URL.
+  #   retoolUrl:
+  #
+  #   # Secret-backed token used by MCP to call /api/oauth2/introspect.
+  #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
+  #   # is provided directly in mcp.environmentVariables.
+  #   oauthIntrospectionAuthTokenSecretName:
+  #   oauthIntrospectionAuthTokenSecretKey: oauthIntrospectionAuthToken
+  #
+  #   # Literal token override for development/testing only. Prefer the
+  #   # secret-backed setting above for real deployments.
+  #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
+  #   # is provided directly in mcp.environmentVariables.
+  #   oauthIntrospectionAuthToken:
+  #
+  #   # Optional Node.js options for the MCP server process. Unset by default.
+  #   nodeOptions: --max_old_space_size=1024
+  #
+  #   # Optional MCP service configuration. If unset, all available toolsets
+  #   # are enabled by default.
+  #   enabledToolsets:
+  #     - apps
+  #     - resources
+  #   maxTransportSessions: 1000
+  #   sessionIdleTimeoutMs: 1800000
+  #   sessionSweepIntervalMs: 60000
+  #   sessionGaugeEmitIntervalMs: 30000
+
+  # Resources for MCP server pods. MCP runs from the backend image and does not
+  # horizontally scale yet, so its default memory limit is higher than multiplayer.
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      memory: "4096Mi"
+
+  # MCP OAuth metadata routes are served by the main Retool backend, not the MCP
+  # pod. This config exposes the backend API listener as an additional port on
+  # the main Retool service when a route uses target: backendApi.
+  backendMetadata:
+    service:
+      # Service port that exposes the backend API listener for metadata paths
+      # that should not fall through to the static frontend server.
+      portName: http-api
+      externalPort: 3001
+      internalPort: 3001
+
+  # Public MCP-related ingress paths. Paths are emitted in order before the main
+  # Retool route. Use target: backendApi for OAuth metadata routes that must hit
+  # the main backend API listener; use target: mcp for MCP server routes.
+  ingress:
+    # This conditional is dependent on mcp.enabled.
+    enabled: true
+    paths:
+      - path: /.well-known/oauth-authorization-server
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /.well-known/oauth-protected-resource/mcp
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp/.well-known/oauth-protected-resource
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp
+        target: mcp
+        port: 4010
+      - path: /.well-known/oauth-protected-resource
+        pathType: Exact
+        target: mcp
+        port: 4010
+
+  # HTTPRoute rules for MCP when using Gateway API instead of ingress.
+  httpRoute:
+    # This conditional is dependent on mcp.enabled.
+    enabled: true
+    rules:
+      - path: /.well-known/oauth-authorization-server
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /.well-known/oauth-protected-resource/mcp
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp/.well-known/oauth-protected-resource
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp
+        target: mcp
+        port: 4010
+      - path: /.well-known/oauth-protected-resource
+        pathType: Exact
+        target: mcp
+        port: 4010
+
+  service:
+    externalPort: 4010
+    internalPort: 4010
+    annotations: {}
+    labels: {}
+
 codeExecutor:
   # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed

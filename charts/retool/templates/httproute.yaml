@@ -1,6 +1,11 @@
 {{- if .Values.httpRoute.enabled }}
 {{- $fullName := include "retool.fullname" . -}}
 {{- $svcPort := .Values.service.externalPort -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
+{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
+{{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -33,6 +38,11 @@ spec:
       backendRefs:
         - name: {{ template "retool.multiplayer.name" $ }}
           port: {{ .port }}
+    {{- end }}
+    {{- end }}
+    {{- if ( and ((.Values.mcp).enabled) $mcpHttpRoute.enabled ) }}
+    {{- range $mcpHttpRoute.rules }}
+    {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "backendApiPort" $backendApiPort) | nindent 4 }}
     {{- end }}
     {{- end }}
     {{- if .Values.httpRoute.rules }}
