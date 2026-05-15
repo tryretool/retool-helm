@@ -161,7 +161,8 @@ data:
                   "allowPrivilegeEscalation": false,
                   "readOnlyRootFilesystem": true,
                   "capabilities": {"drop": ["ALL"]},
-                  "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"}
+                  "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"},
+                  "appArmorProfile": {"type": "Unconfined"}
                 },
                 "env": [
                   {"name": "NODE_ENV", "value": "production"},
