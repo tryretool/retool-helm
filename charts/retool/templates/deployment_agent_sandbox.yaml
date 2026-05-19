@@ -301,8 +301,8 @@ spec:
             - name: AGENT_EXECUTOR_POSTGRES_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: postgres-url
+                  name: {{ include "retool.agentSandbox.postgresSecretName" . }}
+                  key: {{ include "retool.agentSandbox.postgresSecretKey" . }}
             - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
             - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
@@ -497,8 +497,8 @@ spec:
             - name: AGENT_EXECUTOR_POSTGRES_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: postgres-url
+                  name: {{ include "retool.agentSandbox.postgresSecretName" . }}
+                  key: {{ include "retool.agentSandbox.postgresSecretKey" . }}
             - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
             - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX

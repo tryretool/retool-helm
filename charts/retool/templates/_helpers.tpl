@@ -586,6 +586,25 @@ Uses externalSecret.name if set, otherwise the auto-generated name.
 {{- end -}}
 
 {{/*
+Secret name for the agent sandbox Postgres connection string.
+Falls back to the main agentSandbox secret when postgres.secretName is empty.
+*/}}
+{{- define "retool.agentSandbox.postgresSecretName" -}}
+{{- if .Values.agentSandbox.postgres.secretName -}}
+{{ .Values.agentSandbox.postgres.secretName }}
+{{- else -}}
+{{ include "retool.agentSandbox.secretName" . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Secret key for the agent sandbox Postgres connection string.
+*/}}
+{{- define "retool.agentSandbox.postgresSecretKey" -}}
+{{ .Values.agentSandbox.postgres.secretKey | default "postgres-url" }}
+{{- end -}}
+
+{{/*
 Selector labels for agent sandbox (sandbox pods / headless service).
 */}}
 {{- define "retool.agentSandbox.selectorLabels" -}}
