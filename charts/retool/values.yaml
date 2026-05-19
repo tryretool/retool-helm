@@ -867,13 +867,19 @@ agentSandbox:
   # Labels for agent sandbox pods
   labels: {}
 
-  # Pre-existing K8s Secret. When set, the chart skips creating its own Secret
-  # and references this for keys: jwt-public-key, jwt-private-key, encryption-key,
-  # api-secret, postgres-url.
+  # Pre-existing K8s Secret containing keys: jwt-public-key, jwt-private-key,
+  # encryption-key, api-secret, postgres-url. When set, the chart references
+  # this secret by default for all secret-backed env vars.
+  #
+  # Individual keys can still be overridden by setting the corresponding
+  # plaintext values below (e.g. jwtPublicKey, postgres.url). When a plaintext
+  # value is provided alongside externalSecret.name, the plaintext value takes
+  # precedence for that key and the external secret is used for the rest.
   externalSecret:
     name: ''
 
-  # Secrets (ignored when externalSecret.name is set)
+  # Secrets — used directly when externalSecret.name is not set, or as
+  # per-key overrides when externalSecret.name IS set.
   # JWT key pair (ES256) for sandbox token authentication.
   jwtPublicKey: ''
   jwtPrivateKey: ''
@@ -884,7 +890,8 @@ agentSandbox:
   apiSecret: ''
 
   # Postgres state backend (shared by controller and proxy for state coordination).
-  # Connection string for the agent sandbox's state database.
+  # Connection string for the agent sandbox's state database. When set, takes
+  # precedence over the postgres-url key in externalSecret.
   postgres:
     url: ''
     schema: 'agent_executor'

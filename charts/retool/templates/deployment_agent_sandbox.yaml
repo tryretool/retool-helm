@@ -1,6 +1,6 @@
 {{- if .Values.agentSandbox.enabled }}
 {{- $as := .Values.agentSandbox -}}
-{{- $secretName := include "retool.agentSandbox.secretName" . -}}
+{{- $defaultSecretName := $as.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
 {{- $tolerations := $as.tolerations | default .Values.tolerations -}}
 {{- /*
@@ -172,8 +172,10 @@ data:
                   {"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"},
                   {"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"},
                   {"name": "SANDBOX_MEMORY_LIMIT", "value": "{{ $as.sandbox.sandboxMemoryLimit }}"}
-                  {{- if or $as.jwtPublicKey $as.externalSecret.name }}
-                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $secretName }}", "key": "jwt-public-key"}}}
+                  {{- if $as.jwtPublicKey }}
+                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
+                  {{- else if $as.externalSecret.name }}
+                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
                   {{- end }}
                   {{- if $as.proxy.backendDomainSuffixes }}
                   ,{"name": "BACKEND_DOMAIN_SUFFIXES", "value": "{{ $as.proxy.backendDomainSuffixes }}"}
@@ -185,8 +187,8 @@ data:
                   ,{"name": "S3_BUCKET", "value": "{{ $as.snapshotStorage.s3Bucket }}"}
                   ,{"name": "S3_ENDPOINT", "value": "{{ $as.snapshotStorage.s3Endpoint }}"}
                   ,{"name": "S3_REGION", "value": "{{ $as.snapshotStorage.s3Region }}"}
-                  ,{"name": "AWS_ACCESS_KEY_ID", "valueFrom": {"secretKeyRef": {"name": "{{ $as.snapshotStorage.credentialsSecretName | default $secretName }}", "key": "awsAccessKeyId"}}}
-                  ,{"name": "AWS_SECRET_ACCESS_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $as.snapshotStorage.credentialsSecretName | default $secretName }}", "key": "awsSecretAccessKey"}}}
+                  ,{"name": "AWS_ACCESS_KEY_ID", "valueFrom": {"secretKeyRef": {"name": "{{ $as.snapshotStorage.credentialsSecretName | default $defaultSecretName }}", "key": "awsAccessKeyId"}}}
+                  ,{"name": "AWS_SECRET_ACCESS_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $as.snapshotStorage.credentialsSecretName | default $defaultSecretName }}", "key": "awsSecretAccessKey"}}}
                   {{- end }}
                   {{- range $as.sandbox.extraEnv }}
                   ,{{ toJson . }}
@@ -299,10 +301,14 @@ spec:
             - name: STATE_BACKEND
               value: "postgres"
             - name: AGENT_EXECUTOR_POSTGRES_URL
+            {{- if $as.postgres.url }}
+              value: {{ $as.postgres.url | quote }}
+            {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
+                  name: {{ $defaultSecretName }}
                   key: postgres-url
+            {{- end }}
             - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
             - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
@@ -359,11 +365,14 @@ spec:
               value: {{ include "retool.agentSandbox.name" . }}-job-template
             - name: DAEMONSET_NAME
               value: {{ include "retool.agentSandbox.name" . }}-image-prepuller
-            {{- if or $as.jwtPublicKey $as.externalSecret.name }}
+            {{- if $as.jwtPublicKey }}
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+              value: {{ $as.jwtPublicKey | quote }}
+            {{- else if $as.externalSecret.name }}
             - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
+                  name: {{ $defaultSecretName }}
                   key: jwt-public-key
             {{- end }}
           livenessProbe:
@@ -495,10 +504,14 @@ spec:
             - name: STATE_BACKEND
               value: "postgres"
             - name: AGENT_EXECUTOR_POSTGRES_URL
+            {{- if $as.postgres.url }}
+              value: {{ $as.postgres.url | quote }}
+            {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
+                  name: {{ $defaultSecretName }}
                   key: postgres-url
+            {{- end }}
             - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
             - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
@@ -515,18 +528,24 @@ spec:
             - name: BACKEND_DOMAIN_SUFFIXES
               value: {{ $as.proxy.backendDomainSuffixes | quote }}
             {{- end }}
-            {{- if or $as.encryptionKey $as.externalSecret.name }}
+            {{- if $as.encryptionKey }}
+            - name: AGENT_EXECUTOR_ENCRYPTION_KEY
+              value: {{ $as.encryptionKey | quote }}
+            {{- else if $as.externalSecret.name }}
             - name: AGENT_EXECUTOR_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
+                  name: {{ $defaultSecretName }}
                   key: encryption-key
             {{- end }}
-            {{- if or $as.jwtPublicKey $as.externalSecret.name }}
+            {{- if $as.jwtPublicKey }}
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+              value: {{ $as.jwtPublicKey | quote }}
+            {{- else if $as.externalSecret.name }}
             - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
+                  name: {{ $defaultSecretName }}
                   key: jwt-public-key
             {{- end }}
             - name: EXECUTOR_PORT
