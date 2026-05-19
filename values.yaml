@@ -887,6 +887,12 @@ agentSandbox:
   # Connection string for the agent sandbox's state database.
   postgres:
     url: ''
+    # Reference a separate K8s Secret for the Postgres connection string.
+    # When set, the postgres-url is read from this Secret instead of the
+    # main agentSandbox secret (useful when multiple instances share JWT/
+    # encryption keys but connect to different Postgres databases).
+    secretName: ''
+    secretKey: 'postgres-url'
     schema: 'agent_executor'
     poolMax: 10
     sweeperIntervalMs: 60000
