@@ -774,10 +774,10 @@ jsExecutor:
   resources:
     limits:
       cpu: 2000m
-      memory: 2048Mi
+      memory: 8192Mi
     requests:
       cpu: 1000m
-      memory: 1024Mi
+      memory: 4096Mi
 
 agents:
   # Enable AI Agents
