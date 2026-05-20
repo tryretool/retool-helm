@@ -1,7 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: js-executor-seccomp
+  name: {{ template "retool.fullname" . }}-js-executor-seccomp
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
 data:
   nsjail-seccomp.json: |
     {{- .Files.Get "files/nsjail-seccomp.json" | nindent 4 }}
