@@ -1,3 +1,4 @@
+{{- if .Values.jsExecutor.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -208,4 +209,4 @@ spec:
     matchLabels:
   {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
 {{- end }}
----
+{{- end }}

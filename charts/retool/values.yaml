@@ -750,6 +750,8 @@ codeExecutor:
 
 # JS Executor
 jsExecutor:
+  enabled: false
+
   image:
     repository: tryretool/js-executor-service
     pullPolicy: IfNotPresent
