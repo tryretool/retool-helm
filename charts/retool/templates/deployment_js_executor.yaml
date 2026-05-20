@@ -150,7 +150,7 @@ spec:
       volumes:
         - name: seccomp-profile
           configMap:
-            name: {{ template "retool.fullname" . }}-js-executor-seccomp
+            name: "js-executor-seccomp"
         - name: host-seccomp
           hostPath:
             path: /var/lib/kubelet/seccomp
