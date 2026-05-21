@@ -1,4 +1,4 @@
-{{- if and .Values.agentSandbox.enabled .Values.agentSandbox.sandboxNetwork.devicePlugin }}
+{{- if and .Values.agentSandbox.enabled .Values.agentSandbox.sandboxNetwork.deployDaemonSet }}
 {{- $as := .Values.agentSandbox -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
 {{- $tolerations := $as.tolerations | default .Values.tolerations -}}

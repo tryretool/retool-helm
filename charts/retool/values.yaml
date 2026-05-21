@@ -904,11 +904,15 @@ agentSandbox:
   # When enabled, sandboxes get isolated outbound access with L7 filtering.
   sandboxNetwork:
     enabled: true
-    # Deploy smarter-device-manager to register /dev/net/tun with the kubelet.
-    # Required because containerd's default device cgroup blocks /dev/net/tun;
-    # the device plugin's DeviceSpec path is the only reliable way to grant
-    # device cgroup access without privileged mode.
+    # Request smarter-devices/net_tun via resources.limits on sandbox pods.
+    # When true, the kubelet grants /dev/net/tun device cgroup access without
+    # privileged mode. Requires smarter-device-manager to be running on each
+    # node (see deployDaemonSet below).
     devicePlugin: true
+    # Deploy the smarter-device-manager DaemonSet from this Helm release.
+    # Set to false when another release (or external process) already manages
+    # the DaemonSet — only one instance should run per node.
+    deployDaemonSet: true
     # HTTP proxy for sandbox egress L7 filtering. Defaults to the in-cluster
     # agent-sandbox-proxy service URL when empty.
     httpProxy: ''
