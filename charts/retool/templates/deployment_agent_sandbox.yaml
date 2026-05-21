@@ -161,7 +161,8 @@ data:
                   "allowPrivilegeEscalation": false,
                   "readOnlyRootFilesystem": true,
                   "capabilities": {"drop": ["ALL"]},
-                  "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"}
+                  "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"},
+                  "appArmorProfile": {"type": "Unconfined"}
                 },
                 "env": [
                   {"name": "NODE_ENV", "value": "production"},
@@ -277,7 +278,7 @@ spec:
       {{- end }}
       containers:
         - name: controller
-          image: "{{ $as.image.repository }}:{{ $as.image.tag }}"
+          image: "{{ $as.image.repository }}:{{ $as.image.tag | default .Values.image.tag }}"
           imagePullPolicy: {{ $as.image.pullPolicy }}
           ports:
             - name: http
@@ -360,7 +361,7 @@ spec:
             - name: LEADER_RENEW_MS
               value: {{ $as.controller.scaling.leaderRenewMs | quote }}
             - name: DEPLOYED_IMAGE_TAG
-              value: {{ $as.image.tag | quote }}
+              value: {{ $as.image.tag | default .Values.image.tag | quote }}
             - name: JOB_TEMPLATE_CONFIGMAP
               value: {{ include "retool.agentSandbox.name" . }}-job-template
             - name: DAEMONSET_NAME
@@ -480,7 +481,7 @@ spec:
       {{- end }}
       containers:
         - name: proxy
-          image: "{{ $as.image.repository }}:{{ $as.image.tag }}"
+          image: "{{ $as.image.repository }}:{{ $as.image.tag | default .Values.image.tag }}"
           imagePullPolicy: {{ $as.image.pullPolicy }}
           ports:
             - name: http

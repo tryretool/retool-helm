@@ -39,7 +39,7 @@ spec:
 {{- end }}
     spec:
       automountServiceAccountToken: false
-      priorityClassName: system-node-critical
+      priorityClassName: {{ $as.devicePlugin.priorityClassName }}
 {{- if $nodeSelector }}
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
