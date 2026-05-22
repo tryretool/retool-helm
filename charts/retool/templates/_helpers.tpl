@@ -688,6 +688,39 @@ Set MCP server service name
 {{- end -}}
 
 {{/*
+Validate that exactly one blob-storage provider is configured when rrGitServer
+is enabled. Skipped when the user has plumbed the RR_BLOB_STORAGE_PROVIDER /
+RR_DEFAULT_*_* env vars in directly via environmentVariables/environmentSecrets,
+which is treated as an opt-out from the first-class blobStorage config.
+No-op when rrGitServer is disabled.
+*/}}
+{{- define "retool.rrGitServer.validateBlobStorage" -}}
+{{- if .Values.rrGitServer.enabled -}}
+{{- $hasDirectEnv := false -}}
+{{- range .Values.environmentVariables -}}
+{{- if or (hasPrefix "RR_DEFAULT_" .name) (eq .name "RR_BLOB_STORAGE_PROVIDER") -}}
+{{- $hasDirectEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- range .Values.environmentSecrets -}}
+{{- if or (hasPrefix "RR_DEFAULT_" .name) (eq .name "RR_BLOB_STORAGE_PROVIDER") -}}
+{{- $hasDirectEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- if not $hasDirectEnv -}}
+{{- $bs := .Values.blobStorage | default dict -}}
+{{- $providers := list -}}
+{{- if $bs.s3 }}{{ $providers = append $providers "s3" }}{{ end -}}
+{{- if $bs.gcs }}{{ $providers = append $providers "gcs" }}{{ end -}}
+{{- if $bs.azure }}{{ $providers = append $providers "azure" }}{{ end -}}
+{{- if ne (len $providers) 1 -}}
+{{- fail "rrGitServer.enabled requires exactly one of blobStorage.s3, blobStorage.gcs, blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via environmentVariables / environmentSecrets" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
