@@ -705,6 +705,54 @@ mcp:
     annotations: {}
     labels: {}
 
+rrGitServer:
+  # Runs the React Retool Git Server in-process on the main backend pod
+  # (SERVICE_TYPE=...,RR_GIT_SERVER). The main backend internally proxies
+  # /api/ai/rr/git/v2/* to localhost:RR_GIT_SERVER_PORT, so no extra ingress
+  # routing is required. Required for the r2 / React Retool app pipeline.
+  #
+  # When enabled, exactly one of blobStorage.s3, blobStorage.gcs, or
+  # blobStorage.azure must be configured below — git_server stores all
+  # objects/packs in blob storage.
+  enabled: false
+
+  # Optional: number of loose objects before git_server triggers a repack.
+  # Backend default is 100; unset to inherit it.
+  repackThreshold: ~
+
+# Shared blob-storage config used by git_server (and other features that
+# need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
+# Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
+# the backend deployment.
+#
+# This block can be omitted entirely if RR_BLOB_STORAGE_PROVIDER and the
+# RR_DEFAULT_*_* env vars are provided directly via environmentVariables /
+# environmentSecrets above — the chart detects that and skips this guard.
+blobStorage: {}
+  # s3:
+  #   bucket: my-rr-bucket
+  #   region: us-east-1
+  #   endpoint: ""                              # optional, for S3-compatible (MinIO, R2, etc.)
+  #   accessKeyId: AKIA...
+  #   # Provide secretAccessKey OR the secretName/secretKey pair below.
+  #   secretAccessKey: ""
+  #   secretAccessKeySecretName: ""
+  #   secretAccessKeySecretKey: secret-access-key
+  #
+  # gcs:
+  #   bucket: my-rr-bucket
+  #   # Provide credentials (JSON string) OR the secretName/secretKey pair below.
+  #   credentials: ""
+  #   credentialsSecretName: ""
+  #   credentialsSecretKey: credentials.json
+  #
+  # azure:
+  #   container: my-rr-container
+  #   # Provide connectionString OR the secretName/secretKey pair below.
+  #   connectionString: ""
+  #   connectionStringSecretName: ""
+  #   connectionStringSecretKey: connection-string
+
 codeExecutor:
   # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed
