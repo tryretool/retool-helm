@@ -724,6 +724,10 @@ rrGitServer:
 # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
 # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
 # the backend deployment.
+#
+# This block can be omitted entirely if RR_BLOB_STORAGE_PROVIDER and the
+# RR_DEFAULT_*_* env vars are provided directly via environmentVariables /
+# environmentSecrets above — the chart detects that and skips this guard.
 blobStorage: {}
   # s3:
   #   bucket: my-rr-bucket
