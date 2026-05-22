@@ -688,6 +688,23 @@ Set MCP server service name
 {{- end -}}
 
 {{/*
+Validate that exactly one blob-storage provider is configured when rrGitServer
+is enabled. No-op when rrGitServer is disabled.
+*/}}
+{{- define "retool.rrGitServer.validateBlobStorage" -}}
+{{- if .Values.rrGitServer.enabled -}}
+{{- $bs := .Values.blobStorage | default dict -}}
+{{- $providers := list -}}
+{{- if $bs.s3 }}{{ $providers = append $providers "s3" }}{{ end -}}
+{{- if $bs.gcs }}{{ $providers = append $providers "gcs" }}{{ end -}}
+{{- if $bs.azure }}{{ $providers = append $providers "azure" }}{{ end -}}
+{{- if ne (len $providers) 1 -}}
+{{- fail "rrGitServer.enabled requires exactly one of blobStorage.s3, blobStorage.gcs, blobStorage.azure to be configured" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
