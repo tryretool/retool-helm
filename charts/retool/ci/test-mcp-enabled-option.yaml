@@ -2,6 +2,7 @@ mcp:
   enabled: true
   replicaCount: 2
   config:
+    oauthMainDomain: https://oauth.example.com
     oauthIntrospectionAuthToken: test-oauth-introspection-token
     enabledToolsets:
       - apps

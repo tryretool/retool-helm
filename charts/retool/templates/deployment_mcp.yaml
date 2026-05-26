@@ -119,6 +119,10 @@ spec:
           - name: RETOOL_URL
             value: {{ $mcpConfig.retoolUrl | quote }}
           {{- end }}
+          {{- if $mcpConfig.oauthMainDomain }}
+          - name: OAUTH_MAIN_DOMAIN
+            value: {{ $mcpConfig.oauthMainDomain | quote }}
+          {{- end }}
           {{- if $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
           - name: OAUTH_INTROSPECTION_AUTH_TOKEN
             valueFrom:
