@@ -574,18 +574,6 @@ Set agent sandbox proxy name
 {{- end -}}
 
 {{/*
-Secret name for agent sandbox.
-Uses externalSecret.name if set, otherwise the auto-generated name.
-*/}}
-{{- define "retool.agentSandbox.secretName" -}}
-{{- if .Values.agentSandbox.externalSecret.name -}}
-{{ .Values.agentSandbox.externalSecret.name }}
-{{- else -}}
-{{ template "retool.agentSandbox.name" . }}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Selector labels for agent sandbox (sandbox pods / headless service).
 */}}
 {{- define "retool.agentSandbox.selectorLabels" -}}
@@ -642,6 +630,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 */}}
 {{- define "retool.agentSandbox.backendEnvVars" -}}
 {{- if .Values.agentSandbox.enabled }}
+{{- $defaultSecretName := .Values.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: AGENT_EXECUTOR_ENABLED
   value: "true"
 - name: RR_AGENT_PUBSUB_BACKEND
@@ -658,25 +647,34 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 - name: AGENT_EXECUTOR_PROXY_DOMAIN
   value: {{ .Values.agentSandbox.proxyDomain | default .Values.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
-{{- if or .Values.agentSandbox.jwtPrivateKey .Values.agentSandbox.externalSecret.name }}
+{{- if .Values.agentSandbox.jwtPrivateKey }}
+- name: AGENT_EXECUTOR_JWT_PRIVATE_KEY
+  value: {{ .Values.agentSandbox.jwtPrivateKey | quote }}
+{{- else if .Values.agentSandbox.externalSecret.name }}
 - name: AGENT_EXECUTOR_JWT_PRIVATE_KEY
   valueFrom:
     secretKeyRef:
-      name: {{ include "retool.agentSandbox.secretName" . }}
+      name: {{ $defaultSecretName }}
       key: jwt-private-key
 {{- end }}
-{{- if or .Values.agentSandbox.jwtPublicKey .Values.agentSandbox.externalSecret.name }}
+{{- if .Values.agentSandbox.jwtPublicKey }}
+- name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+  value: {{ .Values.agentSandbox.jwtPublicKey | quote }}
+{{- else if .Values.agentSandbox.externalSecret.name }}
 - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
   valueFrom:
     secretKeyRef:
-      name: {{ include "retool.agentSandbox.secretName" . }}
+      name: {{ $defaultSecretName }}
       key: jwt-public-key
 {{- end }}
-{{- if or .Values.agentSandbox.encryptionKey .Values.agentSandbox.externalSecret.name }}
+{{- if .Values.agentSandbox.encryptionKey }}
+- name: AGENT_EXECUTOR_ENCRYPTION_KEY
+  value: {{ .Values.agentSandbox.encryptionKey | quote }}
+{{- else if .Values.agentSandbox.externalSecret.name }}
 - name: AGENT_EXECUTOR_ENCRYPTION_KEY
   valueFrom:
     secretKeyRef:
-      name: {{ include "retool.agentSandbox.secretName" . }}
+      name: {{ $defaultSecretName }}
       key: encryption-key
 {{- end }}
 {{- end }}
@@ -687,6 +685,39 @@ Set MCP server service name
 */}}
 {{- define "retool.mcp.name" -}}
 {{ template "retool.fullname" . }}-mcp
+{{- end -}}
+
+{{/*
+Validate that exactly one blob-storage provider is configured when rrGitServer
+is enabled. Skipped when the user has plumbed the RR_BLOB_STORAGE_PROVIDER /
+RR_DEFAULT_*_* env vars in directly via environmentVariables/environmentSecrets,
+which is treated as an opt-out from the first-class blobStorage config.
+No-op when rrGitServer is disabled.
+*/}}
+{{- define "retool.rrGitServer.validateBlobStorage" -}}
+{{- if .Values.rrGitServer.enabled -}}
+{{- $hasDirectEnv := false -}}
+{{- range .Values.environmentVariables -}}
+{{- if or (hasPrefix "RR_DEFAULT_" .name) (eq .name "RR_BLOB_STORAGE_PROVIDER") -}}
+{{- $hasDirectEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- range .Values.environmentSecrets -}}
+{{- if or (hasPrefix "RR_DEFAULT_" .name) (eq .name "RR_BLOB_STORAGE_PROVIDER") -}}
+{{- $hasDirectEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- if not $hasDirectEnv -}}
+{{- $bs := .Values.blobStorage | default dict -}}
+{{- $providers := list -}}
+{{- if $bs.s3 }}{{ $providers = append $providers "s3" }}{{ end -}}
+{{- if $bs.gcs }}{{ $providers = append $providers "gcs" }}{{ end -}}
+{{- if $bs.azure }}{{ $providers = append $providers "azure" }}{{ end -}}
+{{- if ne (len $providers) 1 -}}
+{{- fail "rrGitServer.enabled requires exactly one of blobStorage.s3, blobStorage.gcs, blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via environmentVariables / environmentSecrets" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/*

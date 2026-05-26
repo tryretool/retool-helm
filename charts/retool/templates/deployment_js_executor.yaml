@@ -1,3 +1,4 @@
+{{- if .Values.jsExecutor.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -149,7 +150,7 @@ spec:
       volumes:
         - name: seccomp-profile
           configMap:
-            name: "js-executor-seccomp"
+            name: {{ template "retool.fullname" . }}-js-executor-seccomp
         - name: host-seccomp
           hostPath:
             path: /var/lib/kubelet/seccomp
@@ -208,4 +209,4 @@ spec:
     matchLabels:
   {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
 {{- end }}
----
+{{- end }}
