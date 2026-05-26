@@ -602,6 +602,10 @@ mcp:
   #   # origin is not the right public URL.
   #   retoolUrl:
   #
+  #   # Public OAuth domain used by MCP OAuth metadata routes. Set explicitly
+  #   # when the request origin is not the right OAuth base URL.
+  #   oauthMainDomain:
+  #
   #   # Secret-backed token used by MCP to call /api/oauth2/introspect.
   #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
   #   # is provided directly in mcp.environmentVariables.
