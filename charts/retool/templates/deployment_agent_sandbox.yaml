@@ -165,13 +165,13 @@ data:
                   "appArmorProfile": {"type": "Unconfined"}
                 },
                 "env": [
-                  {"name": "NODE_ENV", "value": "production"},
-                  {"name": "EXECUTOR_PORT", "value": "{{ $as.sandbox.port }}"},
-                  {"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}},
-                  {"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}},
-                  {"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}},
-                  {"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"},
-                  {"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"},
+                  {"name": "NODE_ENV", "value": "production"}
+                  ,{"name": "EXECUTOR_PORT", "value": "{{ $as.sandbox.port }}"}
+                  ,{"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}}
+                  ,{"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}}
+                  ,{"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}}
+                  ,{"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"}
+                  ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
                   {{- if $as.jwtPublicKey }}
                   ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
                   {{- else if $as.externalSecret.name }}
