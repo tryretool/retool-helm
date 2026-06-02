@@ -115,6 +115,10 @@ spec:
             value: {{ $mcpInternalPort | quote }}
           - name: RETOOL_BACKEND_URL
             value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s:%v" (include "retool.fullname" .) .Values.service.externalPort) | quote }}
+          {{- if $mcpConfig.retoolGitServerUrl }}
+          - name: RETOOL_GIT_SERVER_URL
+            value: {{ $mcpConfig.retoolGitServerUrl | quote }}
+          {{- end }}
           {{- if $mcpConfig.retoolUrl }}
           - name: RETOOL_URL
             value: {{ $mcpConfig.retoolUrl | quote }}
