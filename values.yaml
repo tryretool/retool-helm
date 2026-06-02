@@ -598,6 +598,10 @@ mcp:
   #   # Defaults to the release's internal Retool service when unset.
   #   retoolBackendUrl:
   #
+  #   # Internal URL used by the MCP server to call the Retool git server.
+  #   # Unset by default.
+  #   retoolGitServerUrl:
+  #
   #   # Public Retool URL used for links. Set explicitly when the request
   #   # origin is not the right public URL.
   #   retoolUrl:
