@@ -93,6 +93,11 @@ spec:
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
+          {{- if .Values.agentSandbox.enabled }}
+          - name: RR_AGENT_PUBSUB_BACKEND
+            value: "postgres"
+          {{- end }}
+
           {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
