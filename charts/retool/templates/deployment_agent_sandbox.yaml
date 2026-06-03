@@ -165,18 +165,17 @@ data:
                   "appArmorProfile": {"type": "Unconfined"}
                 },
                 "env": [
-                  {"name": "NODE_ENV", "value": "production"},
-                  {"name": "EXECUTOR_PORT", "value": "{{ $as.sandbox.port }}"},
-                  {"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}},
-                  {"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}},
-                  {"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}},
-                  {"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"},
-                  {"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"},
-                  {"name": "SANDBOX_MEMORY_LIMIT", "value": "{{ $as.sandbox.sandboxMemoryLimit }}"}
+                  {"name": "NODE_ENV", "value": "production"}
+                  ,{"name": "EXECUTOR_PORT", "value": "{{ $as.sandbox.port }}"}
+                  ,{"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}}
+                  ,{"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}}
+                  ,{"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}}
+                  ,{"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"}
+                  ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
                   {{- if $as.jwtPublicKey }}
-                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
+                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
                   {{- else if $as.externalSecret.name }}
-                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
+                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
                   {{- end }}
                   {{- if $as.proxy.backendDomainSuffixes }}
                   ,{"name": "BACKEND_DOMAIN_SUFFIXES", "value": "{{ $as.proxy.backendDomainSuffixes }}"}
@@ -295,13 +294,13 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: AGENT_EXECUTOR_ROLE
+            - name: AGENT_SANDBOX_ROLE
               value: "controller"
             - name: CONTROLLER_PORT
               value: {{ $as.controller.port | quote }}
             - name: STATE_BACKEND
               value: "postgres"
-            - name: AGENT_EXECUTOR_POSTGRES_URL
+            - name: AGENT_SANDBOX_POSTGRES_URL
             {{- if $as.postgres.url }}
               value: {{ $as.postgres.url | quote }}
             {{- else }}
@@ -310,9 +309,9 @@ spec:
                   name: {{ $defaultSecretName }}
                   key: postgres-url
             {{- end }}
-            - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
+            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
-            - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
+            - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
               value: {{ $as.postgres.poolMax | quote }}
             - name: STATE_SWEEPER_INTERVAL_MS
               value: {{ $as.postgres.sweeperIntervalMs | quote }}
@@ -367,10 +366,10 @@ spec:
             - name: DAEMONSET_NAME
               value: {{ include "retool.agentSandbox.name" . }}-image-prepuller
             {{- if $as.jwtPublicKey }}
-            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
               value: {{ $as.jwtPublicKey | quote }}
             {{- else if $as.externalSecret.name }}
-            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $defaultSecretName }}
@@ -499,13 +498,13 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: AGENT_EXECUTOR_ROLE
+            - name: AGENT_SANDBOX_ROLE
               value: "proxy"
             - name: PROXY_PORT
               value: {{ $as.proxy.port | quote }}
             - name: STATE_BACKEND
               value: "postgres"
-            - name: AGENT_EXECUTOR_POSTGRES_URL
+            - name: AGENT_SANDBOX_POSTGRES_URL
             {{- if $as.postgres.url }}
               value: {{ $as.postgres.url | quote }}
             {{- else }}
@@ -514,9 +513,9 @@ spec:
                   name: {{ $defaultSecretName }}
                   key: postgres-url
             {{- end }}
-            - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
+            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
-            - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
+            - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
               value: {{ $as.postgres.poolMax | quote }}
             - name: STATE_SWEEPER_INTERVAL_MS
               value: {{ $as.postgres.sweeperIntervalMs | quote }}
@@ -531,20 +530,20 @@ spec:
               value: {{ $as.proxy.backendDomainSuffixes | quote }}
             {{- end }}
             {{- if $as.encryptionKey }}
-            - name: AGENT_EXECUTOR_ENCRYPTION_KEY
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
               value: {{ $as.encryptionKey | quote }}
             {{- else if $as.externalSecret.name }}
-            - name: AGENT_EXECUTOR_ENCRYPTION_KEY
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $defaultSecretName }}
                   key: encryption-key
             {{- end }}
             {{- if $as.jwtPublicKey }}
-            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
               value: {{ $as.jwtPublicKey | quote }}
             {{- else if $as.externalSecret.name }}
-            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $defaultSecretName }}

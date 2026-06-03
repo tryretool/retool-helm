@@ -631,47 +631,41 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- define "retool.agentSandbox.backendEnvVars" -}}
 {{- if .Values.agentSandbox.enabled }}
 {{- $defaultSecretName := .Values.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
-- name: AGENT_EXECUTOR_ENABLED
-  value: "true"
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"
-- name: AGENT_EXECUTOR_CONTROLLER_INGRESS_DOMAIN
+- name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
   value: {{ .Values.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.agentSandbox.controller.port)) | quote }}
-- name: AGENT_EXECUTOR_PROXY_INGRESS_DOMAIN
+- name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
   value: {{ .Values.agentSandbox.proxyUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.proxy.name" .) (toString .Values.agentSandbox.proxy.port)) | quote }}
 {{- if .Values.agentSandbox.frontendWsProxyDomain }}
-- name: AGENT_EXECUTOR_FRONTEND_WS_PROXY_DOMAIN
+- name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
   value: {{ .Values.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
-{{- if or .Values.agentSandbox.proxyDomain .Values.agentSandbox.frontendWsProxyDomain }}
-- name: AGENT_EXECUTOR_PROXY_DOMAIN
-  value: {{ .Values.agentSandbox.proxyDomain | default .Values.agentSandbox.frontendWsProxyDomain | quote }}
-{{- end }}
 {{- if .Values.agentSandbox.jwtPrivateKey }}
-- name: AGENT_EXECUTOR_JWT_PRIVATE_KEY
+- name: AGENT_SANDBOX_JWT_PRIVATE_KEY
   value: {{ .Values.agentSandbox.jwtPrivateKey | quote }}
 {{- else if .Values.agentSandbox.externalSecret.name }}
-- name: AGENT_EXECUTOR_JWT_PRIVATE_KEY
+- name: AGENT_SANDBOX_JWT_PRIVATE_KEY
   valueFrom:
     secretKeyRef:
       name: {{ $defaultSecretName }}
       key: jwt-private-key
 {{- end }}
 {{- if .Values.agentSandbox.jwtPublicKey }}
-- name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+- name: AGENT_SANDBOX_JWT_PUBLIC_KEY
   value: {{ .Values.agentSandbox.jwtPublicKey | quote }}
 {{- else if .Values.agentSandbox.externalSecret.name }}
-- name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
+- name: AGENT_SANDBOX_JWT_PUBLIC_KEY
   valueFrom:
     secretKeyRef:
       name: {{ $defaultSecretName }}
       key: jwt-public-key
 {{- end }}
 {{- if .Values.agentSandbox.encryptionKey }}
-- name: AGENT_EXECUTOR_ENCRYPTION_KEY
+- name: AGENT_SANDBOX_ENCRYPTION_KEY
   value: {{ .Values.agentSandbox.encryptionKey | quote }}
 {{- else if .Values.agentSandbox.externalSecret.name }}
-- name: AGENT_EXECUTOR_ENCRYPTION_KEY
+- name: AGENT_SANDBOX_ENCRYPTION_KEY
   valueFrom:
     secretKeyRef:
       name: {{ $defaultSecretName }}
