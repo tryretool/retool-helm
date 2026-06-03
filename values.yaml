@@ -945,7 +945,7 @@ agentSandbox:
   jwtPublicKey: ''
   jwtPrivateKey: ''
   # Hex-encoded 256-bit key for encrypting credentials stored in state backend.
-  # Must match the backend's AGENT_EXECUTOR_ENCRYPTION_KEY.
+  # Must match the backend's AGENT_SANDBOX_ENCRYPTION_KEY.
   encryptionKey: ''
   # API secret for admin/test endpoints.
   apiSecret: ''
@@ -1012,15 +1012,13 @@ agentSandbox:
     port: 3017
     resources:
       requests:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 1
+        memory: 2Gi
       limits:
         cpu: '2'
         memory: 4Gi
-    # Per-sandbox cgroup memory.max limit in bytes.
-    sandboxMemoryLimit: '1610612736'  # 1.5 GB
     # Idle timeout (ms) before an unassigned sandbox self-terminates.
-    sandboxIdleTimeoutMs: 300000
+    sandboxIdleTimeoutMs: 600000
     tmpDirSizeLimit: 20Gi
     # Separate limit for the rootfs-appjob volume — the sandbox root filesystem
     # is a static ~600MB extraction, so 2Gi provides headroom without the 20Gi
