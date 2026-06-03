@@ -98,6 +98,34 @@ spec:
             value: "postgres"
           {{- end }}
 
+          {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
+          {{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
+            value: {{ template "retool.temporal.host" . }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
+            value: {{ template "retool.temporal.port" . }}
+          - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
+            value: {{ template "retool.temporal.namespace" . }}
+          {{- end }}
+          {{- if ($temporalConfig).sslEnabled }}
+          - name: WORKFLOW_TEMPORAL_TLS_ENABLED
+            value: "true"
+          {{- if (and ($temporalConfig).sslCert ($temporalConfig).sslKey) }}
+          - name: WORKFLOW_TEMPORAL_TLS_CRT
+            value: {{ $temporalConfig.sslCert }}
+          - name: WORKFLOW_TEMPORAL_TLS_KEY
+            valueFrom:
+              secretKeyRef:
+              {{- if ($temporalConfig).sslKeySecretName }}
+                name: {{ $temporalConfig.sslKeySecretName }}
+                key: {{ ($temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
+              {{- else }}
+                name: {{ template "retool.fullname" . }}
+                key: "temporal-tls-key"
+              {{- end }}
+          {{- end }}
+          {{- end }}
+
           {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
             valueFrom:
