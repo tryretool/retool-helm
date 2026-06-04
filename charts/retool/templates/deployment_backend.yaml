@@ -44,6 +44,7 @@ spec:
 {{ toYaml .Values.ui.labels | indent 8 }}
 {{- end }}
     spec:
+      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds | default 136 }}
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
@@ -105,8 +106,10 @@ spec:
           - name: DISABLE_JAVA_DBCONNECTOR
             value: "true"
           {{ end }}
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
+          {{- end }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
           - name: POSTGRES_HOST
@@ -129,9 +132,9 @@ spec:
           - name: DB_SSH_CONNECTOR_PORT
             value: {{ .Values.dbconnector.port | quote }}
           {{- if $.Values.dbconnector.java.enabled }}
-          - name: JAVA_DBCONNECTOR_HOST
+          - name: JAVA_DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" . }}-dbconnector
-          - name: JAVA_DBCONNECTOR_PORT
+          - name: JAVA_DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
           {{- end }}
@@ -155,6 +158,8 @@ spec:
           {{- if include "retool.workflows.enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ template "retool.fullname" . }}-workflow-backend
+          - name: CODE_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
           {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
@@ -174,8 +179,6 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
-          - name: CODE_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.codeExecutor.name" . }}
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
@@ -231,6 +234,7 @@ spec:
                 key: postgresql-password
                 {{- end }}
           {{- end }}
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -242,10 +246,8 @@ spec:
                 key: google-client-secret
                 {{- end }}
           {{- end }}
-          {{- range $key, $value := .Values.env }}
-          - name: "{{ $key }}"
-            value: "{{ $value }}"
           {{- end }}
+          {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
@@ -387,7 +389,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ template "retool.fullname" . }}
 spec:
-  {{ toYaml .Values.podDisruptionBudget }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
   {{- include "retool.selectorLabels" . | nindent 6 }}

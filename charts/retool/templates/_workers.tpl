@@ -29,6 +29,13 @@
   {{- $workerValues = $parentValues.evalWorker -}}
 {{- end -}}
 
+{{- $workerPoolMaxSize := 100 -}}
+{{- if $workerValues }}
+  {{- if $workerValues.postgresPoolMaxSize }}
+    {{- $workerPoolMaxSize = $workerValues.postgresPoolMaxSize }}
+  {{- end }}
+{{- end -}}
+
 {{- $healthcheckPort := ternary 3012 3005 (eq $workerType "agentEval") -}}
 {{- $serviceType := ternary "AGENT_EVAL_TEMPORAL_WORKER" "WORKFLOW_TEMPORAL_WORKER" (eq $workerType "agentEval") -}}
 {{- $taskqueue := ternary "agent-eval" (ternary "agent" "" (eq $workerType "agent")) (eq $workerType "agentEval") -}}
@@ -42,6 +49,9 @@ metadata:
     {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 4 }}
     {{- include (printf "retool.%sWorker.labels" $workerType) $ | nindent 4 }}
     {{- include "retool.labels" $ | nindent 4 }}
+{{- if $.Values.deployment.labels }}
+{{ toYaml $.Values.deployment.labels | indent 4 }}
+{{- end }}
 {{- if $.Values.deployment.annotations }}
   annotations:
 {{ toYaml $.Values.deployment.annotations | indent 4 }}
@@ -116,16 +126,16 @@ spec:
             value: {{ $taskqueue }}
           {{- end }}
           - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
-            value: "100"
+            value: {{ $workerPoolMaxSize | quote }}
           {{- if $.Values.dbconnector.enabled }}
           - name: DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" $ }}-dbconnector
           - name: DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.port | quote }}
           {{- if $.Values.dbconnector.java.enabled }}
-          - name: JAVA_DBCONNECTOR_HOST
+          - name: JAVA_DB_CONNECTOR_HOST
             value: http://{{ template "retool.fullname" $ }}-dbconnector
-          - name: JAVA_DBCONNECTOR_PORT
+          - name: JAVA_DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
           {{- end }}
@@ -172,8 +182,10 @@ spec:
           {{- end }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ include "retool.workflowBackend.name" $ }}
+          {{- if $.Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" $.Values.config.auth.google.clientId }}
+          {{- end }}
           - name: COOKIE_INSECURE
             value: {{ $.Values.config.useInsecureCookies | quote }}
           - name: POSTGRES_HOST
@@ -248,6 +260,7 @@ spec:
                 key: postgresql-password
                 {{- end }}
           {{- end }}
+          {{- if $.Values.config.auth.google.enabled }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -259,10 +272,8 @@ spec:
                 key: google-client-secret
                 {{- end }}
           {{- end }}
-          {{- range $key, $value := $.Values.env }}
-          - name: "{{ $key }}"
-            value: "{{ $value }}"
           {{- end }}
+          {{- include "retool.env" $.Values.env | nindent 10 }}
           {{- range $.Values.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
@@ -386,7 +397,7 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ include (printf "retool.%sWorker.name" $workerType) $ }}
 spec:
-  {{ toYaml $.Values.podDisruptionBudget }}
+  {{- toYaml $.Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
       {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 6 }}

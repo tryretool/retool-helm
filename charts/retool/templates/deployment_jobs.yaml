@@ -74,8 +74,10 @@ spec:
             value: production
           - name: SERVICE_TYPE
             value: JOBS_RUNNER
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
+          {{- end }}
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
           - name: POSTGRES_HOST
@@ -137,6 +139,7 @@ spec:
                 key: postgresql-password
                 {{- end }}
           {{- end }}
+          {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -148,10 +151,8 @@ spec:
                 key: google-client-secret
                 {{- end }}
           {{- end }}
-          {{- range $key, $value := .Values.env }}
-          - name: "{{ $key }}"
-            value: "{{ $value }}"
           {{- end }}
+          {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
@@ -186,7 +187,8 @@ spec:
 {{ toYaml .Values.resources | indent 10 }}
 {{- end }}
         {{- if regexMatch "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" .Values.image.tag }}
-        {{- if semverCompare ">=2.110.0-0" .Values.image.tag }}
+        {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+        {{- if semverCompare ">=2.110.0-0" (regexFind $semver_version_regexp .Values.image.tag) }}
         livenessProbe:
           httpGet:
             path: /api/checkJobsRunnerHealth

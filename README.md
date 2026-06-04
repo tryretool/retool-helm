@@ -1,7 +1,13 @@
 <p align="center">
-    <a href="https://retool.com/"><img src="https://raw.githubusercontent.com/tryretool/brand-assets/master/Logos/logo-full-black.png" alt="Retool logo" height="100"></a> <br>
-    <b>Build internal tools, remarkably fast.</b>
-</p> <br>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://docs.retool.com/brand/icons/logo-light.svg">
+      <img alt="Retool Logo" height="100" src="https://docs.retool.com/brand/icons/logo-dark.svg">
+    </picture>
+</p>
+<h3 align="center">The best way to build internal software</h3>
+
+
+
 
 # Deploying Retool on Helm
 

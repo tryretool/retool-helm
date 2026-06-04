@@ -14,6 +14,8 @@ config:
   postgresPoolMaxSize: 10
   auth:
     google:
+      # whether to populate CLIENT_ID and CLIENT_SECRET env vars (default: true for backwards compatibility)
+      enabled: true
       clientId:
       clientSecret:
       # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
@@ -198,6 +200,30 @@ ingress:
   #             name: use-annotation
   #       pathType: ImplementationSpecific
 
+# Gateway API HTTPRoute resource (alternative to ingress)
+# Requires a Gateway API implementation (e.g., GKE Gateway Controller, Istio, Envoy Gateway, NGINX Gateway Fabric)
+httpRoute:
+  enabled: false
+  labels: {}
+  annotations: {}
+  # parentRefs defines which Gateway(s) this route attaches to
+  # parentRefs:
+  #   - name: my-gateway
+  #     namespace: default
+  #     sectionName: https
+  # hostnames:
+  #   - retool.example.com
+  # rules allows full customization of HTTPRoute rules; when omitted, a default
+  # catch-all rule routes all traffic to the retool backend service
+  # rules:
+  #   - matches:
+  #       - path:
+  #           type: PathPrefix
+  #           value: /
+  #     backendRefs:
+  #       - name: my-service
+  #         port: 3000
+
 postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
@@ -231,6 +257,7 @@ serviceAccount:
   # If set and create is false, the service account must be existing
   name:
   annotations: {}
+  labels: {}
   automountToken: false
 
 livenessProbe:
@@ -357,6 +384,11 @@ backend:
   # Labels for backend pods
   labels: {}
 
+  # Make backend pods wait the specified time before kubernetes will forcibly kill them when they need to be rescheduled
+  # By default this is a 2 minutes + 15 seconds + 1 second (136) grace period to allow outstanding queries to complete
+  # Change this to 10 minutes 15 seconds + 1 second (616) if you are using long-running queries with a 10 minute timeout
+  terminationGracePeriodSeconds: 136
+
 ui:
   # Annotations for ui pods
   annotations: {}
@@ -377,12 +409,16 @@ workflows:
     # Scaling this number will increase the number of workflow workers, e.g. a replicaCount of 4
     # will launch 9 pods -- 1 workflow backend, 4 workflow workers, and 4 for temporal cluster
     replicaCount: 1
+    # Override the connection pool size used by workflow workers when calling the dbconnector service
+    postgresPoolMaxSize: 100
 
   backend:
     # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
     # will launch 9 pods -- 4 workflow backend, 1 workflow workers, and 4 for temporal cluster
     replicaCount: 1
+    # Override the connection pool size used by workflow backends when calling the dbconnector service
+    postgresPoolMaxSize: 100
 
     # If necessary, specify the resources to provision the workflows-backend pod separately from the main backend pods.
     # resources:
@@ -497,7 +533,7 @@ multiplayer:
 
   # Set environment variables for multiplayer pods, e.g. defining which origin to use
   # environmentVariables:
-  #   MAIN_DOMAIN: "retool.foo.com"
+  #   WEBSOCKET_ALLOWED_ORIGIN: "retool.foo.com"
 
   # Annotations for multiplayer pods
   annotations: {}
@@ -510,6 +546,14 @@ multiplayer:
     # This conditional is dependent on multiplayer.enabled.
     enabled: true
     paths:
+      - path: /api/multiplayer
+        port: 80
+
+  # HTTPRoute rules for multiplayer when using Gateway API instead of ingress
+  httpRoute:
+    # This conditional is dependent on multiplayer.enabled.
+    enabled: true
+    rules:
       - path: /api/multiplayer
         port: 80
 
