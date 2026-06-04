@@ -286,6 +286,16 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
+{{- if .Values.startupProbe.enabled }}
+        startupProbe:
+          httpGet:
+            path: {{ .Values.startupProbe.path }}
+            port: {{ .Values.service.internalPort }}
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.startupProbe.successThreshold }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+{{- end }}
         resources:
 {{- if .Values.workflows.backend.resources }}
 {{ toYaml .Values.workflows.backend.resources | indent 10 }}
