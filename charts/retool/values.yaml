@@ -286,7 +286,7 @@ startupProbe:
   initialDelaySeconds: 60
   timeoutSeconds: 10
   periodSeconds: 10
-  successThreshold: 5
+  successThreshold: 1
 
 extraContainers: []
 
