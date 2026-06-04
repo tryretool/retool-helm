@@ -1094,8 +1094,13 @@ agentSandbox:
   # controllerUrl and proxyUrl default to internal service URLs when empty.
   controllerUrl: ''
   proxyUrl: ''
-  # Required: public URL for frontend browsers to reach the proxy via WebSocket.
-  # e.g. https://sandbox.yourdomain.com
+  # Public URL for frontend browsers to reach the proxy via WebSocket.
+  # Leave EMPTY for self-hosted: the backend then serves the sandbox same-origin
+  # as the editor (your Retool base URL) and the front server reverse-proxies the
+  # /sandbox/* WS+Vite paths to the in-cluster proxy Service — so no dedicated
+  # proxy domain or ingress is required, and your catch-all ingress is untouched.
+  # Only set this (e.g. https://sandbox.yourdomain.com) if you deliberately want
+  # the proxy on a separate domain, in which case also enable proxy.ingress above.
   frontendWsProxyDomain: ''
   # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
   proxyDomain: ''
