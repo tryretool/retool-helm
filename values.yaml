@@ -836,14 +836,16 @@ jsExecutor:
   # Config affinity and anti-affinity rules for the JS executor pods
   affinity: {}
 
-  # Resources for the JS executor
+  # Resources for the JS executor. Memory request and limit are kept equal:
+  # JSE reads its memory limit and rejects requests at 80% of it, so the
+  # request must reserve the full amount to avoid premature rejections.
   resources:
     limits:
-      cpu: 2000m
-      memory: 8192Mi
+      cpu: 6000m
+      memory: 6Gi
     requests:
-      cpu: 1000m
-      memory: 4096Mi
+      cpu: 6000m
+      memory: 6Gi
 
 agents:
   # Enable AI Agents
