@@ -818,6 +818,12 @@ jsExecutor:
 
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
+  # JS-executor-specific environment; not inherited from the top-level
+  # .Values.env / .Values.environmentSecrets / .Values.environmentVariables.
+  env: {}
+  environmentSecrets: []
+  environmentVariables: []
+
   # Annotations for JS executor pods
   annotations: {}
 
