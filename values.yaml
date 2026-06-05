@@ -728,6 +728,13 @@ rrGitServer:
   # Backend default is 100; unset to inherit it.
   repackThreshold: ~
 
+  # Escape hatch for the blob-storage validation below. The chart can only
+  # inspect blobStorage, env, environmentVariables, and environmentSecrets at
+  # template time; it cannot see env vars injected via envFrom (Secret/ConfigMap
+  # splat). Set this to true to bypass the check when RR_BLOB_STORAGE_PROVIDER /
+  # RR_DEFAULT_* are provided that way.
+  skipBlobStorageValidation: false
+
 # Shared blob-storage config used by git_server (and other features that
 # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
 # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
