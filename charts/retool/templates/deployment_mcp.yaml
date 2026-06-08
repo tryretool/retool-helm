@@ -115,9 +115,17 @@ spec:
             value: {{ $mcpInternalPort | quote }}
           - name: RETOOL_BACKEND_URL
             value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s:%v" (include "retool.fullname" .) .Values.service.externalPort) | quote }}
-          {{- if $mcpConfig.retoolGitServerUrl }}
+          {{- /*
+            Prefer an explicit mcp.config.retoolGitServerUrl; otherwise, when the
+            git server is split into its own deployment, auto-point MCP at it.
+          */}}
+          {{- $retoolGitServerUrl := $mcpConfig.retoolGitServerUrl }}
+          {{- if and (not $retoolGitServerUrl) (include "retool.rrGitServer.separateEnabled" .) }}
+          {{- $retoolGitServerUrl = include "retool.rrGitServer.url" . }}
+          {{- end }}
+          {{- if $retoolGitServerUrl }}
           - name: RETOOL_GIT_SERVER_URL
-            value: {{ $mcpConfig.retoolGitServerUrl | quote }}
+            value: {{ $retoolGitServerUrl | quote }}
           {{- end }}
           {{- if $mcpConfig.retoolUrl }}
           - name: RETOOL_URL

@@ -682,6 +682,112 @@ Set MCP server service name
 {{- end -}}
 
 {{/*
+Set git server deployment/service name (only used when rrGitServer.separate is enabled)
+*/}}
+{{- define "retool.rrGitServer.name" -}}
+{{ template "retool.fullname" . }}-git-server
+{{- end -}}
+
+{{/*
+Returns "1" when the git server should run as its own deployment/service
+(rrGitServer.enabled AND rrGitServer.separate.enabled), empty otherwise.
+*/}}
+{{- define "retool.rrGitServer.separateEnabled" -}}
+{{- if and .Values.rrGitServer.enabled (.Values.rrGitServer.separate | default dict).enabled -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Port the standalone git server listens on (RR_GIT_SERVER_PORT) and exposes via its service.
+*/}}
+{{- define "retool.rrGitServer.port" -}}
+{{- (.Values.rrGitServer.separate | default dict).port | default 3010 -}}
+{{- end -}}
+
+{{/*
+In-cluster URL of the standalone git server service, e.g. http://<release>-git-server:3010.
+Used to point the MCP server (and any other consumer) at the split-out git server.
+*/}}
+{{- define "retool.rrGitServer.url" -}}
+http://{{ template "retool.rrGitServer.name" . }}:{{ include "retool.rrGitServer.port" . }}
+{{- end -}}
+
+{{/*
+Blob-storage + git repack env vars shared by the in-process git server (main
+backend) and the standalone git server deployment. git_server stores all
+objects/packs in blob storage; the same RR_DEFAULT_* vars are also used by
+snapshots. Emits nothing when no blobStorage provider is configured (in which
+case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
+directly via environmentVariables / environmentSecrets).
+*/}}
+{{- define "retool.rrGitServer.commonEnv" -}}
+{{- $bs := .Values.blobStorage | default dict }}
+{{- if $bs.s3 }}
+- name: RR_BLOB_STORAGE_PROVIDER
+  value: "s3"
+- name: RR_DEFAULT_S3_BUCKET
+  value: {{ $bs.s3.bucket | quote }}
+{{- if $bs.s3.region }}
+- name: RR_DEFAULT_S3_REGION
+  value: {{ $bs.s3.region | quote }}
+{{- end }}
+{{- if $bs.s3.endpoint }}
+- name: RR_DEFAULT_S3_ENDPOINT
+  value: {{ $bs.s3.endpoint | quote }}
+{{- end }}
+{{- if $bs.s3.accessKeyId }}
+- name: RR_DEFAULT_S3_ACCESS_KEY_ID
+  value: {{ $bs.s3.accessKeyId | quote }}
+{{- end }}
+{{- if $bs.s3.secretAccessKeySecretName }}
+- name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $bs.s3.secretAccessKeySecretName }}
+      key: {{ $bs.s3.secretAccessKeySecretKey | default "secret-access-key" }}
+{{- else if $bs.s3.secretAccessKey }}
+- name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+  value: {{ $bs.s3.secretAccessKey | quote }}
+{{- end }}
+{{- else if $bs.gcs }}
+- name: RR_BLOB_STORAGE_PROVIDER
+  value: "gcs"
+- name: RR_DEFAULT_GCS_BUCKET
+  value: {{ $bs.gcs.bucket | quote }}
+{{- if $bs.gcs.credentialsSecretName }}
+- name: RR_DEFAULT_GCS_CREDENTIALS
+  valueFrom:
+    secretKeyRef:
+      name: {{ $bs.gcs.credentialsSecretName }}
+      key: {{ $bs.gcs.credentialsSecretKey | default "credentials.json" }}
+{{- else if $bs.gcs.credentials }}
+- name: RR_DEFAULT_GCS_CREDENTIALS
+  value: {{ $bs.gcs.credentials | quote }}
+{{- end }}
+{{- else if $bs.azure }}
+- name: RR_BLOB_STORAGE_PROVIDER
+  value: "azure"
+- name: RR_DEFAULT_AZURE_CONTAINER
+  value: {{ $bs.azure.container | quote }}
+{{- if $bs.azure.connectionStringSecretName }}
+- name: RR_DEFAULT_AZURE_CONNECTION_STRING
+  valueFrom:
+    secretKeyRef:
+      name: {{ $bs.azure.connectionStringSecretName }}
+      key: {{ $bs.azure.connectionStringSecretKey | default "connection-string" }}
+{{- else if $bs.azure.connectionString }}
+- name: RR_DEFAULT_AZURE_CONNECTION_STRING
+  value: {{ $bs.azure.connectionString | quote }}
+{{- end }}
+{{- end }}
+{{- if .Values.rrGitServer.repackThreshold }}
+- name: RR_GIT_REPACK_THRESHOLD
+  value: {{ .Values.rrGitServer.repackThreshold | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Validate that exactly one blob-storage provider is configured when rrGitServer
 is enabled. Skipped when the user has plumbed the RR_BLOB_STORAGE_PROVIDER /
 RR_DEFAULT_*_* env vars in directly via env/environmentVariables/environmentSecrets,

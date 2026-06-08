@@ -735,6 +735,34 @@ rrGitServer:
   # RR_DEFAULT_* are provided that way.
   skipBlobStorageValidation: false
 
+  # Optionally split the git server out of the main backend into its own
+  # deployment + service (mirrors how the workload is split in Retool Cloud).
+  # Requires rrGitServer.enabled: true. When enabled:
+  #   - a dedicated <release>-git-server Deployment runs SERVICE_TYPE=RR_GIT_SERVER
+  #   - the main backend drops RR_GIT_SERVER from its SERVICE_TYPE and proxies git
+  #     traffic to the service via RR_GIT_SERVER_HOST / RR_GIT_SERVER_PORT
+  #   - the MCP server (if enabled) is auto-pointed at the same service unless
+  #     mcp.config.retoolGitServerUrl is set explicitly
+  # The blobStorage config below is rendered onto the git-server pod instead of
+  # the main backend in this mode.
+  separate:
+    enabled: false
+    replicaCount: 1
+    # Port the git server listens on (RR_GIT_SERVER_PORT) and that its service exposes.
+    port: 3010
+    # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+    resources: {}
+    # Falls back to top-level `affinity` if unset.
+    affinity: {}
+    # Annotations/labels applied to the git-server pod template.
+    annotations: {}
+    labels: {}
+    # Annotations/labels applied to the git-server Service (kept separate from
+    # the pod ones above).
+    service:
+      annotations: {}
+      labels: {}
+
 # Shared blob-storage config used by git_server (and other features that
 # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
 # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
