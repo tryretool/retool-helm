@@ -1071,7 +1071,7 @@ agentSandbox:
     # Defaults to http://<fullname>:3000 (same-cluster backend service).
     backendUrl: ''
     backendDomainSuffixes: ''
-    sandboxProxyTimeoutMs: ''
+    sandboxProxyTimeoutMs: '180000'  # 3 minutes
     service:
       # Set to LoadBalancer or NodePort to expose the proxy externally.
       type: ClusterIP
