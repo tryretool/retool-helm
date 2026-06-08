@@ -798,11 +798,20 @@ codeExecutor:
       cpu: 1000m
       memory: 1024Mi
 
-  # code executor uses nsjail to sandbox code execution. nsjail requires privileged container access.
-  # If your deployment does not support privileged access, you can set `privileged` to false to not
-  # use nsjail. Without nsjail, all code is run without sandboxing within your deployment.
-  securityContext:
-    privileged: true
+  # The code executor uses nsjail to sandbox code execution.
+  # On Kubernetes >= 1.33 it runs unprivileged using a localhost seccomp profile,
+  # NET_ADMIN, an unmasked /proc, and user namespaces (the profile is installed onto
+  # the node by an init container, the same way the JS executor does it). On older
+  # clusters it falls back to privileged mode, which nsjail also requires.
+  # Uncomment securityContext below to force a specific mode regardless of cluster
+  # version (e.g. `privileged: true`, or `privileged: false` to disable nsjail
+  # sandboxing entirely).
+  # securityContext:
+  #   privileged: true
+
+  # Path (relative to the kubelet seccomp root, /var/lib/kubelet/seccomp) at which
+  # the seccomp profile is installed and referenced when running unprivileged.
+  seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
 # JS Executor
 jsExecutor:

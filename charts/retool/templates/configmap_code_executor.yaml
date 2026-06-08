@@ -1,0 +1,13 @@
+{{- if include "retool.workflows.enabled" . }}
+{{- if and (not .Values.codeExecutor.securityContext) (semverCompare ">=1.33-0" .Capabilities.KubeVersion.Version) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "retool.fullname" . }}-code-executor-seccomp
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+data:
+  nsjail-seccomp.json: |
+    {{- .Files.Get "files/nsjail-seccomp.json" | nindent 4 }}
+{{- end }}
+{{- end }}
