@@ -9,6 +9,8 @@
   network isolation, and an unmasked /proc for process resource monitoring.
   $useSecComp selects this less-privileged path when the operator has not pinned a
   securityContext and the cluster is >= 1.33; otherwise we fall back to privileged.
+  To use the more fine-grained privileges, please upgrade your k8s cluster to 1.33
+  or higher.
 */ -}}
 {{- $useSecComp := and (not .Values.codeExecutor.securityContext) (semverCompare ">=1.33-0" .Capabilities.KubeVersion.Version) -}}
 apiVersion: apps/v1
