@@ -1,4 +1,5 @@
 {{- if .Values.agentSandbox.enabled }}
+{{- include "retool.agentSandbox.validateSecrets" . }}
 {{- $as := .Values.agentSandbox -}}
 {{- $defaultSecretName := $as.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
@@ -22,7 +23,9 @@ data:
   jwt-private-key: {{ $as.jwtPrivateKey | default "" | b64enc | quote }}
   encryption-key: {{ $as.encryptionKey | default "" | b64enc | quote }}
   api-secret: {{ $as.apiSecret | default "" | b64enc | quote }}
-  postgres-url: {{ $as.postgres.url | default "" | b64enc | quote }}
+  {{- if $as.postgres.url }}
+  postgres-url: {{ $as.postgres.url | b64enc | quote }}
+  {{- end }}
 ---
 {{- end }}
 {{- /*
@@ -300,15 +303,7 @@ spec:
               value: {{ $as.controller.port | quote }}
             - name: STATE_BACKEND
               value: "postgres"
-            - name: AGENT_SANDBOX_POSTGRES_URL
-            {{- if $as.postgres.url }}
-              value: {{ $as.postgres.url | quote }}
-            {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $defaultSecretName }}
-                  key: postgres-url
-            {{- end }}
+            {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
             - name: AGENT_SANDBOX_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
             - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
@@ -504,15 +499,7 @@ spec:
               value: {{ $as.proxy.port | quote }}
             - name: STATE_BACKEND
               value: "postgres"
-            - name: AGENT_SANDBOX_POSTGRES_URL
-            {{- if $as.postgres.url }}
-              value: {{ $as.postgres.url | quote }}
-            {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $defaultSecretName }}
-                  key: postgres-url
-            {{- end }}
+            {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
             - name: AGENT_SANDBOX_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
             - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
