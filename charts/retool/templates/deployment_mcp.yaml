@@ -7,7 +7,7 @@
 {{- end }}
 {{- end }}
 {{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv) }}
-{{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when .Values.mcp.enabled is true" }}
+{{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled, or inherited from .Values.r2.enabled)" }}
 {{- end }}
 {{- $mcpInternalPort := .Values.mcp.service.internalPort | default 4010 }}
 apiVersion: v1
