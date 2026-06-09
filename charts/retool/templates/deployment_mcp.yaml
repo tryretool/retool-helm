@@ -1,4 +1,4 @@
-{{- if .Values.mcp.enabled }}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "mcp")) "1" }}
 {{- $mcpConfig := .Values.mcp.config | default dict }}
 {{- $hasOAuthIntrospectionAuthTokenEnv := false }}
 {{- range .Values.mcp.environmentVariables }}
@@ -7,7 +7,7 @@
 {{- end }}
 {{- end }}
 {{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv) }}
-{{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when .Values.mcp.enabled is true" }}
+{{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled, or inherited from .Values.r2.enabled)" }}
 {{- end }}
 {{- $mcpInternalPort := .Values.mcp.service.internalPort | default 4010 }}
 apiVersion: v1
@@ -115,9 +115,17 @@ spec:
             value: {{ $mcpInternalPort | quote }}
           - name: RETOOL_BACKEND_URL
             value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s:%v" (include "retool.fullname" .) .Values.service.externalPort) | quote }}
-          {{- if $mcpConfig.retoolGitServerUrl }}
+          {{- /*
+            Prefer an explicit mcp.config.retoolGitServerUrl; otherwise, when the
+            git server is split into its own deployment, auto-point MCP at it.
+          */}}
+          {{- $retoolGitServerUrl := $mcpConfig.retoolGitServerUrl }}
+          {{- if and (not $retoolGitServerUrl) (include "retool.rrGitServer.separateEnabled" .) }}
+          {{- $retoolGitServerUrl = include "retool.rrGitServer.url" . }}
+          {{- end }}
+          {{- if $retoolGitServerUrl }}
           - name: RETOOL_GIT_SERVER_URL
-            value: {{ $mcpConfig.retoolGitServerUrl | quote }}
+            value: {{ $retoolGitServerUrl | quote }}
           {{- end }}
           {{- if $mcpConfig.retoolUrl }}
           - name: RETOOL_URL

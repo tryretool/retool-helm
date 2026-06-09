@@ -1,0 +1,32 @@
+# R2 master switch — single flag turns on the whole R2 stack.
+#
+# Exercises the `r2.enabled: true` inherit path: r2Agent, jsExecutor,
+# agentSandbox, and mcp all leave their own `enabled` unset (null) and inherit
+# the master switch. This guards `retool.r2.componentEnabled` and the
+# helper-routed cross-component env wiring (backend/workflows/jobs/workers read
+# effective-enabled, not the raw per-component flag).
+#
+# Secrets/config below are only what each component requires to template when
+# enabled; none of them set `*.enabled`, so enablement comes solely from r2.
+r2:
+  enabled: true
+
+agentSandbox:
+  # jwtPublicKey is injected raw into the sandbox job-template JSON, so it MUST
+  # be single-line (\n-escaped) or templating breaks.
+  jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
+  jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49AwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
+  postgres:
+    url: postgres://retool:retool@agent-sandbox-db.example.internal:5432/agent_sandbox
+    schema: agent_executor
+  proxy:
+    service:
+      type: ClusterIP
+    ingress:
+      enabled: false
+  networkPolicy:
+    enabled: false
+
+mcp:
+  config:
+    oauthIntrospectionAuthToken: test-oauth-introspection-token

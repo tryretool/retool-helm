@@ -420,15 +420,25 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 
 {{/*
-Set R2 agent enabled
+Resolve whether an R2 component (r2Agent, jsExecutor, agentSandbox, mcp) is
+enabled. The component's own `enabled` wins when explicitly set to true/false;
+when left unset (null) it inherits the shared master switch .Values.r2.enabled.
+Usage: (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor"))
+Returns "1" when enabled, "" otherwise.
+*/}}
+{{- define "retool.r2.componentEnabled" -}}
+{{- $cfg := index .root.Values .component -}}
+{{- if kindIs "invalid" $cfg.enabled -}}
+  {{- if eq (toString .root.Values.r2.enabled) "true" -}}1{{- end -}}
+{{- else if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- end -}}
+
+{{/*
+Set R2 agent worker enabled. Honors the shared R2 master switch.
 Usage: (include "retool.r2Agent.enabled" .)
 */}}
 {{- define "retool.r2Agent.enabled" -}}
-{{- $output := "" -}}
-{{- if (eq (toString .Values.r2Agent.enabled) "true") -}}
-  {{- $output = "1" -}}
-{{- end -}}
-{{- $output -}}
+{{- include "retool.r2.componentEnabled" (dict "root" . "component" "r2Agent") -}}
 {{- end -}}
 
 {{/* Global Temporal configuration */}}
@@ -624,12 +634,145 @@ telemetry.retool.com/service-name: agent-sandbox-proxy
 {{- end -}}
 
 {{/*
+Validate that an enabled agent sandbox has its required secrets supplied. The
+controller and proxy fail to boot without a Postgres connection and a JWT
+public key, and the Retool backend needs the JWT private key to sign sandbox
+tokens. Each may come from a plaintext value, the per-key existing-secret refs,
+or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
+*/}}
+{{- define "retool.agentSandbox.validateSecrets" -}}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" -}}
+{{- $as := .Values.agentSandbox -}}
+{{- $ext := $as.externalSecret.name -}}
+{{- $explicitPg := or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host $ext -}}
+{{- if not $explicitPg -}}
+{{- /* No explicit source: inherit the backend's Postgres connection. */ -}}
+{{- if not (include "retool.postgresql.host" . | trimAll "\"") -}}
+{{- fail "agentSandbox.enabled defaults to reusing the backend's Postgres connection, but config.postgresql resolved no host. Set agentSandbox.postgres.url / .host / .urlSecretName / externalSecret.name, or configure config.postgresql." -}}
+{{- end -}}
+{{- if not (or .Values.postgresql.enabled .Values.config.postgresql.passwordSecretName (eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1")) -}}
+{{- fail "agentSandbox.postgres is unset so it would inherit the backend's Postgres password, but that password is supplied via external secrets (envFrom) and cannot be referenced from a separate pod. Set agentSandbox.postgres.url / .urlSecretName / .host (+ passwordSecretName), or agentSandbox.externalSecret.name." -}}
+{{- end -}}
+{{- end -}}
+{{- if $as.postgres.host -}}
+{{- if not (and $as.postgres.user $as.postgres.database) -}}
+{{- fail "agentSandbox.postgres.host is set, so postgres.user and postgres.database are also required to assemble the DSN." -}}
+{{- end -}}
+{{- if not (or $as.postgres.password $as.postgres.passwordSecretName) -}}
+{{- fail "agentSandbox.postgres.host is set, so a password is required: set postgres.password or postgres.passwordSecretName. For a passwordless connection (e.g. IAM/trust auth), supply the full connection string via postgres.url or postgres.urlSecretName instead." -}}
+{{- end -}}
+{{- /*
+  user and database are embedded verbatim in the assembled DSN, so reject the
+  characters that would break URL parsing. '@' is allowed in user (managed
+  services like Azure use user@servername; the parser splits on the last '@'),
+  but ':' '/' and whitespace would be mis-parsed as a password/host/path. For
+  values needing other characters, supply a full DSN via postgres.url or
+  postgres.urlSecretName instead.
+*/}}
+{{- if regexMatch "[\\s:/?#]" ($as.postgres.user | toString) -}}
+{{- fail "agentSandbox.postgres.user contains a character that breaks DSN assembly (whitespace, : / ? #). '@' is fine (e.g. Azure user@server); otherwise supply a full DSN via agentSandbox.postgres.url or postgres.urlSecretName." -}}
+{{- end -}}
+{{- if regexMatch "[\\s:/?#]" ($as.postgres.database | toString) -}}
+{{- fail "agentSandbox.postgres.database contains a character that breaks DSN assembly (whitespace, : / ? #); supply a full DSN via agentSandbox.postgres.url or postgres.urlSecretName." -}}
+{{- end -}}
+{{- end -}}
+{{- if not (or $as.jwtPublicKey $ext) -}}
+{{- fail "agentSandbox.enabled requires a JWT public key. Set agentSandbox.jwtPublicKey or agentSandbox.externalSecret.name." -}}
+{{- end -}}
+{{- if not (or $as.jwtPrivateKey $ext) -}}
+{{- fail "agentSandbox.enabled requires a JWT private key (the backend signs sandbox tokens with it). Set agentSandbox.jwtPrivateKey or agentSandbox.externalSecret.name." -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Render the AGENT_SANDBOX_POSTGRES_URL env entry for the controller/proxy (plus a
+PGPASSWORD entry when assembling from fields). validateSecrets guarantees one of
+these applies, in order: postgres.url -> postgres.host -> postgres.urlSecretName
+-> externalSecret.name -> inherit the backend's config.postgresql connection
+(the default when nothing agent-specific is set).
+
+For the host path the password is passed via PGPASSWORD rather than embedded in
+the URL: node-postgres reads PGPASSWORD when the connection string omits the
+password, so it needs no URL escaping. PGPASSWORD is process-global but safe
+here because the controller/proxy open exactly one Postgres connection. user and
+database are embedded verbatim (percent-encoding doesn't round-trip here -- the
+parser decodes userinfo before splitting on ':', and runs the path through
+decodeURI); validateSecrets instead rejects the characters that would break
+parsing. An Azure-style "user@servername" is fine -- the parser splits on the
+last '@'.
+Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
+*/}}
+{{- define "retool.agentSandbox.postgresUrlEnv" -}}
+{{- $pg := .Values.agentSandbox.postgres -}}
+{{- $ext := .Values.agentSandbox.externalSecret.name -}}
+{{- if $pg.url }}
+- name: AGENT_SANDBOX_POSTGRES_URL
+  value: {{ $pg.url | quote }}
+{{- else if $pg.host }}
+{{- $port := $pg.port | default 5432 -}}
+{{- if $pg.passwordSecretName }}
+- name: PGPASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pg.passwordSecretName }}
+      key: {{ $pg.passwordSecretKey | default "password" }}
+{{- else if $pg.password }}
+- name: PGPASSWORD
+  value: {{ $pg.password | quote }}
+{{- end }}
+- name: AGENT_SANDBOX_POSTGRES_URL
+  value: {{ printf "postgres://%s@%s:%v/%s" $pg.user $pg.host $port $pg.database | quote }}
+{{- else if $pg.urlSecretName }}
+- name: AGENT_SANDBOX_POSTGRES_URL
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pg.urlSecretName }}
+      key: {{ $pg.urlSecretKey | default "postgres-url" }}
+{{- else if $ext }}
+- name: AGENT_SANDBOX_POSTGRES_URL
+  valueFrom:
+    secretKeyRef:
+      name: {{ $ext }}
+      key: postgres-url
+{{- else }}
+{{- /*
+  Default: inherit the backend's Postgres connection (config.postgresql or the
+  postgresql subchart) -- same instance/database, separate schema. The password
+  is sourced from the same secret the backend uses; this block mirrors the
+  POSTGRES_PASSWORD secretKeyRef in deployment_backend.yaml. validateSecrets
+  rejects the one combination this can't reach (external-secrets mode with no
+  discrete password key).
+*/}}
+- name: PGPASSWORD
+  valueFrom:
+    secretKeyRef:
+      {{- if .Values.postgresql.enabled }}
+      name: {{ template "retool.postgresql.fullname" . }}
+      {{- if eq .Values.postgresql.auth.username "postgres" }}
+      key: postgres-password
+      {{- else }}
+      key: password
+      {{- end }}
+      {{- else if .Values.config.postgresql.passwordSecretName }}
+      name: {{ .Values.config.postgresql.passwordSecretName }}
+      key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
+      {{- else }}
+      name: {{ template "retool.fullname" . }}
+      key: postgresql-password
+      {{- end }}
+- name: AGENT_SANDBOX_POSTGRES_URL
+  value: {{ printf "postgres://%s@%s:%s/%s" (include "retool.postgresql.user" . | trimAll "\"") (include "retool.postgresql.host" . | trimAll "\"") (include "retool.postgresql.port" . | trimAll "\"" | default "5432") (include "retool.postgresql.database" . | trimAll "\"") | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Agent sandbox env vars for the Retool backend, workflow backend, and workers.
 Outputs env entries that tell the backend how to reach the agent sandbox services.
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 */}}
 {{- define "retool.agentSandbox.backendEnvVars" -}}
-{{- if .Values.agentSandbox.enabled }}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}
 {{- $defaultSecretName := .Values.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"
@@ -682,15 +825,129 @@ Set MCP server service name
 {{- end -}}
 
 {{/*
+Set git server deployment/service name (only used when rrGitServer.separate is enabled)
+*/}}
+{{- define "retool.rrGitServer.name" -}}
+{{ template "retool.fullname" . }}-git-server
+{{- end -}}
+
+{{/*
+Returns "1" when the git server should run as its own deployment/service
+(rrGitServer.enabled AND rrGitServer.separate.enabled), empty otherwise.
+*/}}
+{{- define "retool.rrGitServer.separateEnabled" -}}
+{{- if and .Values.rrGitServer.enabled (.Values.rrGitServer.separate | default dict).enabled -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Port the standalone git server listens on (RR_GIT_SERVER_PORT) and exposes via its service.
+*/}}
+{{- define "retool.rrGitServer.port" -}}
+{{- (.Values.rrGitServer.separate | default dict).port | default 3010 -}}
+{{- end -}}
+
+{{/*
+In-cluster URL of the standalone git server service, e.g. http://<release>-git-server:3010.
+Used to point the MCP server (and any other consumer) at the split-out git server.
+*/}}
+{{- define "retool.rrGitServer.url" -}}
+http://{{ template "retool.rrGitServer.name" . }}:{{ include "retool.rrGitServer.port" . }}
+{{- end -}}
+
+{{/*
+Blob-storage + git repack env vars shared by the in-process git server (main
+backend) and the standalone git server deployment. git_server stores all
+objects/packs in blob storage; the same RR_DEFAULT_* vars are also used by
+snapshots. Emits nothing when no blobStorage provider is configured (in which
+case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
+directly via environmentVariables / environmentSecrets).
+*/}}
+{{- define "retool.rrGitServer.commonEnv" -}}
+{{- $bs := .Values.blobStorage | default dict }}
+{{- if $bs.s3 }}
+- name: RR_BLOB_STORAGE_PROVIDER
+  value: "s3"
+- name: RR_DEFAULT_S3_BUCKET
+  value: {{ $bs.s3.bucket | quote }}
+{{- if $bs.s3.region }}
+- name: RR_DEFAULT_S3_REGION
+  value: {{ $bs.s3.region | quote }}
+{{- end }}
+{{- if $bs.s3.endpoint }}
+- name: RR_DEFAULT_S3_ENDPOINT
+  value: {{ $bs.s3.endpoint | quote }}
+{{- end }}
+{{- if $bs.s3.accessKeyId }}
+- name: RR_DEFAULT_S3_ACCESS_KEY_ID
+  value: {{ $bs.s3.accessKeyId | quote }}
+{{- end }}
+{{- if $bs.s3.secretAccessKeySecretName }}
+- name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $bs.s3.secretAccessKeySecretName }}
+      key: {{ $bs.s3.secretAccessKeySecretKey | default "secret-access-key" }}
+{{- else if $bs.s3.secretAccessKey }}
+- name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+  value: {{ $bs.s3.secretAccessKey | quote }}
+{{- end }}
+{{- else if $bs.gcs }}
+- name: RR_BLOB_STORAGE_PROVIDER
+  value: "gcs"
+- name: RR_DEFAULT_GCS_BUCKET
+  value: {{ $bs.gcs.bucket | quote }}
+{{- if $bs.gcs.credentialsSecretName }}
+- name: RR_DEFAULT_GCS_CREDENTIALS
+  valueFrom:
+    secretKeyRef:
+      name: {{ $bs.gcs.credentialsSecretName }}
+      key: {{ $bs.gcs.credentialsSecretKey | default "credentials.json" }}
+{{- else if $bs.gcs.credentials }}
+- name: RR_DEFAULT_GCS_CREDENTIALS
+  value: {{ $bs.gcs.credentials | quote }}
+{{- end }}
+{{- else if $bs.azure }}
+- name: RR_BLOB_STORAGE_PROVIDER
+  value: "azure"
+- name: RR_DEFAULT_AZURE_CONTAINER
+  value: {{ $bs.azure.container | quote }}
+{{- if $bs.azure.connectionStringSecretName }}
+- name: RR_DEFAULT_AZURE_CONNECTION_STRING
+  valueFrom:
+    secretKeyRef:
+      name: {{ $bs.azure.connectionStringSecretName }}
+      key: {{ $bs.azure.connectionStringSecretKey | default "connection-string" }}
+{{- else if $bs.azure.connectionString }}
+- name: RR_DEFAULT_AZURE_CONNECTION_STRING
+  value: {{ $bs.azure.connectionString | quote }}
+{{- end }}
+{{- end }}
+{{- if .Values.rrGitServer.repackThreshold }}
+- name: RR_GIT_REPACK_THRESHOLD
+  value: {{ .Values.rrGitServer.repackThreshold | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Validate that exactly one blob-storage provider is configured when rrGitServer
 is enabled. Skipped when the user has plumbed the RR_BLOB_STORAGE_PROVIDER /
-RR_DEFAULT_*_* env vars in directly via environmentVariables/environmentSecrets,
+RR_DEFAULT_*_* env vars in directly via env/environmentVariables/environmentSecrets,
 which is treated as an opt-out from the first-class blobStorage config.
+Also skipped entirely when rrGitServer.skipBlobStorageValidation is true, which
+is the escape hatch for sources we cannot inspect at template time (e.g. env
+vars injected via envFrom from a Secret/ConfigMap).
 No-op when rrGitServer is disabled.
 */}}
 {{- define "retool.rrGitServer.validateBlobStorage" -}}
-{{- if .Values.rrGitServer.enabled -}}
+{{- if and .Values.rrGitServer.enabled (not .Values.rrGitServer.skipBlobStorageValidation) -}}
 {{- $hasDirectEnv := false -}}
+{{- range $name, $value := .Values.env -}}
+{{- if or (hasPrefix "RR_DEFAULT_" $name) (eq $name "RR_BLOB_STORAGE_PROVIDER") -}}
+{{- $hasDirectEnv = true -}}
+{{- end -}}
+{{- end -}}
 {{- range .Values.environmentVariables -}}
 {{- if or (hasPrefix "RR_DEFAULT_" .name) (eq .name "RR_BLOB_STORAGE_PROVIDER") -}}
 {{- $hasDirectEnv = true -}}
@@ -708,7 +965,7 @@ No-op when rrGitServer is disabled.
 {{- if $bs.gcs }}{{ $providers = append $providers "gcs" }}{{ end -}}
 {{- if $bs.azure }}{{ $providers = append $providers "azure" }}{{ end -}}
 {{- if ne (len $providers) 1 -}}
-{{- fail "rrGitServer.enabled requires exactly one of blobStorage.s3, blobStorage.gcs, blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via environmentVariables / environmentSecrets" -}}
+{{- fail "rrGitServer.enabled requires exactly one of blobStorage.s3, blobStorage.gcs, blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via env / environmentVariables / environmentSecrets. If those vars are supplied another way (e.g. envFrom), set rrGitServer.skipBlobStorageValidation=true to bypass this check." -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

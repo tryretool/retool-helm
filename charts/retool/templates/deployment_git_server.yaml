@@ -1,26 +1,49 @@
-{{- if include "retool.jobRunner.enabled" . }}
+{{- if include "retool.rrGitServer.separateEnabled" . }}
+{{- include "retool.rrGitServer.validateBlobStorage" . }}
+{{- $gitServerPort := include "retool.rrGitServer.port" . }}
+{{- $gitServerValues := .Values.rrGitServer.separate }}
+{{- $gitServerService := $gitServerValues.service | default dict }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "retool.rrGitServer.name" . }}
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- with $gitServerService.labels }}
+  {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  {{- with $gitServerService.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  selector:
+    retoolService: {{ template "retool.rrGitServer.name" . }}
+  ports:
+  - name: http-server
+    protocol: TCP
+    port: {{ $gitServerPort }}
+    targetPort: {{ $gitServerPort }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.fullname" . }}-jobs-runner
+  name: {{ template "retool.rrGitServer.name" . }}
   labels:
-    {{- include "retool.labels" . | nindent 4 }}
-    app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    telemetry.retool.com/service-name: jobs-runner
-{{- if .Values.deployment.labels }}
-{{ toYaml .Values.deployment.labels | indent 4 }}
-{{- end }}
+{{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
   annotations:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: 1
+  replicas: {{ $gitServerValues.replicaCount | default 1 }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      retoolService: {{ template "retool.rrGitServer.name" . }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -28,19 +51,18 @@ spec:
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
-{{- if .Values.jobRunner.annotations }}
-{{ toYaml .Values.jobRunner.annotations | indent 8 }}
+{{- with $gitServerValues.annotations }}
+{{ toYaml . | indent 8 }}
 {{- end }}
       labels:
         {{- include "retool.labels" . | nindent 8 }}
-        app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        telemetry.retool.com/service-name: jobs-runner
+        retoolService: {{ template "retool.rrGitServer.name" . }}
+        telemetry.retool.com/service-name: rr-git-server
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
-{{- if .Values.jobRunner.labels }}
-{{ toYaml .Values.jobRunner.labels | indent 8 }}
+{{- with $gitServerValues.labels }}
+{{ toYaml . | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
@@ -55,7 +77,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: jobs-runner
+      - name: rr-git-server
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
@@ -73,11 +95,12 @@ spec:
           - name: NODE_ENV
             value: production
           - name: SERVICE_TYPE
-            value: JOBS_RUNNER
-          {{- if .Values.config.auth.google.enabled }}
-          - name: CLIENT_ID
-            value: {{ default "" .Values.config.auth.google.clientId }}
-          {{- end }}
+            value: RR_GIT_SERVER
+          - name: RR_GIT_SERVER_PORT
+            value: {{ $gitServerPort | quote }}
+          # The standalone git server does not run migrations; the main backend owns them.
+          - name: DISABLE_DATABASE_MIGRATIONS
+            value: "true"
           - name: COOKIE_INSECURE
             value: {{ .Values.config.useInsecureCookies | quote }}
           - name: POSTGRES_HOST
@@ -92,39 +115,6 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" . }}
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
-
-          {{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
-          - name: RR_AGENT_PUBSUB_BACKEND
-            value: "postgres"
-          {{- end }}
-
-          {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
-          {{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled }}
-          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
-            value: {{ template "retool.temporal.host" . }}
-          - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
-            value: {{ template "retool.temporal.port" . }}
-          - name: WORKFLOW_TEMPORAL_CLUSTER_NAMESPACE
-            value: {{ template "retool.temporal.namespace" . }}
-          {{- end }}
-          {{- if ($temporalConfig).sslEnabled }}
-          - name: WORKFLOW_TEMPORAL_TLS_ENABLED
-            value: "true"
-          {{- if (and ($temporalConfig).sslCert ($temporalConfig).sslKey) }}
-          - name: WORKFLOW_TEMPORAL_TLS_CRT
-            value: {{ $temporalConfig.sslCert }}
-          - name: WORKFLOW_TEMPORAL_TLS_KEY
-            valueFrom:
-              secretKeyRef:
-              {{- if ($temporalConfig).sslKeySecretName }}
-                name: {{ $temporalConfig.sslKeySecretName }}
-                key: {{ ($temporalConfig).sslKeySecretKey | default "temporal-tls-key" }}
-              {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: "temporal-tls-key"
-              {{- end }}
-          {{- end }}
-          {{- end }}
 
           {{- if include "shouldIncludeConfigSecretsEnvVars" . }}
           - name: LICENSE_KEY
@@ -160,9 +150,15 @@ spec:
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
-          {{- if  .Values.postgresql.enabled }}
+          {{- if .Values.postgresql.enabled }}
                 name: {{ template "retool.postgresql.fullname" . }}
+                # `postgres` is the default admin username for postgres in the subchart we use, so it needs the admin password
+                # if a different username is picked, then it needs the custom password instead.
+                {{- if eq .Values.postgresql.auth.username "postgres" }}
                 key: postgres-password
+                {{- else }}
+                key: password
+                {{- end }}
           {{- else }}
                 {{- if .Values.config.postgresql.passwordSecretName }}
                 name: {{ .Values.config.postgresql.passwordSecretName }}
@@ -172,19 +168,8 @@ spec:
                 key: postgresql-password
                 {{- end }}
           {{- end }}
-          {{- if .Values.config.auth.google.enabled }}
-          - name: CLIENT_SECRET
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.config.auth.google.clientSecretSecretName }}
-                name: {{ .Values.config.auth.google.clientSecretSecretName }}
-                key: {{ .Values.config.auth.google.clientSecretSecretKey | default "google-client-secret" }}
-                {{- else }}
-                name: {{ template "retool.fullname" . }}
-                key: google-client-secret
-                {{- end }}
           {{- end }}
-          {{- end }}
+          {{- include "retool.rrGitServer.commonEnv" . | nindent 10 }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
@@ -205,7 +190,7 @@ spec:
             name: {{ .name }}
         {{- end }}
         {{- end }}
-        {{- if .Values.externalSecrets.externalSecretsOperator.enabled  }}
+        {{- if .Values.externalSecrets.externalSecretsOperator.enabled }}
         envFrom:
         {{- range .Values.externalSecrets.externalSecretsOperator.secretRef }}
         - secretRef:
@@ -213,31 +198,23 @@ spec:
             optional: {{ .optional | default false }}
         {{- end }}
         {{- end }}
-        resources:
-{{- if .Values.jobRunner.resources }}
-{{ toYaml .Values.jobRunner.resources | indent 10 }}
-{{- else }}
-{{ toYaml .Values.resources | indent 10 }}
-{{- end }}
-        {{- if regexMatch "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" .Values.image.tag }}
-        {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
-        {{- if semverCompare ">=2.110.0-0" (regexFind $semver_version_regexp .Values.image.tag) }}
-        livenessProbe:
-          httpGet:
-            path: /api/checkJobsRunnerHealth
-            port: 3003
-          initialDelaySeconds: 120
-          periodSeconds: 30
-          timeoutSeconds: 3
+        ports:
+        - containerPort: {{ $gitServerPort }}
+          name: http-server
+          protocol: TCP
         readinessProbe:
-          httpGet:
-            path: /api/checkJobsRunnerHealth
-            port: 3003
-          initialDelaySeconds: 120
-          periodSeconds: 30
-          timeoutSeconds: 3
-        {{- end }}
-        {{- end }}
+          tcpSocket:
+            port: {{ $gitServerPort }}
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: {{ $gitServerPort }}
+          initialDelaySeconds: 30
+          failureThreshold: 10
+          timeoutSeconds: 10
+          periodSeconds: 20
+        resources:
+{{ toYaml ($gitServerValues.resources | default .Values.resources) | indent 10 }}
         volumeMounts:
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
@@ -251,6 +228,10 @@ spec:
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
 {{- end }}
+{{- if .Values.securityContext.extraContainerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
+{{- end }}
 {{- with .Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}
@@ -259,17 +240,14 @@ spec:
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
 {{- end }}
-{{- if .Values.securityContext.extraContainerSecurityContext }}
-        securityContext:
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
-{{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
     {{- end }}
-    {{- if .Values.affinity }}
+    {{- $affinity := $gitServerValues.affinity | default .Values.affinity }}
+    {{- if $affinity }}
       affinity:
-{{ toYaml .Values.affinity | indent 8 }}
+{{ toYaml $affinity | indent 8 }}
     {{- end }}
     {{- if .Values.nodeSelector }}
       nodeSelector:
@@ -298,5 +276,21 @@ spec:
       {{- end }}
 {{- if .Values.extraVolumes }}
 {{ toYaml .Values.extraVolumes | indent 8 }}
+{{- end }}
+{{- if .Values.podDisruptionBudget }}
+---
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version }}
+apiVersion: policy/v1
+{{- else }}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "retool.rrGitServer.name" . }}
+spec:
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
+  selector:
+    matchLabels:
+      retoolService: {{ template "retool.rrGitServer.name" . }}
 {{- end }}
 {{- end }}

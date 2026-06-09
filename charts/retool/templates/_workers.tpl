@@ -213,7 +213,7 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" $ }}
-          {{- if $.Values.jsExecutor.enabled }}
+          {{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.jsExecutor.name" $ }}
           {{- end }}
