@@ -1,4 +1,4 @@
-{{- if .Values.jsExecutor.enabled }}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

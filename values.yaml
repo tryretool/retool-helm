@@ -564,8 +564,9 @@ multiplayer:
     labels: {}
 
 mcp:
-  # Enable this to run Retool's MCP server as a separate deployment.
-  enabled: false
+  # Run Retool's MCP server as a separate deployment. Inherits .Values.r2.enabled
+  # when left unset (null); set true/false to override.
+  enabled: null
 
   replicaCount: 1
 
@@ -839,9 +840,20 @@ codeExecutor:
   securityContext:
     privileged: true
 
+# === R2 (Retool agent runtime) =============================================
+# Master switch for the whole R2 stack: the r2Agent worker, jsExecutor,
+# agentSandbox, and mcp server. Set `r2.enabled: true` to turn them all on with
+# one line. Each component's own `enabled` (left null by default) inherits this
+# switch; set a component's `enabled` to true/false to override the master for
+# that component only. Shared R2 configuration can be added under this block
+# later.
+r2:
+  enabled: false
+
 # JS Executor
 jsExecutor:
-  enabled: false
+  # Inherits .Values.r2.enabled when left unset (null); set true/false to override.
+  enabled: null
 
   image:
     repository: tryretool/js-executor-service
@@ -921,7 +933,8 @@ agents:
 
 # R2 Agent: server-side agent loop worker (independent from agents above).
 r2Agent:
-  enabled: false
+  # Inherits .Values.r2.enabled when left unset (null); set true/false to override.
+  enabled: null
 
   # Labels for R2 agent worker pods
   labels: {}
@@ -948,7 +961,8 @@ r2Agent:
 # Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
 # and ephemeral Job-based sandboxes. Uses Postgres for controller/proxy state.
 agentSandbox:
-  enabled: false
+  # Inherits .Values.r2.enabled when left unset (null); set true/false to override.
+  enabled: null
 
   image:
     repository: tryretool/agent-sandbox-service
