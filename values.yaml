@@ -728,6 +728,13 @@ rrGitServer:
   # Backend default is 100; unset to inherit it.
   repackThreshold: ~
 
+  # Escape hatch for the blob-storage validation below. The chart can only
+  # inspect blobStorage, env, environmentVariables, and environmentSecrets at
+  # template time; it cannot see env vars injected via envFrom (Secret/ConfigMap
+  # splat). Set this to true to bypass the check when RR_BLOB_STORAGE_PROVIDER /
+  # RR_DEFAULT_* are provided that way.
+  skipBlobStorageValidation: false
+
 # Shared blob-storage config used by git_server (and other features that
 # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
 # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
@@ -818,6 +825,12 @@ jsExecutor:
 
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
+  # JS-executor-specific environment; not inherited from the top-level
+  # .Values.env / .Values.environmentSecrets / .Values.environmentVariables.
+  env: {}
+  environmentSecrets: []
+  environmentVariables: []
+
   # Annotations for JS executor pods
   annotations: {}
 
@@ -830,14 +843,16 @@ jsExecutor:
   # Config affinity and anti-affinity rules for the JS executor pods
   affinity: {}
 
-  # Resources for the JS executor
+  # Resources for the JS executor. Memory request and limit are kept equal:
+  # JSE reads its memory limit and rejects requests at 80% of it, so the
+  # request must reserve the full amount to avoid premature rejections.
   resources:
     limits:
-      cpu: 2000m
-      memory: 8192Mi
+      cpu: 6000m
+      memory: 6Gi
     requests:
-      cpu: 1000m
-      memory: 4096Mi
+      cpu: 6000m
+      memory: 6Gi
 
 agents:
   # Enable AI Agents
@@ -1116,8 +1131,13 @@ agentSandbox:
   # controllerUrl and proxyUrl default to internal service URLs when empty.
   controllerUrl: ''
   proxyUrl: ''
-  # Required: public URL for frontend browsers to reach the proxy via WebSocket.
-  # e.g. https://sandbox.yourdomain.com
+  # Public URL for frontend browsers to reach the proxy via WebSocket.
+  # Leave EMPTY for self-hosted: the backend then serves the sandbox same-origin
+  # as the editor (your Retool base URL) and the front server reverse-proxies the
+  # /sandbox/* WS+Vite paths to the in-cluster proxy Service — so no dedicated
+  # proxy domain or ingress is required, and your catch-all ingress is untouched.
+  # Only set this (e.g. https://sandbox.yourdomain.com) if you deliberately want
+  # the proxy on a separate domain, in which case also enable proxy.ingress above.
   frontendWsProxyDomain: ''
   # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
   proxyDomain: ''
