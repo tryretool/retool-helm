@@ -1,0 +1,28 @@
+# Exercises the JS executor workload (deployment_js_executor.yaml +
+# configmap_js_executor.yaml). Overlaid on top of test-install-values.yaml.
+jsExecutor:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: tryretool/js-executor-service
+    tag: 3.123.4
+    pullPolicy: IfNotPresent
+  # JS-executor-specific env (not inherited from top-level .Values.env).
+  env:
+    LOG_LEVEL: info
+  environmentVariables:
+    - name: JS_EXECUTOR_TEST_OPTION
+      value: "true"
+  # Memory request and limit are kept equal: JSE rejects requests at 80% of
+  # its limit, so the request must reserve the full amount.
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 4000m
+      memory: 4Gi
+
+# Exercise the PDB branch shared by the JS executor deployment.
+podDisruptionBudget:
+  maxUnavailable: 1

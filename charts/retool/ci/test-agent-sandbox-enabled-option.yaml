@@ -1,0 +1,66 @@
+# Exercises the Agent Sandbox workload: controller + proxy deployments, the
+# job-template ConfigMap, RBAC, headless/proxy services, proxy ingress, the
+# image-prepuller + seccomp DaemonSets, the smarter-device-manager device
+# plugin DaemonSet, and the NetworkPolicies. Overlaid on test-install-values.yaml.
+agentSandbox:
+  enabled: true
+
+  image:
+    repository: tryretool/agent-sandbox-service
+    tag: 3.123.4
+    pullPolicy: IfNotPresent
+
+  # Reference a pre-existing K8s Secret (the production-recommended path) rather
+  # than inlining JWT/encryption material into the chart. With externalSecret.name
+  # set, secret-backed env vars — including the ones injected into the sandbox
+  # job-template — resolve via secretKeyRef instead of plaintext.
+  externalSecret:
+    name: agent-sandbox-secrets
+
+  postgres:
+    schema: agent_executor
+    poolMax: 10
+
+  sandboxNetwork:
+    enabled: true
+    devicePlugin: true
+    deployDaemonSet: true
+
+  snapshotStorage:
+    s3Bucket: retool-agent-sandbox-snapshots
+    s3Endpoint: https://s3.us-east-1.amazonaws.com
+    s3Region: us-east-1
+    credentialsSecretName: agent-sandbox-s3-credentials
+
+  # replicaCount > 1 renders the controller PodDisruptionBudget.
+  controller:
+    replicaCount: 2
+
+  proxy:
+    replicaCount: 2
+    allowedDomains: api.example.com,example.com
+    backendDomainSuffixes: .example.com
+    sandboxProxyTimeoutMs: "3600000"
+    service:
+      type: ClusterIP
+    # Dedicated proxy domain → renders the proxy Ingress.
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      host: sandbox.example.com
+      tls:
+        - secretName: agent-sandbox-tls
+          hosts:
+            - sandbox.example.com
+  frontendWsProxyDomain: https://sandbox.example.com
+
+  # Restrict sandbox/controller/proxy traffic → renders the NetworkPolicies.
+  networkPolicy:
+    enabled: true
+
+# Exercise the proxy PodDisruptionBudget branch.
+podDisruptionBudget:
+  maxUnavailable: 1
