@@ -1,0 +1,20 @@
+# Agent Sandbox — Postgres sourcing OPTION 5 (default): inherit the backend's
+# Postgres connection. With agentSandbox.postgres left entirely unset, the
+# controller/proxy reuse config.postgresql / the postgresql subchart (same
+# instance and database, separate schema) — the zero-config path for enabling
+# the sandbox on an existing deployment. PGPASSWORD mirrors the backend's
+# POSTGRES_PASSWORD secretKeyRef, and the DSN is assembled from the postgresql
+# helpers. The base test-install-values.yaml enables the postgresql subchart,
+# which is what makes inheritance resolve.
+#
+# Only the (required) JWT secrets are provided; everything else is left default.
+agentSandbox:
+  enabled: true
+
+  image:
+    repository: tryretool/agent-sandbox-service
+    tag: 3.123.4
+    pullPolicy: IfNotPresent
+
+  jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AI\nY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
+  jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49\nAwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoB\nQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
