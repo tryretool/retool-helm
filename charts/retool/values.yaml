@@ -942,7 +942,13 @@ agentSandbox:
   apiSecret: ''              # optional: admin/test endpoints
 
   # === Postgres state backend =============================================
-  # REQUIRED. Choose exactly ONE sourcing option; leave the others blank.
+  # By DEFAULT (all options below left blank) the agent sandbox reuses the
+  # backend's Postgres connection from config.postgresql / the postgresql
+  # subchart -- same instance and database, separate schema (see schema below).
+  # So enabling it on an existing deployment needs nothing here. (Exception:
+  # if the backend's DB password is supplied via external secrets / envFrom, it
+  # can't be inherited by a separate pod -- set an option below in that case.)
+  # To point the sandbox at a different database, set exactly ONE option:
   postgres:
     # -- Option 1: plaintext DSN --
     url: ''

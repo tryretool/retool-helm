@@ -634,8 +634,15 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if .Values.agentSandbox.enabled -}}
 {{- $as := .Values.agentSandbox -}}
 {{- $ext := $as.externalSecret.name -}}
-{{- if not (or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host $ext) -}}
-{{- fail "agentSandbox.enabled requires a Postgres connection. Set one of: agentSandbox.postgres.url (DSN), agentSandbox.postgres.host + user + database (the chart assembles the DSN, password from postgres.password or postgres.passwordSecretName), agentSandbox.postgres.urlSecretName (existing secret holding the DSN), or agentSandbox.externalSecret.name." -}}
+{{- $explicitPg := or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host $ext -}}
+{{- if not $explicitPg -}}
+{{- /* No explicit source: inherit the backend's Postgres connection. */ -}}
+{{- if not (include "retool.postgresql.host" . | trimAll "\"") -}}
+{{- fail "agentSandbox.enabled defaults to reusing the backend's Postgres connection, but config.postgresql resolved no host. Set agentSandbox.postgres.url / .host / .urlSecretName / externalSecret.name, or configure config.postgresql." -}}
+{{- end -}}
+{{- if not (or .Values.postgresql.enabled .Values.config.postgresql.passwordSecretName (eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1")) -}}
+{{- fail "agentSandbox.postgres is unset so it would inherit the backend's Postgres password, but that password is supplied via external secrets (envFrom) and cannot be referenced from a separate pod. Set agentSandbox.postgres.url / .urlSecretName / .host (+ passwordSecretName), or agentSandbox.externalSecret.name." -}}
+{{- end -}}
 {{- end -}}
 {{- if $as.postgres.host -}}
 {{- if not (and $as.postgres.user $as.postgres.database) -}}
@@ -669,7 +676,8 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 Render the AGENT_SANDBOX_POSTGRES_URL env entry for the controller/proxy (plus a
 PGPASSWORD entry when assembling from fields). validateSecrets guarantees one of
 these applies, in order: postgres.url -> postgres.host -> postgres.urlSecretName
--> externalSecret.name.
+-> externalSecret.name -> inherit the backend's config.postgresql connection
+(the default when nothing agent-specific is set).
 
 For the host path the password is passed via PGPASSWORD rather than embedded in
 the URL: node-postgres reads PGPASSWORD when the connection string omits the
@@ -714,6 +722,34 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
     secretKeyRef:
       name: {{ $ext }}
       key: postgres-url
+{{- else }}
+{{- /*
+  Default: inherit the backend's Postgres connection (config.postgresql or the
+  postgresql subchart) -- same instance/database, separate schema. The password
+  is sourced from the same secret the backend uses; this block mirrors the
+  POSTGRES_PASSWORD secretKeyRef in deployment_backend.yaml. validateSecrets
+  rejects the one combination this can't reach (external-secrets mode with no
+  discrete password key).
+*/}}
+- name: PGPASSWORD
+  valueFrom:
+    secretKeyRef:
+      {{- if .Values.postgresql.enabled }}
+      name: {{ template "retool.postgresql.fullname" . }}
+      {{- if eq .Values.postgresql.auth.username "postgres" }}
+      key: postgres-password
+      {{- else }}
+      key: password
+      {{- end }}
+      {{- else if .Values.config.postgresql.passwordSecretName }}
+      name: {{ .Values.config.postgresql.passwordSecretName }}
+      key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
+      {{- else }}
+      name: {{ template "retool.fullname" . }}
+      key: postgresql-password
+      {{- end }}
+- name: AGENT_SANDBOX_POSTGRES_URL
+  value: {{ printf "postgres://%s@%s:%s/%s" (include "retool.postgresql.user" . | trimAll "\"") (include "retool.postgresql.host" . | trimAll "\"") (include "retool.postgresql.port" . | trimAll "\"" | default "5432") (include "retool.postgresql.database" . | trimAll "\"") | quote }}
 {{- end }}
 {{- end -}}
 
