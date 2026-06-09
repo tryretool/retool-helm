@@ -672,8 +672,8 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if regexMatch "[\\s:/?#]" ($as.postgres.user | toString) -}}
 {{- fail "agentSandbox.postgres.user contains a character that breaks DSN assembly (whitespace, : / ? #). '@' is fine (e.g. Azure user@server); otherwise supply a full DSN via agentSandbox.postgres.url or postgres.urlSecretName." -}}
 {{- end -}}
-{{- if regexMatch "[\\s?#]" ($as.postgres.database | toString) -}}
-{{- fail "agentSandbox.postgres.database contains a character that breaks DSN assembly (whitespace, ? #); supply a full DSN via agentSandbox.postgres.url or postgres.urlSecretName." -}}
+{{- if regexMatch "[\\s:/?#]" ($as.postgres.database | toString) -}}
+{{- fail "agentSandbox.postgres.database contains a character that breaks DSN assembly (whitespace, : / ? #); supply a full DSN via agentSandbox.postgres.url or postgres.urlSecretName." -}}
 {{- end -}}
 {{- end -}}
 {{- if not (or $as.jwtPublicKey $ext) -}}
