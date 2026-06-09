@@ -798,6 +798,12 @@ codeExecutor:
       cpu: 1000m
       memory: 1024Mi
 
+  # The code executor uses nsjail to sandbox code execution, which requires elevated
+  # privileges. By default the container runs privileged. Set useSeccompProfile: true
+  # to instead run unprivileged with a localhost seccomp profile, the NET_ADMIN
+  # capability, and an unmasked /proc. This requires Kubernetes 1.33 or higher; do
+  # not enable it on older clusters.
+  useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
 # JS Executor
