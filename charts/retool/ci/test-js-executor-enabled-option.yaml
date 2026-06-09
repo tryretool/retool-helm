@@ -6,7 +6,10 @@ jsExecutor:
   image:
     repository: tryretool/js-executor-service
     tag: 3.123.4
-    pullPolicy: IfNotPresent
+    # Deliberately differs from the global image.pullPolicy (IfNotPresent in the
+    # base values) so the rendered deployment proves the per-workload override is
+    # honored rather than the global value.
+    pullPolicy: Always
   # JS-executor-specific env (not inherited from top-level .Values.env).
   env:
     LOG_LEVEL: info

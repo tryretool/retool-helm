@@ -82,7 +82,7 @@ spec:
       containers:
       - name: js-executor
         image: "{{ .Values.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        imagePullPolicy: {{ .Values.jsExecutor.image.pullPolicy | default .Values.image.pullPolicy }}
         securityContext:
           capabilities:
             add: ["NET_ADMIN"]
