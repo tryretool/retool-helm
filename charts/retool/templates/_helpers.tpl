@@ -648,6 +648,9 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if not (and $as.postgres.user $as.postgres.database) -}}
 {{- fail "agentSandbox.postgres.host is set, so postgres.user and postgres.database are also required to assemble the DSN." -}}
 {{- end -}}
+{{- if not (or $as.postgres.password $as.postgres.passwordSecretName) -}}
+{{- fail "agentSandbox.postgres.host is set, so a password is required: set postgres.password or postgres.passwordSecretName. For a passwordless connection (e.g. IAM/trust auth), supply the full connection string via postgres.url or postgres.urlSecretName instead." -}}
+{{- end -}}
 {{- /*
   user and database are embedded verbatim in the assembled DSN, so reject the
   characters that would break URL parsing. '@' is allowed in user (managed
