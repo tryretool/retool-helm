@@ -1,4 +1,4 @@
-{{- if .Values.agentSandbox.enabled }}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
 {{- include "retool.agentSandbox.validateSecrets" . }}
 {{- $as := .Values.agentSandbox -}}
 {{- $defaultSecretName := $as.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}

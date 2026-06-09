@@ -420,15 +420,25 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 
 {{/*
-Set R2 agent enabled
+Resolve whether an R2 component (r2Agent, jsExecutor, agentSandbox, mcp) is
+enabled. The component's own `enabled` wins when explicitly set to true/false;
+when left unset (null) it inherits the shared master switch .Values.r2.enabled.
+Usage: (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor"))
+Returns "1" when enabled, "" otherwise.
+*/}}
+{{- define "retool.r2.componentEnabled" -}}
+{{- $cfg := index .root.Values .component -}}
+{{- if kindIs "invalid" $cfg.enabled -}}
+  {{- if eq (toString .root.Values.r2.enabled) "true" -}}1{{- end -}}
+{{- else if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- end -}}
+
+{{/*
+Set R2 agent worker enabled. Honors the shared R2 master switch.
 Usage: (include "retool.r2Agent.enabled" .)
 */}}
 {{- define "retool.r2Agent.enabled" -}}
-{{- $output := "" -}}
-{{- if (eq (toString .Values.r2Agent.enabled) "true") -}}
-  {{- $output = "1" -}}
-{{- end -}}
-{{- $output -}}
+{{- include "retool.r2.componentEnabled" (dict "root" . "component" "r2Agent") -}}
 {{- end -}}
 
 {{/* Global Temporal configuration */}}
@@ -631,7 +641,7 @@ tokens. Each may come from a plaintext value, the per-key existing-secret refs,
 or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 */}}
 {{- define "retool.agentSandbox.validateSecrets" -}}
-{{- if .Values.agentSandbox.enabled -}}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" -}}
 {{- $as := .Values.agentSandbox -}}
 {{- $ext := $as.externalSecret.name -}}
 {{- $explicitPg := or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host $ext -}}
@@ -762,7 +772,7 @@ Outputs env entries that tell the backend how to reach the agent sandbox service
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 */}}
 {{- define "retool.agentSandbox.backendEnvVars" -}}
-{{- if .Values.agentSandbox.enabled }}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}
 {{- $defaultSecretName := .Values.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"

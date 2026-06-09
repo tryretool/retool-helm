@@ -1,4 +1,4 @@
-{{- if .Values.mcp.enabled }}
+{{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "mcp")) "1" }}
 {{- $mcpConfig := .Values.mcp.config | default dict }}
 {{- $hasOAuthIntrospectionAuthTokenEnv := false }}
 {{- range .Values.mcp.environmentVariables }}

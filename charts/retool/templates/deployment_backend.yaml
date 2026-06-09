@@ -188,7 +188,7 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
-          {{- if .Values.jsExecutor.enabled }}
+          {{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.jsExecutor.name" . }}
           {{- end }}
