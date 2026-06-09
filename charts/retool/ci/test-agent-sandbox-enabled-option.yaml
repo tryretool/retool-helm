@@ -1,7 +1,18 @@
-# Exercises the Agent Sandbox workload: controller + proxy deployments, the
-# job-template ConfigMap, RBAC, headless/proxy services, proxy ingress, the
-# image-prepuller + seccomp DaemonSets, the smarter-device-manager device
-# plugin DaemonSet, and the NetworkPolicies. Overlaid on test-install-values.yaml.
+# Agent Sandbox — external secret + dedicated proxy domain WITH ingress.
+#
+# This is the "max surface" scenario: controller + proxy deployments, the
+# job-template ConfigMap, RBAC, headless/proxy services, proxy ingress + TLS,
+# the image-prepuller + seccomp DaemonSets, the smarter-device-manager device
+# plugin DaemonSet, the NetworkPolicies, and both PDBs.
+#
+# Secret/Postgres sourcing here uses externalSecret.name (Postgres OPTION 4:
+# the secret's postgres-url key). The other secret/Postgres precedence paths and
+# the same-origin (no-ingress) proxy mode are covered by sibling files:
+#   - test-agent-sandbox-inline-secrets-option.yaml      (inline secrets, plaintext DSN, same-origin/no ingress, hostPath tun)
+#   - test-agent-sandbox-postgres-fields-option.yaml     (assemble DSN from fields + PGPASSWORD secret)
+#   - test-agent-sandbox-postgres-url-secret-option.yaml (full DSN from an existing secret)
+#   - test-agent-sandbox-inherit-postgres-option.yaml    (zero-config inherit of the backend Postgres)
+# Overlaid on test-install-values.yaml.
 agentSandbox:
   enabled: true
 

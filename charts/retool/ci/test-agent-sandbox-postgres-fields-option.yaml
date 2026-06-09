@@ -1,0 +1,39 @@
+# Agent Sandbox — Postgres sourcing OPTION 2: assemble the DSN from discrete
+# fields, with the password supplied via PGPASSWORD from a pre-existing Secret
+# (never embedded in the URL, so any password characters are safe).
+#
+# Also exercises:
+#   - An Azure-style "user@servername" username, which validateSecrets allows
+#     (the parser splits userinfo on the last '@').
+#   - sandboxNetwork with devicePlugin=true but deployDaemonSet=false (a
+#     smarter-device-manager already runs on the nodes, managed elsewhere) →
+#     sandbox pods request smarter-devices/net_tun but no DS is rendered.
+#   - networkPolicy enabled.
+agentSandbox:
+  enabled: true
+
+  image:
+    repository: tryretool/agent-sandbox-service
+    tag: 3.123.4
+    pullPolicy: IfNotPresent
+
+  jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AI\nY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
+  jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49\nAwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoB\nQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
+
+  # Option 2: host + user + database, password via PGPASSWORD secretKeyRef.
+  postgres:
+    host: agentdb-prod.postgres.database.azure.com
+    port: 5432
+    database: agent_sandbox
+    user: retool@agentdb-prod
+    passwordSecretName: agent-sandbox-db-password
+    passwordSecretKey: password
+    schema: agent_executor
+
+  sandboxNetwork:
+    enabled: true
+    devicePlugin: true
+    deployDaemonSet: false
+
+  networkPolicy:
+    enabled: true

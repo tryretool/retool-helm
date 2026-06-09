@@ -10,6 +10,12 @@ jsExecutor:
   # JS-executor-specific env (not inherited from top-level .Values.env).
   env:
     LOG_LEVEL: info
+  # Exercise the per-workload secretKeyRef branch.
+  environmentSecrets:
+    - name: JS_EXECUTOR_TOKEN
+      secretKeyRef:
+        name: js-executor-secrets
+        key: token
   environmentVariables:
     - name: JS_EXECUTOR_TEST_OPTION
       value: "true"
