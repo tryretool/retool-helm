@@ -1,18 +1,5 @@
 {{- if include "retool.workflows.enabled" . }}
-{{- /*
-  Workflows are run securely within Code Executor via nsjail sandboxes. Creating
-  those sandboxes requires the container to have elevated privileges. By default
-  these privileges are granted by running the container as privileged
-  (securityContext.privileged: true). Setting codeExecutor.useSeccompProfile: true
-  instead grants only what nsjail needs, far more granularly than the privileged
-  flag: a slightly relaxed version of Docker's default seccomp profile, the
-  NET_ADMIN capability for network isolation, and an unmasked /proc for process
-  resource monitoring. This requires Kubernetes 1.33 or higher (for the
-  ProcMountType and UserNamespacesSupport feature gates) -- do not enable it on
-  older clusters. $useSecComp selects this less-privileged path when
-  useSeccompProfile is enabled and the operator has not pinned an explicit
-  securityContext; otherwise we fall back to privileged.
-*/ -}}
+{{- /* Use the less-privileged seccomp sandbox (see codeExecutor.useSeccompProfile in values.yaml) only when the operator opted in and has not pinned an explicit securityContext. */ -}}
 {{- $useSecComp := and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile -}}
 apiVersion: apps/v1
 kind: Deployment

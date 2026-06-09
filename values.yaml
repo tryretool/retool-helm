@@ -798,11 +798,16 @@ codeExecutor:
       cpu: 1000m
       memory: 1024Mi
 
-  # The code executor uses nsjail to sandbox code execution, which requires elevated
-  # privileges. By default the container runs privileged. Set useSeccompProfile: true
-  # to instead run unprivileged with a localhost seccomp profile, the NET_ADMIN
-  # capability, and an unmasked /proc. This requires Kubernetes 1.33 or higher; do
-  # not enable it on older clusters.
+  # The code executor runs workflow code inside nsjail sandboxes, which require
+  # elevated privileges to create. By default these are granted by running the
+  # container as privileged (securityContext.privileged: true). Set
+  # useSeccompProfile: true to instead grant only what nsjail needs, far more
+  # granularly than the privileged flag: a slightly relaxed version of Docker's
+  # default seccomp profile, the NET_ADMIN capability for network isolation, and an
+  # unmasked /proc for process resource monitoring. This requires Kubernetes 1.33 or
+  # higher (for the ProcMountType and UserNamespacesSupport feature gates) -- do not
+  # enable it on older clusters. Pinning codeExecutor.securityContext overrides both
+  # paths and is used verbatim.
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
