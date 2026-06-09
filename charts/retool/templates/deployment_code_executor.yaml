@@ -12,7 +12,8 @@
   To use the more fine-grained privileges, please upgrade your k8s cluster to 1.33
   or higher.
 */ -}}
-{{- $useSecComp := and (not .Values.codeExecutor.securityContext) (semverCompare ">=1.33-0" .Capabilities.KubeVersion.Version) -}}
+{{- /* TEMP(PLAT-1012 TEST BRANCH): >=1.33 version gate removed to force the seccomp path on a <1.33 cluster for testing. DO NOT MERGE. */ -}}
+{{- $useSecComp := (not .Values.codeExecutor.securityContext) -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

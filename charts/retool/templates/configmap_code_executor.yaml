@@ -1,5 +1,6 @@
 {{- if include "retool.workflows.enabled" . }}
-{{- if and (not .Values.codeExecutor.securityContext) (semverCompare ">=1.33-0" .Capabilities.KubeVersion.Version) }}
+{{- /* TEMP(PLAT-1012 TEST BRANCH): >=1.33 version gate removed to force the seccomp path on a <1.33 cluster for testing. DO NOT MERGE. */ -}}
+{{- if (not .Values.codeExecutor.securityContext) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
