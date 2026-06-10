@@ -175,6 +175,7 @@ data:
                   ,{"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}}
                   ,{"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"}
                   ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
+                  ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   {{- if $as.jwtPublicKey }}
                   ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
                   {{- else if $as.externalSecret.name }}

@@ -1101,6 +1101,10 @@ agentSandbox:
         memory: 4Gi
     # Idle timeout (ms) before an unassigned sandbox self-terminates.
     sandboxIdleTimeoutMs: 600000
+    # Hard ceiling (ms) on total sandbox lifetime, regardless of activity. When
+    # reached, the sandbox is destroyed (deferred until the current agent loop
+    # ends). Defaults to 2.5 hours.
+    sandboxGlobalLifetimeMs: 9000000
     tmpDirSizeLimit: 20Gi
     # Separate limit for the rootfs-appjob volume — the sandbox root filesystem
     # is a static ~600MB extraction, so 2Gi provides headroom without the 20Gi
