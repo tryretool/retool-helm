@@ -1121,12 +1121,6 @@ agentSandbox:
         cpu: 500m
         memory: 512Mi
     scaling:
-      slotsPerPod: 4
-      minReplicas: 1
-      maxReplicas: 10
-      scaleUpThreshold: 2
-      scaleDownThreshold: 8
-      scaleDownGracePeriodMs: 300000
       prewarmPoolSize: 5
       maxTotalJobs: 50
       maxConcurrentCreates: 3
@@ -1135,6 +1129,7 @@ agentSandbox:
       reconcileIntervalMs: 5000
       leaderTtlMs: 10000
       leaderRenewMs: 3000
+      perUserSandboxLimit: 5
 
   # Proxy: HTTP proxy for sandbox egress with credential injection.
   # The proxy must be reachable by frontend browsers for WebSocket connections.
