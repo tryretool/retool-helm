@@ -889,10 +889,10 @@ jsExecutor:
   # request must reserve the full amount to avoid premature rejections.
   resources:
     limits:
-      cpu: 6000m
+      cpu: '2'
       memory: 6Gi
     requests:
-      cpu: 6000m
+      cpu: '2'
       memory: 6Gi
 
 agents:
