@@ -175,6 +175,7 @@ data:
                   ,{"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}}
                   ,{"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"}
                   ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
+                  ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   {{- if $as.jwtPublicKey }}
                   ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
                   {{- else if $as.externalSecret.name }}
@@ -326,18 +327,6 @@ spec:
               value: {{ include "retool.agentSandbox.name" . }}
             - name: EXECUTOR_SERVICE_NAME
               value: {{ include "retool.agentSandbox.name" . }}-pods
-            - name: SLOTS_PER_POD
-              value: {{ $as.controller.scaling.slotsPerPod | quote }}
-            - name: EXECUTOR_MIN_REPLICAS
-              value: {{ $as.controller.scaling.minReplicas | quote }}
-            - name: EXECUTOR_MAX_REPLICAS
-              value: {{ $as.controller.scaling.maxReplicas | quote }}
-            - name: SCALE_UP_THRESHOLD
-              value: {{ $as.controller.scaling.scaleUpThreshold | quote }}
-            - name: SCALE_DOWN_THRESHOLD
-              value: {{ $as.controller.scaling.scaleDownThreshold | quote }}
-            - name: SCALE_DOWN_GRACE_PERIOD_MS
-              value: {{ $as.controller.scaling.scaleDownGracePeriodMs | quote }}
             - name: PREWARM_POOL_SIZE
               value: {{ $as.controller.scaling.prewarmPoolSize | quote }}
             - name: MAX_TOTAL_JOBS
@@ -354,6 +343,8 @@ spec:
               value: {{ $as.controller.scaling.leaderTtlMs | quote }}
             - name: LEADER_RENEW_MS
               value: {{ $as.controller.scaling.leaderRenewMs | quote }}
+            - name: PER_USER_CONCURRENCY_PAID
+              value: {{ $as.controller.scaling.perUserSandboxLimit | quote }}
             - name: DEPLOYED_IMAGE_TAG
               value: {{ $as.image.tag | default .Values.image.tag | quote }}
             - name: JOB_TEMPLATE_CONFIGMAP
