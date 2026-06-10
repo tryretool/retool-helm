@@ -89,6 +89,14 @@ spec:
           seccompProfile:
             type: Localhost
             localhostProfile: {{ .Values.jsExecutor.seccompLocalhostProfile }}
+          # nsjail remounts the rootfs/proc inside its mount namespace. On nodes
+          # where the container runtime applies an AppArmor profile (e.g. GKE
+          # Container-Optimized OS, where containerd attaches
+          # cri-containerd.apparmor.d with `deny mount`), that mount is rejected
+          # with EPERM. Run unconfined so nsjail can set up its sandbox; the
+          # Localhost seccomp profile above provides the syscall isolation.
+          appArmorProfile:
+            type: Unconfined
         env:
           - name: DEPLOYMENT_TEMPLATE_TYPE
             value: {{ template "retool.deploymentTemplateType" . }}
