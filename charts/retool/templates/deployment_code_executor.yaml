@@ -27,6 +27,7 @@ spec:
       annotations:
 {{- if $useSecComp }}
         checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
+        container.apparmor.security.beta.kubernetes.io/code-executor: unconfined
 {{- end }}
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
