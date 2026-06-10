@@ -415,8 +415,52 @@
       "args": [
         {
           "index": 0,
-          "value": 40,
-          "op": "SCMP_CMP_NE"
+          "value": 1,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": ["socket"],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 2,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": ["socket"],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 10,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": ["socket"],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 16,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": ["socket"],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 17,
+          "op": "SCMP_CMP_EQ"
         }
       ]
     },
