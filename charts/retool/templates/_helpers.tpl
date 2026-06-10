@@ -420,7 +420,7 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 
 {{/*
-Resolve whether an R2 component (r2Agent, jsExecutor, agentSandbox, mcp) is
+Resolve whether an R2 component (r2Agent, jsExecutor, agentSandbox) is
 enabled. The component's own `enabled` wins when explicitly set to true/false;
 when left unset (null) it inherits the shared master switch .Values.r2.enabled.
 Usage: (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor"))

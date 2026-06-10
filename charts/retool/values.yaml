@@ -564,9 +564,10 @@ multiplayer:
     labels: {}
 
 mcp:
-  # Run Retool's MCP server as a separate deployment. Inherits .Values.r2.enabled
-  # when left unset (null); set true/false to override.
-  enabled: null
+  # Run Retool's MCP server as a separate deployment. Independent of the
+  # .Values.r2.enabled master switch (the MCP server needs its own OAuth
+  # introspection config, so it is opt-in): set true to enable.
+  enabled: false
 
   replicaCount: 1
 
