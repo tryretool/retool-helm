@@ -835,11 +835,18 @@ codeExecutor:
       cpu: 1000m
       memory: 1024Mi
 
-  # code executor uses nsjail to sandbox code execution. nsjail requires privileged container access.
-  # If your deployment does not support privileged access, you can set `privileged` to false to not
-  # use nsjail. Without nsjail, all code is run without sandboxing within your deployment.
-  securityContext:
-    privileged: true
+  # The code executor runs workflow code inside nsjail sandboxes, which require
+  # elevated privileges to create. By default these are granted by running the
+  # container as privileged (securityContext.privileged: true). Set
+  # useSeccompProfile: true to instead grant only what nsjail needs, far more
+  # granularly than the privileged flag: a slightly relaxed version of Docker's
+  # default seccomp profile, the NET_ADMIN capability for network isolation, and an
+  # unmasked /proc for process resource monitoring. This requires Kubernetes 1.33 or
+  # higher (for the ProcMountType and UserNamespacesSupport feature gates) -- do not
+  # enable it on older clusters. Pinning codeExecutor.securityContext overrides both
+  # paths and is used verbatim.
+  useSeccompProfile: false
+  seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
 # === R2 (Retool agent runtime) =============================================
 # Master switch for the whole R2 stack: the r2Agent worker, jsExecutor,

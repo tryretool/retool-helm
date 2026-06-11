@@ -1,4 +1,6 @@
 {{- if include "retool.workflows.enabled" . }}
+{{- /* Use the less-privileged seccomp sandbox (see codeExecutor.useSeccompProfile in values.yaml) only when it is enabled and no explicit codeExecutor.securityContext is set. */ -}}
+{{- $useSecComp := and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +25,10 @@ spec:
   template:
     metadata:
       annotations:
+{{- if $useSecComp }}
+        checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
+        container.apparmor.security.beta.kubernetes.io/code-executor: unconfined
+{{- end }}
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
@@ -44,11 +50,43 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
       {{- end }}
-{{- if .Values.initContainers }}
+{{- if $useSecComp }}
+      hostUsers: false
+{{- end }}
+{{- if or $useSecComp .Values.initContainers }}
       initContainers:
+{{- if $useSecComp }}
+        - name: install-seccomp
+          image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              DEST="/host-seccomp/{{ .Values.codeExecutor.seccompLocalhostProfile }}"
+              mkdir -p "$(dirname "$DEST")"
+              cp /seccomp-profile/nsjail-seccomp.json "$DEST"
+              echo "seccomp profile installed at $DEST"
+          volumeMounts:
+            - name: seccomp-profile
+              mountPath: /seccomp-profile
+            - name: host-seccomp
+              mountPath: /host-seccomp
+{{- end }}
 {{- range $key, $value := .Values.initContainers }}
-      - name: "{{ $key }}"
-{{ toYaml $value | indent 8 }}
+        - name: "{{ $key }}"
+{{ toYaml $value | indent 10 }}
 {{- end }}
 {{- end }}
       containers:
@@ -56,11 +94,18 @@ spec:
         image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
-          {{ if .Values.codeExecutor.securityContext }}
+          {{- if .Values.codeExecutor.securityContext }}
 {{ toYaml .Values.codeExecutor.securityContext | indent 10 }}
-          {{ else }}
+          {{- else if $useSecComp }}
+          capabilities:
+            add: ["NET_ADMIN"]
+          procMount: Unmasked
+          seccompProfile:
+            type: Localhost
+            localhostProfile: {{ .Values.codeExecutor.seccompLocalhostProfile }}
+          {{- else }}
           privileged: true
-          {{ end }}
+          {{- end }}
           {{- if .Values.securityContext.extraContainerSecurityContext }}
 {{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
           {{- end }}
@@ -128,6 +173,15 @@ spec:
 {{ tpl . $ | indent 6 }}
 {{- end }}
       volumes:
+{{- if $useSecComp }}
+        - name: seccomp-profile
+          configMap:
+            name: {{ template "retool.fullname" . }}-code-executor-seccomp
+        - name: host-seccomp
+          hostPath:
+            path: /var/lib/kubelet/seccomp
+            type: DirectoryOrCreate
+{{- end }}
 {{- if .Values.codeExecutor.volumes }}
 {{ toYaml .Values.codeExecutor.volumes | indent 8 }}
 {{- end }}
