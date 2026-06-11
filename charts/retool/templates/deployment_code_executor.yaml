@@ -1,5 +1,5 @@
 {{- if include "retool.workflows.enabled" . }}
-{{- /* Use the less-privileged seccomp sandbox (see codeExecutor.useSeccompProfile in values.yaml) only when the operator opted in and has not pinned an explicit securityContext. */ -}}
+{{- /* Use the less-privileged seccomp sandbox (see codeExecutor.useSeccompProfile in values.yaml) only when it is enabled and no explicit codeExecutor.securityContext is set. */ -}}
 {{- $useSecComp := and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile -}}
 apiVersion: apps/v1
 kind: Deployment
