@@ -1,5 +1,5 @@
-{{- if and (eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.agentSandbox.networkPolicy.enabled }}
-{{- $as := .Values.agentSandbox -}}
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.rr.agentSandbox.networkPolicy.enabled }}
+{{- $as := .Values.rr.agentSandbox -}}
 {{- /*
 =======================================================================
   Sandbox Pod NetworkPolicy — restrict ingress/egress for executor Jobs

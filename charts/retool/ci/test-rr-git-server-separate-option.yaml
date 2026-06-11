@@ -1,34 +1,37 @@
 podDisruptionBudget:
   minAvailable: 1
 
-rrGitServer:
-  enabled: true
-  repackThreshold: 200
-  separate:
-    enabled: true
-    replicaCount: 2
-    port: 3010
-    resources:
-      requests:
-        cpu: 250m
-        memory: 512Mi
-    annotations:
-      test-pod-annotation: "true"
-    labels:
-      test-pod-label: "true"
-    service:
-      annotations:
-        test-service-annotation: "true"
-      labels:
-        test-service-label: "true"
+rr:
 
-blobStorage:
-  s3:
-    bucket: test-rr-bucket
-    region: us-east-1
-    accessKeyId: AKIATEST
-    secretAccessKeySecretName: rr-blob-storage
-    secretAccessKeySecretKey: secret-access-key
+  gitServer:
+    enabled: true
+    repackThreshold: 200
+    separate:
+      enabled: true
+      replicaCount: 2
+      port: 3010
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      annotations:
+        test-pod-annotation: "true"
+      labels:
+        test-pod-label: "true"
+      service:
+        annotations:
+          test-service-annotation: "true"
+        labels:
+          test-service-label: "true"
+
+
+  blobStorage:
+    s3:
+      bucket: test-rr-bucket
+      region: us-east-1
+      accessKeyId: AKIATEST
+      secretAccessKeySecretName: rr-blob-storage
+      secretAccessKeySecretKey: secret-access-key
 
 # Exercise the MCP auto-wiring to the standalone git server service.
 mcp:

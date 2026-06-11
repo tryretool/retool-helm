@@ -1,4 +1,4 @@
-{{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,7 +15,7 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ .Values.jsExecutor.replicaCount }}
+  replicas: {{ .Values.rr.jsExecutor.replicaCount }}
   selector:
     matchLabels:
       {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
@@ -28,8 +28,8 @@ spec:
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
-{{- if .Values.jsExecutor.annotations }}
-{{ toYaml .Values.jsExecutor.annotations | indent 8 }}
+{{- if .Values.rr.jsExecutor.annotations }}
+{{ toYaml .Values.rr.jsExecutor.annotations | indent 8 }}
 {{- end }}
       labels:
         {{- include "retool.jsExecutor.selectorLabels" . | nindent 8 }}
@@ -38,8 +38,8 @@ spec:
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
-{{- if .Values.jsExecutor.labels }}
-{{ toYaml .Values.jsExecutor.labels | indent 8 }}
+{{- if .Values.rr.jsExecutor.labels }}
+{{ toYaml .Values.rr.jsExecutor.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
@@ -65,7 +65,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              DEST="/host-seccomp/{{ .Values.jsExecutor.seccompLocalhostProfile }}"
+              DEST="/host-seccomp/{{ .Values.rr.jsExecutor.seccompLocalhostProfile }}"
               mkdir -p "$(dirname "$DEST")"
               cp /seccomp-profile/nsjail-seccomp.json "$DEST"
               echo "seccomp profile installed at $DEST"
@@ -82,14 +82,14 @@ spec:
 {{- end }}
       containers:
       - name: js-executor
-        image: "{{ .Values.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
-        imagePullPolicy: {{ .Values.jsExecutor.image.pullPolicy | default .Values.image.pullPolicy }}
+        image: "{{ .Values.rr.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
+        imagePullPolicy: {{ .Values.rr.jsExecutor.image.pullPolicy | default .Values.image.pullPolicy }}
         securityContext:
           capabilities:
             add: ["NET_ADMIN"]
           seccompProfile:
             type: Localhost
-            localhostProfile: {{ .Values.jsExecutor.seccompLocalhostProfile }}
+            localhostProfile: {{ .Values.rr.jsExecutor.seccompLocalhostProfile }}
         env:
           - name: DEPLOYMENT_TEMPLATE_TYPE
             value: {{ template "retool.deploymentTemplateType" . }}
@@ -98,15 +98,15 @@ spec:
           - name: NODE_ENV
             value: production
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
-          {{- include "retool.env" .Values.jsExecutor.env | nindent 10 }}
-          {{- range .Values.jsExecutor.environmentSecrets }}
+          {{- include "retool.env" .Values.rr.jsExecutor.env | nindent 10 }}
+          {{- range .Values.rr.jsExecutor.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
               secretKeyRef:
                 name: {{ .secretKeyRef.name }}
                 key: {{ .secretKeyRef.key }}
           {{- end }}
-          {{- with .Values.jsExecutor.environmentVariables }}
+          {{- with .Values.rr.jsExecutor.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
         ports:
@@ -129,10 +129,10 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
         resources:
-{{ toYaml .Values.jsExecutor.resources | indent 10 }}
+{{ toYaml .Values.rr.jsExecutor.resources | indent 10 }}
         volumeMounts:
-{{- if .Values.jsExecutor.volumeMounts }}
-{{ toYaml .Values.jsExecutor.volumeMounts | indent 10 }}
+{{- if .Values.rr.jsExecutor.volumeMounts }}
+{{ toYaml .Values.rr.jsExecutor.volumeMounts | indent 10 }}
 {{- end }}
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 10 }}
@@ -153,8 +153,8 @@ spec:
           hostPath:
             path: /var/lib/kubelet/seccomp
             type: DirectoryOrCreate
-{{- if .Values.jsExecutor.volumes }}
-{{ toYaml .Values.jsExecutor.volumes | indent 8 }}
+{{- if .Values.rr.jsExecutor.volumes }}
+{{ toYaml .Values.rr.jsExecutor.volumes | indent 8 }}
 {{- end }}
 {{- range .Values.extraConfigMapMounts }}
         - name: {{ .name }}
@@ -168,9 +168,9 @@ spec:
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
 {{- end }}
-{{- if .Values.jsExecutor.affinity }}
+{{- if .Values.rr.jsExecutor.affinity }}
       affinity:
-{{ toYaml .Values.jsExecutor.affinity | indent 8 }}
+{{ toYaml .Values.rr.jsExecutor.affinity | indent 8 }}
 {{- end }}
 {{- if .Values.nodeSelector }}
       nodeSelector:

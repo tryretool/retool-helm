@@ -1,5 +1,5 @@
-{{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
-{{- $as := .Values.agentSandbox -}}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
+{{- $as := .Values.rr.agentSandbox -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
 {{- $tolerations := $as.tolerations | default .Values.tolerations -}}
 apiVersion: v1

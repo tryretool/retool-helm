@@ -420,25 +420,37 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 
 {{/*
-Resolve whether an R2 component (r2Agent, jsExecutor, agentSandbox) is
-enabled. The component's own `enabled` wins when explicitly set to true/false;
-when left unset (null) it inherits the shared master switch .Values.r2.enabled.
-Usage: (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor"))
+Resolve whether an RR component (agent, jsExecutor, agentSandbox) is
+enabled. Components are nested under .Values.rr (each ships as a default block
+with `enabled: null`). The component's own `enabled` wins when explicitly set to
+true/false; when left unset (null) it inherits the shared master switch
+.Values.rr.enabled. If the component block itself is absent or explicitly nulled
+it is treated as disabled (there is no config to render). A non-mapping value
+(e.g. a bare bool) is a misconfiguration and fails loudly.
+Usage: (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor"))
 Returns "1" when enabled, "" otherwise.
 */}}
-{{- define "retool.r2.componentEnabled" -}}
-{{- $cfg := index .root.Values .component -}}
-{{- if kindIs "invalid" $cfg.enabled -}}
-  {{- if eq (toString .root.Values.r2.enabled) "true" -}}1{{- end -}}
-{{- else if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- define "retool.rr.componentEnabled" -}}
+{{- $rr := .root.Values.rr | default dict -}}
+{{- $cfg := index $rr .component -}}
+{{- if kindIs "invalid" $cfg -}}
+  {{/* component block absent or explicitly nulled -> disabled (there is no
+       config to render, so it cannot inherit the master switch on) */}}
+{{- else if kindIs "map" $cfg -}}
+  {{- if kindIs "invalid" $cfg.enabled -}}
+    {{- if eq (toString $rr.enabled) "true" -}}1{{- end -}}
+  {{- else if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- else -}}
+  {{- fail (printf "rr.%s must be a mapping (got %s). To toggle this component set rr.%s.enabled: true|false; to inherit the rr.enabled master switch, leave rr.%s unset." .component (kindOf $cfg) .component .component) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
-Set R2 agent worker enabled. Honors the shared R2 master switch.
-Usage: (include "retool.r2Agent.enabled" .)
+Set RR agent worker enabled. Honors the shared RR master switch.
+Usage: (include "retool.agent.enabled" .)
 */}}
-{{- define "retool.r2Agent.enabled" -}}
-{{- include "retool.r2.componentEnabled" (dict "root" . "component" "r2Agent") -}}
+{{- define "retool.agent.enabled" -}}
+{{- include "retool.rr.componentEnabled" (dict "root" . "component" "agent") -}}
 {{- end -}}
 
 {{/* Global Temporal configuration */}}
@@ -539,25 +551,25 @@ Set agent eval worker service name
 {{- end -}}
 
 {{/*
-Set R2 agent worker service name
+Set RR agent worker service name
 */}}
-{{- define "retool.r2AgentWorker.name" -}}
+{{- define "retool.rrAgentWorker.name" -}}
 {{ template "retool.fullname" . }}-r2-agent-worker
 {{- end -}}
 
 {{/*
-Selector labels for R2 agent worker. Note changes here will require manual
+Selector labels for RR agent worker. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
-{{- define "retool.r2AgentWorker.selectorLabels" -}}
-retoolService: {{ include "retool.r2AgentWorker.name" . }}
+{{- define "retool.rrAgentWorker.selectorLabels" -}}
+retoolService: {{ include "retool.rrAgentWorker.name" . }}
 {{- end }}
 
 {{/*
-Extra (non-selector) labels for R2 agent worker.
+Extra (non-selector) labels for RR agent worker.
 */}}
-{{- define "retool.r2AgentWorker.labels" -}}
-app.kubernetes.io/name: {{ include "retool.r2AgentWorker.name" . }}
+{{- define "retool.rrAgentWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.rrAgentWorker.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 telemetry.retool.com/service-name: r2-agent-worker
 {{- end }}
@@ -641,8 +653,8 @@ tokens. Each may come from a plaintext value, the per-key existing-secret refs,
 or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 */}}
 {{- define "retool.agentSandbox.validateSecrets" -}}
-{{- if eq (include "retool.r2.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" -}}
-{{- $as := .Values.agentSandbox -}}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" -}}
+{{- $as := .Values.rr.agentSandbox -}}
 {{- $ext := $as.externalSecret.name -}}
 {{- $explicitPg := or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host $ext -}}
 {{- if not $explicitPg -}}
@@ -704,8 +716,8 @@ last '@'.
 Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 */}}
 {{- define "retool.agentSandbox.postgresUrlEnv" -}}
-{{- $pg := .Values.agentSandbox.postgres -}}
-{{- $ext := .Values.agentSandbox.externalSecret.name -}}
+{{- $pg := .Values.rr.agentSandbox.postgres -}}
+{{- $ext := .Values.rr.agentSandbox.externalSecret.name -}}
 {{- if $pg.url }}
 - name: AGENT_SANDBOX_POSTGRES_URL
   value: {{ $pg.url | quote }}
@@ -772,42 +784,42 @@ Outputs env entries that tell the backend how to reach the agent sandbox service
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 */}}
 {{- define "retool.agentSandbox.backendEnvVars" -}}
-{{- if eq (include "retool.r2.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}
-{{- $defaultSecretName := .Values.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}
+{{- $defaultSecretName := .Values.rr.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"
 - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
-  value: {{ .Values.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.agentSandbox.controller.port)) | quote }}
+  value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
 - name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
-  value: {{ .Values.agentSandbox.proxyUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.proxy.name" .) (toString .Values.agentSandbox.proxy.port)) | quote }}
-{{- if .Values.agentSandbox.frontendWsProxyDomain }}
+  value: {{ .Values.rr.agentSandbox.proxyUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.proxy.name" .) (toString .Values.rr.agentSandbox.proxy.port)) | quote }}
+{{- if .Values.rr.agentSandbox.frontendWsProxyDomain }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
-  value: {{ .Values.agentSandbox.frontendWsProxyDomain | quote }}
+  value: {{ .Values.rr.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
-{{- if .Values.agentSandbox.jwtPrivateKey }}
+{{- if .Values.rr.agentSandbox.jwtPrivateKey }}
 - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
-  value: {{ .Values.agentSandbox.jwtPrivateKey | quote }}
-{{- else if .Values.agentSandbox.externalSecret.name }}
+  value: {{ .Values.rr.agentSandbox.jwtPrivateKey | quote }}
+{{- else if .Values.rr.agentSandbox.externalSecret.name }}
 - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
   valueFrom:
     secretKeyRef:
       name: {{ $defaultSecretName }}
       key: jwt-private-key
 {{- end }}
-{{- if .Values.agentSandbox.jwtPublicKey }}
+{{- if .Values.rr.agentSandbox.jwtPublicKey }}
 - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
-  value: {{ .Values.agentSandbox.jwtPublicKey | quote }}
-{{- else if .Values.agentSandbox.externalSecret.name }}
+  value: {{ .Values.rr.agentSandbox.jwtPublicKey | quote }}
+{{- else if .Values.rr.agentSandbox.externalSecret.name }}
 - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
   valueFrom:
     secretKeyRef:
       name: {{ $defaultSecretName }}
       key: jwt-public-key
 {{- end }}
-{{- if .Values.agentSandbox.encryptionKey }}
+{{- if .Values.rr.agentSandbox.encryptionKey }}
 - name: AGENT_SANDBOX_ENCRYPTION_KEY
-  value: {{ .Values.agentSandbox.encryptionKey | quote }}
-{{- else if .Values.agentSandbox.externalSecret.name }}
+  value: {{ .Values.rr.agentSandbox.encryptionKey | quote }}
+{{- else if .Values.rr.agentSandbox.externalSecret.name }}
 - name: AGENT_SANDBOX_ENCRYPTION_KEY
   valueFrom:
     secretKeyRef:
@@ -825,18 +837,18 @@ Set MCP server service name
 {{- end -}}
 
 {{/*
-Set git server deployment/service name (only used when rrGitServer.separate is enabled)
+Set git server deployment/service name (only used when rr.gitServer.separate is enabled)
 */}}
-{{- define "retool.rrGitServer.name" -}}
+{{- define "retool.gitServer.name" -}}
 {{ template "retool.fullname" . }}-git-server
 {{- end -}}
 
 {{/*
 Returns "1" when the git server should run as its own deployment/service
-(rrGitServer.enabled AND rrGitServer.separate.enabled), empty otherwise.
+(rr.gitServer.enabled AND rr.gitServer.separate.enabled), empty otherwise.
 */}}
-{{- define "retool.rrGitServer.separateEnabled" -}}
-{{- if and .Values.rrGitServer.enabled (.Values.rrGitServer.separate | default dict).enabled -}}
+{{- define "retool.gitServer.separateEnabled" -}}
+{{- if and .Values.rr.gitServer.enabled (.Values.rr.gitServer.separate | default dict).enabled -}}
 1
 {{- end -}}
 {{- end -}}
@@ -844,16 +856,16 @@ Returns "1" when the git server should run as its own deployment/service
 {{/*
 Port the standalone git server listens on (RR_GIT_SERVER_PORT) and exposes via its service.
 */}}
-{{- define "retool.rrGitServer.port" -}}
-{{- (.Values.rrGitServer.separate | default dict).port | default 3010 -}}
+{{- define "retool.gitServer.port" -}}
+{{- (.Values.rr.gitServer.separate | default dict).port | default 3010 -}}
 {{- end -}}
 
 {{/*
 In-cluster URL of the standalone git server service, e.g. http://<release>-git-server:3010.
 Used to point the MCP server (and any other consumer) at the split-out git server.
 */}}
-{{- define "retool.rrGitServer.url" -}}
-http://{{ template "retool.rrGitServer.name" . }}:{{ include "retool.rrGitServer.port" . }}
+{{- define "retool.gitServer.url" -}}
+http://{{ template "retool.gitServer.name" . }}:{{ include "retool.gitServer.port" . }}
 {{- end -}}
 
 {{/*
@@ -864,8 +876,8 @@ snapshots. Emits nothing when no blobStorage provider is configured (in which
 case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
 directly via environmentVariables / environmentSecrets).
 */}}
-{{- define "retool.rrGitServer.commonEnv" -}}
-{{- $bs := .Values.blobStorage | default dict }}
+{{- define "retool.gitServer.commonEnv" -}}
+{{- $bs := .Values.rr.blobStorage | default dict }}
 {{- if $bs.s3 }}
 - name: RR_BLOB_STORAGE_PROVIDER
   value: "s3"
@@ -924,24 +936,24 @@ directly via environmentVariables / environmentSecrets).
   value: {{ $bs.azure.connectionString | quote }}
 {{- end }}
 {{- end }}
-{{- if .Values.rrGitServer.repackThreshold }}
+{{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
-  value: {{ .Values.rrGitServer.repackThreshold | quote }}
+  value: {{ .Values.rr.gitServer.repackThreshold | quote }}
 {{- end }}
 {{- end -}}
 
 {{/*
-Validate that exactly one blob-storage provider is configured when rrGitServer
+Validate that exactly one blob-storage provider is configured when rr.gitServer
 is enabled. Skipped when the user has plumbed the RR_BLOB_STORAGE_PROVIDER /
 RR_DEFAULT_*_* env vars in directly via env/environmentVariables/environmentSecrets,
 which is treated as an opt-out from the first-class blobStorage config.
-Also skipped entirely when rrGitServer.skipBlobStorageValidation is true, which
+Also skipped entirely when rr.gitServer.skipBlobStorageValidation is true, which
 is the escape hatch for sources we cannot inspect at template time (e.g. env
 vars injected via envFrom from a Secret/ConfigMap).
-No-op when rrGitServer is disabled.
+No-op when rr.gitServer is disabled.
 */}}
-{{- define "retool.rrGitServer.validateBlobStorage" -}}
-{{- if and .Values.rrGitServer.enabled (not .Values.rrGitServer.skipBlobStorageValidation) -}}
+{{- define "retool.gitServer.validateBlobStorage" -}}
+{{- if and .Values.rr.gitServer.enabled (not .Values.rr.gitServer.skipBlobStorageValidation) -}}
 {{- $hasDirectEnv := false -}}
 {{- range $name, $value := .Values.env -}}
 {{- if or (hasPrefix "RR_DEFAULT_" $name) (eq $name "RR_BLOB_STORAGE_PROVIDER") -}}
@@ -959,15 +971,61 @@ No-op when rrGitServer is disabled.
 {{- end -}}
 {{- end -}}
 {{- if not $hasDirectEnv -}}
-{{- $bs := .Values.blobStorage | default dict -}}
+{{- $bs := .Values.rr.blobStorage | default dict -}}
 {{- $providers := list -}}
 {{- if $bs.s3 }}{{ $providers = append $providers "s3" }}{{ end -}}
 {{- if $bs.gcs }}{{ $providers = append $providers "gcs" }}{{ end -}}
 {{- if $bs.azure }}{{ $providers = append $providers "azure" }}{{ end -}}
 {{- if ne (len $providers) 1 -}}
-{{- fail "rrGitServer.enabled requires exactly one of blobStorage.s3, blobStorage.gcs, blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via env / environmentVariables / environmentSecrets. If those vars are supplied another way (e.g. envFrom), set rrGitServer.skipBlobStorageValidation=true to bypass this check." -}}
+{{- fail "rr.gitServer.enabled requires exactly one of rr.blobStorage.s3, rr.blobStorage.gcs, rr.blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via env / environmentVariables / environmentSecrets. If those vars are supplied another way (e.g. envFrom), set rr.gitServer.skipBlobStorageValidation=true to bypass this check." -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Guard against the pre-rename RR values layout. The whole stack used to be named
+"r2" (top-level `r2:` master switch), and its components used to be top-level
+keys (jsExecutor, r2Agent, agentSandbox, rrGitServer, blobStorage); everything is
+now named "rr" and nested under .Values.rr. A chart upgrade would otherwise
+SILENTLY ignore any config still set under the old names — quietly disabling RR —
+so fail loudly with the exact key moves instead.
+
+Two classes of stale config are caught:
+  1. Old TOP-LEVEL keys (the master switch and the un-nested components).
+  2. Old component LEAF names nested under the new `rr:` block (e.g. someone
+     who moved config under `rr:` but kept `r2Agent`/`rrAgent`/`rrGitServer`/
+     `rrBlobStorage` instead of the renamed `agent`/`gitServer`/`blobStorage`).
+*/}}
+{{- define "retool.rr.validateLegacyValues" -}}
+{{- $found := list -}}
+{{/* 1. old top-level keys */}}
+{{- $topMoves := list
+  (list "r2"           "rr")
+  (list "jsExecutor"   "rr.jsExecutor")
+  (list "r2Agent"      "rr.agent")
+  (list "agentSandbox" "rr.agentSandbox")
+  (list "rrGitServer"  "rr.gitServer")
+  (list "blobStorage"  "rr.blobStorage") -}}
+{{- range $move := $topMoves -}}
+{{- if hasKey $.Values (index $move 0) -}}
+{{- $found = append $found (printf "  %s:  ->  %s:" (index $move 0) (index $move 1)) -}}
+{{- end -}}
+{{- end -}}
+{{/* 2. old leaf names nested under rr: */}}
+{{- $rr := $.Values.rr | default dict -}}
+{{- $childMoves := list
+  (list "r2Agent"       "rr.agent")
+  (list "rrAgent"       "rr.agent")
+  (list "rrGitServer"   "rr.gitServer")
+  (list "rrBlobStorage" "rr.blobStorage") -}}
+{{- range $move := $childMoves -}}
+{{- if hasKey $rr (index $move 0) -}}
+{{- $found = append $found (printf "  rr.%s:  ->  %s:" (index $move 0) (index $move 1)) -}}
+{{- end -}}
+{{- end -}}
+{{- if $found -}}
+{{- fail (printf "\n\nThe RR (formerly \"r2\") values layout changed: the master switch and every component it needs now live under the top-level `rr:` block. These keys in your values are NO LONGER READ and would silently disable RR. Rename / move them as shown:\n\n%s\n\nThe master switch is now `rr.enabled`. See values.yaml for the new layout." (join "\n" $found)) -}}
 {{- end -}}
 {{- end -}}
 
@@ -995,8 +1053,8 @@ Set JS executor image tag
 Usage: (template "retool.jsExecutor.image.tag" .)
 */}}
 {{- define "retool.jsExecutor.image.tag" -}}
-{{- if .Values.jsExecutor.image.tag -}}
-  {{- .Values.jsExecutor.image.tag -}}
+{{- if .Values.rr.jsExecutor.image.tag -}}
+  {{- .Values.rr.jsExecutor.image.tag -}}
 {{- else if .Values.image.tag -}}
   {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
   {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
@@ -1007,7 +1065,7 @@ Usage: (template "retool.jsExecutor.image.tag" .)
     {{- "1.1.0" -}}
   {{- end -}}
 {{- else -}}
-  {{- fail "Please set a value for .Values.image.tag or .Values.jsExecutor.image.tag" }}
+  {{- fail "Please set a value for .Values.image.tag or .Values.rr.jsExecutor.image.tag" }}
 {{- end -}}
 {{- end -}}
 
