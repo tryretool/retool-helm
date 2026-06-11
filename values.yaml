@@ -815,10 +815,10 @@ rr:
     # request must reserve the full amount to avoid premature rejections.
     resources:
       limits:
-        cpu: 6000m
+        cpu: '2'
         memory: 6Gi
       requests:
-        cpu: 6000m
+        cpu: '2'
         memory: 6Gi
 
   # RR Agent: server-side agent loop worker (independent from agents above).
