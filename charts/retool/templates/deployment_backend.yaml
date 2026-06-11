@@ -1,4 +1,5 @@
-{{- include "retool.rrGitServer.validateBlobStorage" . }}
+{{- include "retool.rr.validateLegacyValues" . }}
+{{- include "retool.gitServer.validateBlobStorage" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -103,9 +104,9 @@ spec:
           {{- end }}
           {{- /*
             Run the git server in-process on the main backend unless it has been
-            split out into its own deployment (rrGitServer.separate.enabled).
+            split out into its own deployment (rr.gitServer.separate.enabled).
           */}}
-          {{- if and .Values.rrGitServer.enabled (not (include "retool.rrGitServer.separateEnabled" .)) }}
+          {{- if and .Values.rr.gitServer.enabled (not (include "retool.gitServer.separateEnabled" .)) }}
             {{- $serviceType = append $serviceType "RR_GIT_SERVER" }}
           {{- end }}
           - name: SERVICE_TYPE
@@ -188,7 +189,7 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
-          {{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
+          {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.jsExecutor.name" . }}
           {{- end }}
@@ -260,19 +261,19 @@ spec:
                 {{- end }}
           {{- end }}
           {{- end }}
-          {{- if .Values.rrGitServer.enabled }}
-          {{- if include "retool.rrGitServer.separateEnabled" . }}
+          {{- if .Values.rr.gitServer.enabled }}
+          {{- if include "retool.gitServer.separateEnabled" . }}
           {{- /*
             git server runs in its own deployment; point the main backend's
             proxy (/api/ai/rr/git/v2/*) at the git-server service instead of
             localhost.
           */}}
           - name: RR_GIT_SERVER_HOST
-            value: {{ template "retool.rrGitServer.name" . }}
+            value: {{ template "retool.gitServer.name" . }}
           - name: RR_GIT_SERVER_PORT
-            value: {{ include "retool.rrGitServer.port" . | quote }}
+            value: {{ include "retool.gitServer.port" . | quote }}
           {{- else }}
-          {{- include "retool.rrGitServer.commonEnv" . | nindent 10 }}
+          {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
           {{- end }}
           {{- include "retool.env" .Values.env | nindent 10 }}

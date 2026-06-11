@@ -1,10 +1,18 @@
+{{/*
+Worker descriptors. `parent` is the values key holding the worker's config and
+also names its enable helper (retool.<parent>.enabled). `type` selects the
+per-worker rendering (resource name, SERVICE_TYPE, taskqueue). `nested`, when
+set, is the parent values block the config lives under (e.g. the rr stack
+keeps its workers under .Values.rr); omitted means the key is top-level.
+*/}}
 {{- define "retool.workers" -}}
 - parent: agents
   type: agent
 - parent: agents
   type: agentEval
-- parent: r2Agent
-  type: r2Agent
+- parent: agent
+  type: rrAgent
+  nested: rr
 - parent: workflows
   type: workflow
 {{- end -}}
@@ -15,7 +23,7 @@
 
 {{- range $worker := $workers -}}
 {{- if eq (include (printf "retool.%s.enabled" $worker.parent) $root) "1" -}}
-{{ include "retool.worker.deployment" (dict "root" $root "parent" $worker.parent "workerType" $worker.type) }}
+{{ include "retool.worker.deployment" (dict "root" $root "parent" $worker.parent "workerType" $worker.type "nested" $worker.nested) }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -24,7 +32,11 @@
 {{- $ := .root -}}
 {{- $parent := .parent -}}
 {{- $workerType := .workerType -}}
-{{- $parentValues := index $.Values $parent -}}
+{{- $owner := $.Values -}}
+{{- if .nested -}}
+{{- $owner = index $.Values .nested -}}
+{{- end -}}
+{{- $parentValues := index $owner $parent -}}
 
 {{- $workerValues := $parentValues.worker -}}
 {{- if eq $workerType "agentEval" -}}
@@ -45,7 +57,7 @@
   {{- $healthcheckPort = 3012 -}}
   {{- $serviceType = "AGENT_EVAL_TEMPORAL_WORKER" -}}
   {{- $taskqueue = "agent-eval" -}}
-{{- else if eq $workerType "r2Agent" -}}
+{{- else if eq $workerType "rrAgent" -}}
   {{- $healthcheckPort = 3016 -}}
   {{- $serviceType = "R2_AGENT_TEMPORAL_WORKER" -}}
   {{- $taskqueue = "r2-agent" -}}
@@ -113,7 +125,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else if eq $workerType "r2Agent" }}r2-agent-worker{{ else }}{{ $workerType }}-worker{{ end }}
+      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else if eq $workerType "rrAgent" }}r2-agent-worker{{ else }}{{ $workerType }}-worker{{ end }}
         image: "{{ $.Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" $.Values.image.tag }}"
         imagePullPolicy: {{ $.Values.image.pullPolicy }}
         args:
@@ -213,7 +225,7 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" $ }}
-          {{- if eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
+          {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.jsExecutor.name" $ }}
           {{- end }}

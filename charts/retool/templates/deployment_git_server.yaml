@@ -1,12 +1,12 @@
-{{- if include "retool.rrGitServer.separateEnabled" . }}
-{{- include "retool.rrGitServer.validateBlobStorage" . }}
-{{- $gitServerPort := include "retool.rrGitServer.port" . }}
-{{- $gitServerValues := .Values.rrGitServer.separate }}
+{{- if include "retool.gitServer.separateEnabled" . }}
+{{- include "retool.gitServer.validateBlobStorage" . }}
+{{- $gitServerPort := include "retool.gitServer.port" . }}
+{{- $gitServerValues := .Values.rr.gitServer.separate }}
 {{- $gitServerService := $gitServerValues.service | default dict }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.rrGitServer.name" . }}
+  name: {{ template "retool.gitServer.name" . }}
   labels:
     {{- include "retool.labels" . | nindent 4 }}
   {{- with $gitServerService.labels }}
@@ -22,7 +22,7 @@ metadata:
   {{- end }}
 spec:
   selector:
-    retoolService: {{ template "retool.rrGitServer.name" . }}
+    retoolService: {{ template "retool.gitServer.name" . }}
   ports:
   - name: http-server
     protocol: TCP
@@ -32,7 +32,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.rrGitServer.name" . }}
+  name: {{ template "retool.gitServer.name" . }}
   labels:
 {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.annotations }}
@@ -43,7 +43,7 @@ spec:
   replicas: {{ $gitServerValues.replicaCount | default 1 }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.rrGitServer.name" . }}
+      retoolService: {{ template "retool.gitServer.name" . }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
@@ -56,7 +56,7 @@ spec:
 {{- end }}
       labels:
         {{- include "retool.labels" . | nindent 8 }}
-        retoolService: {{ template "retool.rrGitServer.name" . }}
+        retoolService: {{ template "retool.gitServer.name" . }}
         telemetry.retool.com/service-name: rr-git-server
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
@@ -169,7 +169,7 @@ spec:
                 {{- end }}
           {{- end }}
           {{- end }}
-          {{- include "retool.rrGitServer.commonEnv" . | nindent 10 }}
+          {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
@@ -286,11 +286,11 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ template "retool.rrGitServer.name" . }}
+  name: {{ template "retool.gitServer.name" . }}
 spec:
   {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
-      retoolService: {{ template "retool.rrGitServer.name" . }}
+      retoolService: {{ template "retool.gitServer.name" . }}
 {{- end }}
 {{- end }}
