@@ -1,0 +1,255 @@
+{{- if .Values.mcp.enabled }}
+{{- $mcpConfig := .Values.mcp.config | default dict }}
+{{- $hasOAuthIntrospectionAuthTokenEnv := false }}
+{{- range .Values.mcp.environmentVariables }}
+{{- if eq .name "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
+{{- $hasOAuthIntrospectionAuthTokenEnv = true }}
+{{- end }}
+{{- end }}
+{{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv) }}
+{{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled)" }}
+{{- end }}
+{{- $mcpInternalPort := .Values.mcp.service.internalPort | default 4010 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "retool.mcp.name" . }}
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- if .Values.mcp.service.labels }}
+  {{- range $key, $value := .Values.mcp.service.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.mcp.service.annotations }}
+  {{- with .Values.mcp.service.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+spec:
+  selector:
+    retoolService: {{ template "retool.mcp.name" . }}
+  ports:
+  - name: http-server
+    protocol: TCP
+    {{- if .Values.mcp.service.externalPort }}
+    port: {{ .Values.mcp.service.externalPort }}
+    {{- else }}
+    port: 4010
+    {{- end }}
+    {{- if .Values.mcp.service.internalPort }}
+    targetPort: {{ $mcpInternalPort }}
+    {{- else }}
+    targetPort: 4010
+    {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "retool.mcp.name" . }}
+  labels:
+{{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ .Values.mcp.replicaCount }}
+  selector:
+    matchLabels:
+      retoolService: {{ template "retool.mcp.name" . }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+{{- if .Values.mcp.annotations }}
+{{ toYaml .Values.mcp.annotations | indent 8 }}
+{{- end }}
+      labels:
+        retoolService: {{ template "retool.mcp.name" . }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if .Values.mcp.labels }}
+{{ toYaml .Values.mcp.labels | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ template "retool.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+{{- if .Values.initContainers }}
+      initContainers:
+{{- range $key, $value := .Values.initContainers }}
+      - name: "{{ $key }}"
+{{ toYaml $value | indent 8 }}
+{{- end }}
+{{- end }}
+      containers:
+      - name: mcp
+        image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - bash
+          - -c
+          - chmod -R +x ./docker_scripts; sync; ./docker_scripts/start_api.sh
+        {{- if .Values.commandline.args }}
+{{ toYaml .Values.commandline.args | indent 10 }}
+        {{- end }}
+        env:
+          - name: DEPLOYMENT_TEMPLATE_TYPE
+            value: {{ template "retool.deploymentTemplateType" . }}
+          - name: DEPLOYMENT_TEMPLATE_VERSION
+            value: {{ template "retool.deploymentTemplateVersion" . }}
+          - name: NODE_ENV
+            value: production
+          - name: SERVICE_TYPE
+            value: MCP_SERVER
+          - name: MCP_PORT
+            value: {{ $mcpInternalPort | quote }}
+          - name: RETOOL_BACKEND_URL
+            value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s:%v" (include "retool.fullname" .) .Values.service.externalPort) | quote }}
+          {{- /*
+            Prefer an explicit mcp.config.retoolGitServerUrl; otherwise, when the
+            git server is split into its own deployment, auto-point MCP at it.
+          */}}
+          {{- $retoolGitServerUrl := $mcpConfig.retoolGitServerUrl }}
+          {{- if and (not $retoolGitServerUrl) (include "retool.gitServer.separateEnabled" .) }}
+          {{- $retoolGitServerUrl = include "retool.gitServer.url" . }}
+          {{- end }}
+          {{- if $retoolGitServerUrl }}
+          - name: RETOOL_GIT_SERVER_URL
+            value: {{ $retoolGitServerUrl | quote }}
+          {{- end }}
+          {{- if $mcpConfig.retoolUrl }}
+          - name: RETOOL_URL
+            value: {{ $mcpConfig.retoolUrl | quote }}
+          {{- end }}
+          {{- if $mcpConfig.oauthMainDomain }}
+          - name: OAUTH_MAIN_DOMAIN
+            value: {{ $mcpConfig.oauthMainDomain | quote }}
+          {{- end }}
+          {{- if $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
+          - name: OAUTH_INTROSPECTION_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
+                key: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretKey | default "oauthIntrospectionAuthToken" }}
+          {{- else if $mcpConfig.oauthIntrospectionAuthToken }}
+          - name: OAUTH_INTROSPECTION_AUTH_TOKEN
+            value: {{ $mcpConfig.oauthIntrospectionAuthToken | quote }}
+          {{- end }}
+          {{- if $mcpConfig.nodeOptions }}
+          - name: NODE_OPTIONS
+            value: {{ $mcpConfig.nodeOptions | quote }}
+          {{- end }}
+          {{- with $mcpConfig.enabledToolsets }}
+          - name: RETOOL_TOOLSETS
+            value: {{ join "," . | quote }}
+          {{- end }}
+          {{- if hasKey $mcpConfig "maxTransportSessions" }}
+          - name: MCP_MAX_TRANSPORT_SESSIONS
+            value: {{ $mcpConfig.maxTransportSessions | quote }}
+          {{- end }}
+          {{- if hasKey $mcpConfig "sessionIdleTimeoutMs" }}
+          - name: MCP_SESSION_IDLE_TIMEOUT_MS
+            value: {{ $mcpConfig.sessionIdleTimeoutMs | quote }}
+          {{- end }}
+          {{- if hasKey $mcpConfig "sessionSweepIntervalMs" }}
+          - name: MCP_SESSION_SWEEP_INTERVAL_MS
+            value: {{ $mcpConfig.sessionSweepIntervalMs | quote }}
+          {{- end }}
+          {{- if hasKey $mcpConfig "sessionGaugeEmitIntervalMs" }}
+          - name: MCP_SESSION_GAUGE_EMIT_INTERVAL_MS
+            value: {{ $mcpConfig.sessionGaugeEmitIntervalMs | quote }}
+          {{- end }}
+          {{- with .Values.mcp.environmentVariables }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
+        ports:
+        - containerPort: {{ $mcpInternalPort }}
+          name: http-server
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /healthcheck
+            port: {{ $mcpInternalPort }}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthcheck
+            port: {{ $mcpInternalPort }}
+          initialDelaySeconds: 30
+          failureThreshold: 10
+          timeoutSeconds: 10
+          periodSeconds: 20
+        resources:
+{{ toYaml .Values.mcp.resources | indent 10 }}
+        volumeMounts:
+        {{- range $configFile := (keys .Values.files) }}
+        - name: {{ template "retool.name" $ }}
+          mountPath: "/usr/share/retool/config/{{ $configFile }}"
+          subPath: {{ $configFile }}
+        {{- end }}
+        {{if and .Values.persistentVolumeClaim.enabled .Values.persistentVolumeClaim.mountPath }}
+        - name: retool-pv
+          mountPath: {{ .Values.persistentVolumeClaim.mountPath }}
+        {{- end }}
+{{- if .Values.extraVolumeMounts }}
+{{ toYaml .Values.extraVolumeMounts | indent 8 }}
+{{- end }}
+{{- if .Values.securityContext.extraContainerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
+{{- end }}
+{{- with .Values.extraContainers }}
+{{ tpl . $ | indent 6 }}
+{{- end }}
+{{- range .Values.extraConfigMapMounts }}
+        - name: {{ .name }}
+          mountPath: {{ .mountPath }}
+          subPath: {{ .subPath }}
+{{- end }}
+    {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+    {{- end }}
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+{{- if .Values.securityContext.enabled }}
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+{{- if .Values.securityContext.extraSecurityContext }}
+{{ toYaml .Values.securityContext.extraSecurityContext | indent 8 }}
+{{- end }}
+{{- end }}
+      volumes:
+{{- range .Values.extraConfigMapMounts }}
+        - name: {{ .name }}
+          configMap:
+            name: {{ .configMap }}
+{{- end }}
+      {{- if .Values.persistentVolumeClaim.enabled }}
+        - name: retool-pv
+          persistentVolumeClaim:
+            claimName: {{ default (include "retool.fullname" .) .Values.persistentVolumeClaim.existingClaim }}
+      {{- end }}
+{{- if .Values.extraVolumes }}
+{{ toYaml .Values.extraVolumes | indent 8 }}
+{{- end }}
+{{- end }}

@@ -1,6 +1,11 @@
 {{- if .Values.httpRoute.enabled }}
 {{- $fullName := include "retool.fullname" . -}}
 {{- $svcPort := .Values.service.externalPort -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
+{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
+{{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -35,6 +40,11 @@ spec:
           port: {{ .port }}
     {{- end }}
     {{- end }}
+    {{- if ( and ((.Values.mcp).enabled) $mcpHttpRoute.enabled ) }}
+    {{- range $mcpHttpRoute.rules }}
+    {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "backendApiPort" $backendApiPort) | nindent 4 }}
+    {{- end }}
+    {{- end }}
     {{- if .Values.httpRoute.rules }}
     {{- toYaml .Values.httpRoute.rules | nindent 4 }}
     {{- else }}
@@ -46,4 +56,35 @@ spec:
         - name: {{ $fullName }}
           port: {{ $svcPort }}
     {{- end }}
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.rr.agentSandbox.frontendWsProxyDomain }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "retool.agentSandbox.proxy.name" . }}
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+    {{- with .Values.httpRoute.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  hostnames:
+    - {{ .Values.rr.agentSandbox.frontendWsProxyDomain | trimPrefix "http://" | trimPrefix "https://" | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "retool.agentSandbox.proxy.name" . }}
+          port: {{ .Values.rr.agentSandbox.proxy.port }}
+{{- end }}
 {{- end }}
