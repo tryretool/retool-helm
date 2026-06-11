@@ -1,0 +1,216 @@
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.rr.agentSandbox.networkPolicy.enabled }}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- /*
+=======================================================================
+  Sandbox Pod NetworkPolicy — restrict ingress/egress for executor Jobs
+=======================================================================
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "retool.agentSandbox.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- if $as.networkPolicy.ingressFrom }}
+        {{- toYaml $as.networkPolicy.ingressFrom | nindent 8 }}
+        {{- else }}
+        - podSelector:
+            matchLabels:
+              {{- include "retool.selectorLabels" . | nindent 14 }}
+        {{- end }}
+      ports:
+        - port: {{ $as.sandbox.port }}
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.sandbox.port }}
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.sandbox.port }}
+          protocol: TCP
+  egress:
+    {{- if $as.networkPolicy.dnsSelector }}
+    - to:
+        - namespaceSelector:
+            {{- toYaml $as.networkPolicy.dnsSelector.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml $as.networkPolicy.dnsSelector.podSelector | nindent 12 }}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- end }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.proxy.port }}
+          protocol: TCP
+    {{- with $as.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+{{- /*
+=======================================================================
+  Controller NetworkPolicy
+=======================================================================
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.controller.port }}
+          protocol: TCP
+  egress:
+    {{- if $as.networkPolicy.dnsSelector }}
+    - to:
+        - namespaceSelector:
+            {{- toYaml $as.networkPolicy.dnsSelector.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml $as.networkPolicy.dnsSelector.podSelector | nindent 12 }}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- end }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.agentSandbox.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.sandbox.port }}
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 6443
+          protocol: TCP
+---
+{{- /*
+=======================================================================
+  Proxy NetworkPolicy
+=======================================================================
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "retool.agentSandbox.proxy.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.agentSandbox.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.proxy.port }}
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.proxy.port }}
+          protocol: TCP
+    {{- if ($as.proxy.ingress).enabled }}
+    {{- if $as.proxy.ingress.networkPolicy }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- toYaml $as.proxy.ingress.networkPolicy.podSelector | nindent 14 }}
+      ports:
+        - port: {{ $as.proxy.port }}
+          protocol: TCP
+    {{- end }}
+    {{- end }}
+  egress:
+    {{- if $as.networkPolicy.dnsSelector }}
+    - to:
+        - namespaceSelector:
+            {{- toYaml $as.networkPolicy.dnsSelector.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml $as.networkPolicy.dnsSelector.podSelector | nindent 12 }}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- end }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.agentSandbox.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ $as.sandbox.port }}
+          protocol: TCP
+    {{- if $as.networkPolicy.backendAllowlist }}
+    - to:
+        {{- range $as.networkPolicy.backendAllowlist }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+    {{- end }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- range $as.networkPolicy.blockedRanges }}
+              - {{ . }}
+              {{- end }}
+    {{- if $as.networkPolicy.blockedRanges6 }}
+    - to:
+        - ipBlock:
+            cidr: ::/0
+            except:
+              {{- range $as.networkPolicy.blockedRanges6 }}
+              - {{ . }}
+              {{- end }}
+    {{- end }}
+{{- end }}

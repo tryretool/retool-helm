@@ -1,0 +1,93 @@
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.rr.agentSandbox.sandboxNetwork.deployDaemonSet }}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := $as.tolerations | default .Values.tolerations -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-device-plugin
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: device-plugin
+data:
+  conf.yaml: |
+    - devicematch: ^net/tun$
+      nummaxdevices: {{ $as.devicePlugin.maxDevices | default 130 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-device-plugin
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: device-plugin
+spec:
+  selector:
+    matchLabels:
+      retoolService: {{ include "retool.agentSandbox.name" . }}-device-plugin
+  template:
+    metadata:
+      labels:
+        retoolService: {{ include "retool.agentSandbox.name" . }}-device-plugin
+        app.kubernetes.io/name: {{ include "retool.agentSandbox.name" . }}-device-plugin
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+    spec:
+      automountServiceAccountToken: false
+      {{- if $as.devicePlugin.priorityClassName }}
+      priorityClassName: {{ $as.devicePlugin.priorityClassName }}
+      {{- end }}
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+      containers:
+        - name: smarter-device-manager
+          image: "{{ $as.devicePlugin.image.repository }}:{{ $as.devicePlugin.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          terminationMessagePath: /tmp/termination-log
+          terminationMessagePolicy: FallbackToLogsOnError
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: config
+              mountPath: /root/config
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: config
+          configMap:
+            name: {{ include "retool.agentSandbox.name" . }}-device-plugin
+{{- end }}

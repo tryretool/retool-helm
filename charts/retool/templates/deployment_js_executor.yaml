@@ -1,13 +1,11 @@
-{{- if include "retool.workflows.enabled" . }}
-{{- /* Use the less-privileged seccomp sandbox (see codeExecutor.useSeccompProfile in values.yaml) only when it is enabled and no explicit codeExecutor.securityContext is set. */ -}}
-{{- $useSecComp := and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile -}}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "retool.codeExecutor.name" . }}
+  name: {{ template "retool.jsExecutor.name" . }}
   labels:
-    {{- include "retool.codeExecutor.selectorLabels" . | nindent 4 }}
-    {{- include "retool.codeExecutor.labels" . | nindent 4 }}
+    {{- include "retool.jsExecutor.selectorLabels" . | nindent 4 }}
+    {{- include "retool.jsExecutor.labels" . | nindent 4 }}
     {{- include "retool.labels" . | nindent 4 }}
 {{- if .Values.deployment.labels }}
 {{ toYaml .Values.deployment.labels | indent 4 }}
@@ -17,45 +15,38 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ .Values.codeExecutor.replicaCount }}
+  replicas: {{ .Values.rr.jsExecutor.replicaCount }}
   selector:
     matchLabels:
-      {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}
+      {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   template:
     metadata:
       annotations:
-{{- if $useSecComp }}
         checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
-        container.apparmor.security.beta.kubernetes.io/code-executor: unconfined
-{{- end }}
+        container.apparmor.security.beta.kubernetes.io/js-executor: unconfined
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
-{{- if .Values.codeExecutor.annotations }}
-{{ toYaml .Values.codeExecutor.annotations | indent 8 }}
+{{- if .Values.rr.jsExecutor.annotations }}
+{{ toYaml .Values.rr.jsExecutor.annotations | indent 8 }}
 {{- end }}
       labels:
-        {{- include "retool.codeExecutor.selectorLabels" . | nindent 8 }}
-        {{- include "retool.codeExecutor.labels" . | nindent 8 }}
+        {{- include "retool.jsExecutor.selectorLabels" . | nindent 8 }}
+        {{- include "retool.jsExecutor.labels" . | nindent 8 }}
         {{- include "retool.labels" . | nindent 8 }}
 {{- if .Values.podLabels }}
 {{ toYaml .Values.podLabels | indent 8 }}
 {{- end }}
-{{- if .Values.codeExecutor.labels }}
-{{ toYaml .Values.codeExecutor.labels | indent 8 }}
+{{- if .Values.rr.jsExecutor.labels }}
+{{ toYaml .Values.rr.jsExecutor.labels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
       {{- end }}
-{{- if $useSecComp }}
-      hostUsers: false
-{{- end }}
-{{- if or $useSecComp .Values.initContainers }}
       initContainers:
-{{- if $useSecComp }}
         - name: install-seccomp
           image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
           securityContext:
@@ -74,7 +65,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              DEST="/host-seccomp/{{ .Values.codeExecutor.seccompLocalhostProfile }}"
+              DEST="/host-seccomp/{{ .Values.rr.jsExecutor.seccompLocalhostProfile }}"
               mkdir -p "$(dirname "$DEST")"
               cp /seccomp-profile/nsjail-seccomp.json "$DEST"
               echo "seccomp profile installed at $DEST"
@@ -83,32 +74,22 @@ spec:
               mountPath: /seccomp-profile
             - name: host-seccomp
               mountPath: /host-seccomp
-{{- end }}
+{{- if .Values.initContainers }}
 {{- range $key, $value := .Values.initContainers }}
         - name: "{{ $key }}"
 {{ toYaml $value | indent 10 }}
 {{- end }}
 {{- end }}
       containers:
-      - name: code-executor
-        image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
+      - name: js-executor
+        image: "{{ .Values.rr.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
+        imagePullPolicy: {{ .Values.rr.jsExecutor.image.pullPolicy | default .Values.image.pullPolicy }}
         securityContext:
-          {{- if .Values.codeExecutor.securityContext }}
-{{ toYaml .Values.codeExecutor.securityContext | indent 10 }}
-          {{- else if $useSecComp }}
           capabilities:
             add: ["NET_ADMIN"]
-          procMount: Unmasked
           seccompProfile:
             type: Localhost
-            localhostProfile: {{ .Values.codeExecutor.seccompLocalhostProfile }}
-          {{- else }}
-          privileged: true
-          {{- end }}
-          {{- if .Values.securityContext.extraContainerSecurityContext }}
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
-          {{- end }}
+            localhostProfile: {{ .Values.rr.jsExecutor.seccompLocalhostProfile }}
         env:
           - name: DEPLOYMENT_TEMPLATE_TYPE
             value: {{ template "retool.deploymentTemplateType" . }}
@@ -116,50 +97,42 @@ spec:
             value: {{ template "retool.deploymentTemplateVersion" . }}
           - name: NODE_ENV
             value: production
-          - name: NODE_OPTIONS
-            value: {{(.Values.codeExecutor.config).nodeOptions | default "--max_old_space_size=1024" }}
-
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
-
-          {{- include "retool.env" .Values.env | nindent 10 }}
-          {{- range .Values.environmentSecrets }}
+          {{- include "retool.env" .Values.rr.jsExecutor.env | nindent 10 }}
+          {{- range .Values.rr.jsExecutor.environmentSecrets }}
           - name: {{ .name }}
             valueFrom:
               secretKeyRef:
                 name: {{ .secretKeyRef.name }}
                 key: {{ .secretKeyRef.key }}
           {{- end }}
-          {{- with .Values.environmentVariables }}
+          {{- with .Values.rr.jsExecutor.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
         ports:
-        - containerPort: 3004
+        - containerPort: 3000
           name: http-server
           protocol: TCP
-{{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
-            path: {{ .Values.livenessProbe.path }}
-            port: 3004
+            path: /api/health
+            port: 3000
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
-{{- end }}
-{{- if .Values.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
-            path: {{ .Values.readinessProbe.path }}
-            port: 3004
+            path: /api/readiness
+            port: 3000
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-{{- end }}
         resources:
-{{ toYaml .Values.codeExecutor.resources | indent 10 }}
+{{ toYaml .Values.rr.jsExecutor.resources | indent 10 }}
         volumeMounts:
-{{- if .Values.codeExecutor.volumeMounts }}
-{{ toYaml .Values.codeExecutor.volumeMounts | indent 10 }}
+{{- if .Values.rr.jsExecutor.volumeMounts }}
+{{ toYaml .Values.rr.jsExecutor.volumeMounts | indent 10 }}
 {{- end }}
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 10 }}
@@ -173,17 +146,15 @@ spec:
 {{ tpl . $ | indent 6 }}
 {{- end }}
       volumes:
-{{- if $useSecComp }}
         - name: seccomp-profile
           configMap:
-            name: {{ template "retool.fullname" . }}-code-executor-seccomp
+            name: {{ template "retool.fullname" . }}-js-executor-seccomp
         - name: host-seccomp
           hostPath:
             path: /var/lib/kubelet/seccomp
             type: DirectoryOrCreate
-{{- end }}
-{{- if .Values.codeExecutor.volumes }}
-{{ toYaml .Values.codeExecutor.volumes | indent 8 }}
+{{- if .Values.rr.jsExecutor.volumes }}
+{{ toYaml .Values.rr.jsExecutor.volumes | indent 8 }}
 {{- end }}
 {{- range .Values.extraConfigMapMounts }}
         - name: {{ .name }}
@@ -197,9 +168,9 @@ spec:
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
 {{- end }}
-{{- if .Values.codeExecutor.affinity }}
+{{- if .Values.rr.jsExecutor.affinity }}
       affinity:
-{{ toYaml .Values.codeExecutor.affinity | indent 8 }}
+{{ toYaml .Values.rr.jsExecutor.affinity | indent 8 }}
 {{- end }}
 {{- if .Values.nodeSelector }}
       nodeSelector:
@@ -211,14 +182,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "retool.codeExecutor.name" . }}
+  name: {{ template "retool.jsExecutor.name" . }}
 spec:
   selector:
-    {{- include "retool.codeExecutor.selectorLabels" . | nindent 4 }}
+    {{- include "retool.jsExecutor.selectorLabels" . | nindent 4 }}
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 3004
+    targetPort: 3000
     name: http-server
 ---
 {{- if .Values.podDisruptionBudget }}
@@ -229,12 +200,11 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ template "retool.codeExecutor.name" . }}
+  name: {{ template "retool.jsExecutor.name" . }}
 spec:
   {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
   selector:
     matchLabels:
-  {{- include "retool.codeExecutor.selectorLabels" . | nindent 6 }}
+  {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
 {{- end }}
----
 {{- end }}

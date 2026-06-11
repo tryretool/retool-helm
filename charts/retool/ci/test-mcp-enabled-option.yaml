@@ -1,0 +1,19 @@
+mcp:
+  enabled: true
+  replicaCount: 2
+  config:
+    oauthMainDomain: https://oauth.example.com
+    oauthIntrospectionAuthToken: test-oauth-introspection-token
+    enabledToolsets:
+      - apps
+      - resources
+    maxTransportSessions: 50
+    sessionIdleTimeoutMs: 600000
+  environmentVariables:
+    - name: MCP_TEST_OPTION
+      value: "true"
+  service:
+    internalPort:
+
+httpRoute:
+  enabled: true

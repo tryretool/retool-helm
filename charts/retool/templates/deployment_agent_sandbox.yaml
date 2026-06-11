@@ -1,0 +1,714 @@
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
+{{- include "retool.agentSandbox.validateSecrets" . }}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $defaultSecretName := $as.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
+{{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := $as.tolerations | default .Values.tolerations -}}
+{{- /*
+=======================================================================
+  Secret (skipped when externalSecret.name is set)
+=======================================================================
+*/}}
+{{- if not $as.externalSecret.name }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ template "retool.agentSandbox.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+type: Opaque
+data:
+  jwt-public-key: {{ $as.jwtPublicKey | default "" | b64enc | quote }}
+  jwt-private-key: {{ $as.jwtPrivateKey | default "" | b64enc | quote }}
+  encryption-key: {{ $as.encryptionKey | default "" | b64enc | quote }}
+  api-secret: {{ $as.apiSecret | default "" | b64enc | quote }}
+  {{- if $as.postgres.url }}
+  postgres-url: {{ $as.postgres.url | b64enc | quote }}
+  {{- end }}
+---
+{{- end }}
+{{- /*
+=======================================================================
+  RBAC for the controller (needs to manage Jobs, Pods, ConfigMaps)
+=======================================================================
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["{{ include "retool.agentSandbox.name" . }}"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["{{ include "retool.agentSandbox.name" . }}"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "retool.agentSandbox.controller.name" . }}
+    namespace: {{ .Release.Namespace }}
+---
+{{- /*
+=======================================================================
+  Job Template ConfigMap — defines the K8s Job spec the controller uses
+  to create sandbox pods.
+=======================================================================
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-job-template
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+data:
+  job-template.json: |
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "labels": {
+          "retoolService": "{{ include "retool.agentSandbox.name" . }}",
+          "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
+        }
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "ttlSecondsAfterFinished": {{ $as.controller.scaling.jobRetentionSeconds }},
+        "template": {
+          "metadata": {
+            "annotations": {
+              "karpenter.sh/do-not-disrupt": "true"
+            },
+            "labels": {
+              "retoolService": "{{ include "retool.agentSandbox.name" . }}",
+              "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "subdomain": "{{ include "retool.agentSandbox.name" . }}-pods",
+            "automountServiceAccountToken": false,
+            {{- if $nodeSelector }}
+            "nodeSelector": {{ toJson $nodeSelector }},
+            {{- end }}
+            {{- if $tolerations }}
+            "tolerations": {{ toJson $tolerations }},
+            {{- end }}
+            "initContainers": [
+              {
+                "name": "rootfs-etc-copy",
+                "image": "{{ $as.image.repository }}:__IMAGE_TAG__",
+                "command": ["/bin/sh", "-c", "cp -r /opt/sandbox-env/rootfs/etc/. /mnt/etc/"],
+                "securityContext": {
+                  "runAsUser": 0,
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"], "add": ["DAC_READ_SEARCH"]}
+                },
+                "volumeMounts": [
+                  {"name": "rootfs-etc", "mountPath": "/mnt/etc"}
+                ],
+                "resources": {
+                  "requests": {"cpu": "10m", "memory": "16Mi"},
+                  "limits": {"cpu": "100m", "memory": "32Mi"}
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "agent-sandbox",
+                "image": "{{ $as.image.repository }}:__IMAGE_TAG__",
+                "ports": [{"containerPort": {{ $as.sandbox.port }}, "protocol": "TCP"}],
+                "securityContext": {
+                  "runAsUser": 1001,
+                  "runAsGroup": 1001,
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"]},
+                  "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"},
+                  "appArmorProfile": {"type": "Unconfined"}
+                },
+                "env": [
+                  {"name": "NODE_ENV", "value": "production"}
+                  ,{"name": "EXECUTOR_PORT", "value": "{{ $as.sandbox.port }}"}
+                  ,{"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}}
+                  ,{"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}}
+                  ,{"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}}
+                  ,{"name": "SANDBOX_NETWORK_ENABLED", "value": "{{ $as.sandboxNetwork.enabled }}"}
+                  ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
+                  ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
+                  ,{"name": "SANDBOX_READY_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxReadyTimeoutMs }}"}
+                  {{- if $as.jwtPublicKey }}
+                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": {{ $as.jwtPublicKey | toJson }}}
+                  {{- else if $as.externalSecret.name }}
+                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
+                  {{- end }}
+                  {{- if $as.proxy.backendDomainSuffixes }}
+                  ,{"name": "BACKEND_DOMAIN_SUFFIXES", "value": "{{ $as.proxy.backendDomainSuffixes }}"}
+                  {{- end }}
+                  {{- if $as.sandboxNetwork.enabled }}
+                  ,{"name": "SANDBOX_HTTP_PROXY", "value": "{{ $as.sandboxNetwork.httpProxy | default (printf "http://%s:%s" (include "retool.agentSandbox.proxy.name" .) (toString $as.proxy.port)) }}"}
+                  {{- end }}
+                  {{- if $as.snapshotStorage.s3Bucket }}
+                  ,{"name": "S3_BUCKET", "value": "{{ $as.snapshotStorage.s3Bucket }}"}
+                  ,{"name": "S3_ENDPOINT", "value": "{{ $as.snapshotStorage.s3Endpoint }}"}
+                  ,{"name": "S3_REGION", "value": "{{ $as.snapshotStorage.s3Region }}"}
+                  ,{"name": "AWS_ACCESS_KEY_ID", "valueFrom": {"secretKeyRef": {"name": "{{ $as.snapshotStorage.credentialsSecretName | default $defaultSecretName }}", "key": "awsAccessKeyId"}}}
+                  ,{"name": "AWS_SECRET_ACCESS_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $as.snapshotStorage.credentialsSecretName | default $defaultSecretName }}", "key": "awsSecretAccessKey"}}}
+                  {{- end }}
+                  {{- range $as.sandbox.extraEnv }}
+                  ,{{ toJson . }}
+                  {{- end }}
+                ],
+                "volumeMounts": [
+                  {{- if and $as.sandboxNetwork.enabled (not $as.sandboxNetwork.devicePlugin) }}
+                  {"name": "dev-tun", "mountPath": "/dev/net/tun"},
+                  {{- end }}
+                  {"name": "run", "mountPath": "/run"},
+                  {"name": "tmp", "mountPath": "/tmp"},
+                  {"name": "rootfs-appjob", "mountPath": "/opt/sandbox-env/rootfs/app/job"},
+                  {"name": "rootfs-etc", "mountPath": "/opt/sandbox-env/rootfs/etc"}
+                ],
+                {{- $res := deepCopy $as.sandbox.resources }}
+                {{- if $as.sandboxNetwork.devicePlugin }}
+                {{- $_ := set $res.limits "smarter-devices/net_tun" 1 }}
+                {{- end }}
+                "resources": {{ toJson $res }}
+              }
+            ],
+            "volumes": [
+              {{- if and $as.sandboxNetwork.enabled (not $as.sandboxNetwork.devicePlugin) }}
+              {"name": "dev-tun", "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"}},
+              {{- end }}
+              {"name": "run", "emptyDir": {"medium": "Memory", "sizeLimit": "64Mi"}},
+              {"name": "tmp", "emptyDir": {"sizeLimit": "{{ $as.sandbox.tmpDirSizeLimit | default "20Gi" }}"}},
+              {"name": "rootfs-appjob", "emptyDir": {"sizeLimit": "{{ $as.sandbox.rootfsSizeLimit | default "2Gi" }}"}},
+              {"name": "rootfs-etc", "emptyDir": {"medium": "Memory", "sizeLimit": "4Mi"}}
+            ]
+          }
+        }
+      }
+    }
+---
+{{- /*
+=======================================================================
+  Controller Deployment
+=======================================================================
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 4 }}
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ $as.controller.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 6 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+{{- if $as.annotations }}
+{{ toYaml $as.annotations | indent 8 }}
+{{- end }}
+      labels:
+        {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 8 }}
+        {{- include "retool.agentSandbox.controller.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if $as.labels }}
+{{ toYaml $as.labels | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "retool.agentSandbox.controller.name" . }}
+      automountServiceAccountToken: true
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: controller
+          image: "{{ $as.image.repository }}:{{ $as.image.tag | default .Values.image.tag }}"
+          imagePullPolicy: {{ $as.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $as.controller.port }}
+              protocol: TCP
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: AGENT_SANDBOX_ROLE
+              value: "controller"
+            - name: CONTROLLER_PORT
+              value: {{ $as.controller.port | quote }}
+            - name: STATE_BACKEND
+              value: "postgres"
+            {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
+            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
+              value: {{ $as.postgres.schema | quote }}
+            - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
+              value: {{ $as.postgres.poolMax | quote }}
+            - name: STATE_SWEEPER_INTERVAL_MS
+              value: {{ $as.postgres.sweeperIntervalMs | quote }}
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: JOB_NAME_PREFIX
+              value: {{ include "retool.agentSandbox.name" . }}-job
+            - name: JOB_APP_LABEL
+              value: {{ include "retool.agentSandbox.name" . }}
+            - name: EXECUTOR_DEPLOYMENT_NAME
+              value: {{ include "retool.agentSandbox.name" . }}
+            - name: EXECUTOR_SERVICE_NAME
+              value: {{ include "retool.agentSandbox.name" . }}-pods
+            - name: PREWARM_POOL_SIZE
+              value: {{ $as.controller.scaling.prewarmPoolSize | quote }}
+            - name: MAX_TOTAL_JOBS
+              value: {{ $as.controller.scaling.maxTotalJobs | quote }}
+            - name: MAX_CONCURRENT_CREATES
+              value: {{ $as.controller.scaling.maxConcurrentCreates | quote }}
+            - name: JOB_RETENTION_SECONDS
+              value: {{ $as.controller.scaling.jobRetentionSeconds | quote }}
+            - name: ASSIGNED_SANDBOX_TTL_SECONDS
+              value: {{ $as.controller.scaling.assignedSandboxTtlSeconds | quote }}
+            - name: RECONCILE_INTERVAL_MS
+              value: {{ $as.controller.scaling.reconcileIntervalMs | quote }}
+            - name: LEADER_TTL_MS
+              value: {{ $as.controller.scaling.leaderTtlMs | quote }}
+            - name: LEADER_RENEW_MS
+              value: {{ $as.controller.scaling.leaderRenewMs | quote }}
+            - name: PER_USER_CONCURRENCY_PAID
+              value: {{ $as.controller.scaling.perUserSandboxLimit | quote }}
+            - name: DEPLOYED_IMAGE_TAG
+              value: {{ $as.image.tag | default .Values.image.tag | quote }}
+            - name: JOB_TEMPLATE_CONFIGMAP
+              value: {{ include "retool.agentSandbox.name" . }}-job-template
+            - name: DAEMONSET_NAME
+              value: {{ include "retool.agentSandbox.name" . }}-image-prepuller
+            {{- if $as.jwtPublicKey }}
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              value: {{ $as.jwtPublicKey | quote }}
+            {{- else if $as.externalSecret.name }}
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $defaultSecretName }}
+                  key: jwt-public-key
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $as.controller.resources | nindent 12 }}
+{{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+{{- end }}
+{{- if $as.affinity }}
+      affinity:
+{{ toYaml $as.affinity | indent 8 }}
+{{- end }}
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+---
+{{- /*
+=======================================================================
+  Controller Service (ClusterIP)
+=======================================================================
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $as.controller.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 4 }}
+---
+{{- /*
+=======================================================================
+  Proxy Deployment
+=======================================================================
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retool.agentSandbox.proxy.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 4 }}
+    {{- include "retool.agentSandbox.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- if .Values.deployment.labels }}
+{{ toYaml .Values.deployment.labels | indent 4 }}
+{{- end }}
+{{- if .Values.deployment.annotations }}
+  annotations:
+{{ toYaml .Values.deployment.annotations | indent 4 }}
+{{- end }}
+spec:
+  replicas: {{ $as.proxy.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 6 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+{{- if $as.annotations }}
+{{ toYaml $as.annotations | indent 8 }}
+{{- end }}
+      labels:
+        {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 8 }}
+        {{- include "retool.agentSandbox.proxy.labels" . | nindent 8 }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+{{- if $as.labels }}
+{{ toYaml $as.labels | indent 8 }}
+{{- end }}
+    spec:
+      automountServiceAccountToken: false
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: proxy
+          image: "{{ $as.image.repository }}:{{ $as.image.tag | default .Values.image.tag }}"
+          imagePullPolicy: {{ $as.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $as.proxy.port }}
+              protocol: TCP
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: AGENT_SANDBOX_ROLE
+              value: "proxy"
+            - name: PROXY_PORT
+              value: {{ $as.proxy.port | quote }}
+            - name: STATE_BACKEND
+              value: "postgres"
+            {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
+            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
+              value: {{ $as.postgres.schema | quote }}
+            - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
+              value: {{ $as.postgres.poolMax | quote }}
+            - name: STATE_SWEEPER_INTERVAL_MS
+              value: {{ $as.postgres.sweeperIntervalMs | quote }}
+            {{- if $as.proxy.allowedDomains }}
+            - name: ALLOWED_DOMAINS
+              value: {{ $as.proxy.allowedDomains | quote }}
+            {{- end }}
+            - name: BACKEND_URL
+              value: {{ $as.proxy.backendUrl | default (printf "http://%s:%s" (include "retool.fullname" .) (toString .Values.service.internalPort)) | quote }}
+            {{- if $as.proxy.backendDomainSuffixes }}
+            - name: BACKEND_DOMAIN_SUFFIXES
+              value: {{ $as.proxy.backendDomainSuffixes | quote }}
+            {{- end }}
+            {{- if $as.encryptionKey }}
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+              value: {{ $as.encryptionKey | quote }}
+            {{- else if $as.externalSecret.name }}
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $defaultSecretName }}
+                  key: encryption-key
+            {{- end }}
+            {{- if $as.jwtPublicKey }}
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              value: {{ $as.jwtPublicKey | quote }}
+            {{- else if $as.externalSecret.name }}
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $defaultSecretName }}
+                  key: jwt-public-key
+            {{- end }}
+            - name: EXECUTOR_PORT
+              value: {{ $as.sandbox.port | quote }}
+            - name: EXECUTOR_SERVICE_NAME
+              value: {{ include "retool.agentSandbox.name" . }}-pods
+            - name: K8S_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            {{- if $as.proxy.sandboxProxyTimeoutMs }}
+            - name: SANDBOX_PROXY_TIMEOUT_MS
+              value: {{ $as.proxy.sandboxProxyTimeoutMs | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $as.proxy.resources | nindent 12 }}
+{{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+{{- end }}
+{{- if $as.affinity }}
+      affinity:
+{{ toYaml $as.affinity | indent 8 }}
+{{- end }}
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+---
+{{- /*
+=======================================================================
+  Proxy Service
+=======================================================================
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.agentSandbox.proxy.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- with ($as.proxy.service).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  type: {{ ($as.proxy.service).type | default "ClusterIP" }}
+  ports:
+    - port: {{ $as.proxy.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 4 }}
+---
+{{- /*
+=======================================================================
+  Proxy Ingress (optional — exposes proxy to frontend for WebSocket)
+=======================================================================
+*/}}
+{{- if ($as.proxy.ingress).enabled }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version }}
+apiVersion: networking.k8s.io/v1
+{{- else }}
+apiVersion: networking.k8s.io/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ include "retool.agentSandbox.proxy.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+{{- with $as.proxy.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  {{- if and $as.proxy.ingress.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.Version) }}
+  ingressClassName: {{ $as.proxy.ingress.ingressClassName }}
+  {{- end }}
+  rules:
+    - host: {{ $as.proxy.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            {{- if semverCompare ">=1.18-0" .Capabilities.KubeVersion.Version }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ include "retool.agentSandbox.proxy.name" . }}
+                port:
+                  number: {{ $as.proxy.port }}
+              {{- else }}
+              serviceName: {{ include "retool.agentSandbox.proxy.name" . }}
+              servicePort: {{ $as.proxy.port }}
+              {{- end }}
+{{- with $as.proxy.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- /*
+=======================================================================
+  Headless Service for direct pod addressing (sandbox routing).
+  Executor Job pods use subdomain to register DNS:
+  <podName>.<svc>.<namespace>.svc.cluster.local:<port>
+=======================================================================
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-pods
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ $as.sandbox.port }}
+      targetPort: {{ $as.sandbox.port }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retool.agentSandbox.selectorLabels" . | nindent 4 }}
+---
+{{- /*
+=======================================================================
+  PodDisruptionBudget for controller (when replicas > 1)
+=======================================================================
+*/}}
+{{- if gt (int $as.controller.replicaCount) 1 }}
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version -}}
+apiVersion: policy/v1
+{{- else -}}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retool.agentSandbox.controller.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.controller.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "retool.agentSandbox.controller.selectorLabels" . | nindent 6 }}
+---
+{{- end }}
+{{- if .Values.podDisruptionBudget }}
+{{- if semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version -}}
+apiVersion: policy/v1
+{{- else -}}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retool.agentSandbox.proxy.name" . }}
+  labels:
+    {{- include "retool.agentSandbox.proxy.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
+  selector:
+    matchLabels:
+      {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- end }}

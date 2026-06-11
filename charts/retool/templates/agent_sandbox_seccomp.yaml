@@ -1,0 +1,91 @@
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := $as.tolerations | default .Values.tolerations -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-seccomp
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+data:
+  gvisor-seccomp.json: |
+    {{- .Files.Get "files/gvisor-seccomp.json" | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-node-installer
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-installer
+spec:
+  selector:
+    matchLabels:
+      retoolService: {{ include "retool.agentSandbox.name" . }}-node-installer
+  template:
+    metadata:
+      labels:
+        retoolService: {{ include "retool.agentSandbox.name" . }}-node-installer
+        app.kubernetes.io/name: {{ include "retool.agentSandbox.name" . }}-node-installer
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+    spec:
+      automountServiceAccountToken: false
+{{- if $nodeSelector }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml $tolerations | indent 8 }}
+      initContainers:
+        - name: install
+          image: "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              DEST="/host-seccomp/{{ $as.seccompProfile }}"
+              mkdir -p "$(dirname "$DEST")"
+              cp /seccomp-profile/gvisor-seccomp.json "$DEST"
+              echo "seccomp profile installed at $DEST"
+          volumeMounts:
+            - name: seccomp-profile
+              mountPath: /seccomp-profile
+            - name: host-seccomp
+              mountPath: /host-seccomp
+      containers:
+        - name: pause
+          image: "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}"
+          command: ["sleep", "infinity"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+      volumes:
+        - name: seccomp-profile
+          configMap:
+            name: {{ include "retool.agentSandbox.name" . }}-seccomp
+        - name: host-seccomp
+          hostPath:
+            path: /var/lib/kubelet/seccomp
+            type: DirectoryOrCreate
+{{- end }}
