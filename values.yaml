@@ -994,6 +994,11 @@ rr:
       # reached, the sandbox is destroyed (deferred until the current agent loop
       # ends). Defaults to 2.5 hours.
       sandboxGlobalLifetimeMs: 9000000
+      # Time (ms) the controller waits for a freshly-started sandbox to connect
+      # before failing the request. Interactive sandbox boot (gVisor + bundle
+      # load) can take ~20-25s; raise this (e.g. 45000) if you see "did not
+      # connect within <n>ms" errors on cold starts.
+      sandboxReadyTimeoutMs: 20000
       tmpDirSizeLimit: 20Gi
       # Separate limit for the rootfs-appjob volume — the sandbox root filesystem
       # is a static ~600MB extraction, so 2Gi provides headroom without the 20Gi
