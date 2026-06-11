@@ -178,7 +178,7 @@ data:
                   ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   ,{"name": "SANDBOX_READY_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxReadyTimeoutMs }}"}
                   {{- if $as.jwtPublicKey }}
-                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": "{{ $as.jwtPublicKey }}"}
+                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": {{ $as.jwtPublicKey | toJson }}}
                   {{- else if $as.externalSecret.name }}
                   ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
                   {{- end }}
