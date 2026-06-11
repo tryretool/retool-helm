@@ -1,5 +1,5 @@
-{{- if and (eq (include "retool.r2.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.agentSandbox.sandboxNetwork.deployDaemonSet }}
-{{- $as := .Values.agentSandbox -}}
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1") .Values.rr.agentSandbox.sandboxNetwork.deployDaemonSet }}
+{{- $as := .Values.rr.agentSandbox -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
 {{- $tolerations := $as.tolerations | default .Values.tolerations -}}
 apiVersion: v1

@@ -120,8 +120,8 @@ spec:
             git server is split into its own deployment, auto-point MCP at it.
           */}}
           {{- $retoolGitServerUrl := $mcpConfig.retoolGitServerUrl }}
-          {{- if and (not $retoolGitServerUrl) (include "retool.rrGitServer.separateEnabled" .) }}
-          {{- $retoolGitServerUrl = include "retool.rrGitServer.url" . }}
+          {{- if and (not $retoolGitServerUrl) (include "retool.gitServer.separateEnabled" .) }}
+          {{- $retoolGitServerUrl = include "retool.gitServer.url" . }}
           {{- end }}
           {{- if $retoolGitServerUrl }}
           - name: RETOOL_GIT_SERVER_URL

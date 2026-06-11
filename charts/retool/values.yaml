@@ -565,7 +565,7 @@ multiplayer:
 
 mcp:
   # Run Retool's MCP server as a separate deployment. Independent of the
-  # .Values.r2.enabled master switch (the MCP server needs its own OAuth
+  # .Values.rr.enabled master switch (the MCP server needs its own OAuth
   # introspection config, so it is opt-in): set true to enable.
   enabled: false
 
@@ -715,89 +715,6 @@ mcp:
     annotations: {}
     labels: {}
 
-rrGitServer:
-  # Runs the React Retool Git Server in-process on the main backend pod
-  # (SERVICE_TYPE=...,RR_GIT_SERVER). The main backend internally proxies
-  # /api/ai/rr/git/v2/* to localhost:RR_GIT_SERVER_PORT, so no extra ingress
-  # routing is required. Required for the r2 / React Retool app pipeline.
-  #
-  # When enabled, exactly one of blobStorage.s3, blobStorage.gcs, or
-  # blobStorage.azure must be configured below — git_server stores all
-  # objects/packs in blob storage.
-  enabled: false
-
-  # Optional: number of loose objects before git_server triggers a repack.
-  # Backend default is 100; unset to inherit it.
-  repackThreshold: ~
-
-  # Escape hatch for the blob-storage validation below. The chart can only
-  # inspect blobStorage, env, environmentVariables, and environmentSecrets at
-  # template time; it cannot see env vars injected via envFrom (Secret/ConfigMap
-  # splat). Set this to true to bypass the check when RR_BLOB_STORAGE_PROVIDER /
-  # RR_DEFAULT_* are provided that way.
-  skipBlobStorageValidation: false
-
-  # Optionally split the git server out of the main backend into its own
-  # deployment + service (mirrors how the workload is split in Retool Cloud).
-  # Requires rrGitServer.enabled: true. When enabled:
-  #   - a dedicated <release>-git-server Deployment runs SERVICE_TYPE=RR_GIT_SERVER
-  #   - the main backend drops RR_GIT_SERVER from its SERVICE_TYPE and proxies git
-  #     traffic to the service via RR_GIT_SERVER_HOST / RR_GIT_SERVER_PORT
-  #   - the MCP server (if enabled) is auto-pointed at the same service unless
-  #     mcp.config.retoolGitServerUrl is set explicitly
-  # The blobStorage config below is rendered onto the git-server pod instead of
-  # the main backend in this mode.
-  separate:
-    enabled: false
-    replicaCount: 1
-    # Port the git server listens on (RR_GIT_SERVER_PORT) and that its service exposes.
-    port: 3010
-    # Pod resource requests/limits. Falls back to top-level `resources` if unset.
-    resources: {}
-    # Falls back to top-level `affinity` if unset.
-    affinity: {}
-    # Annotations/labels applied to the git-server pod template.
-    annotations: {}
-    labels: {}
-    # Annotations/labels applied to the git-server Service (kept separate from
-    # the pod ones above).
-    service:
-      annotations: {}
-      labels: {}
-
-# Shared blob-storage config used by git_server (and other features that
-# need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
-# Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
-# the backend deployment.
-#
-# This block can be omitted entirely if RR_BLOB_STORAGE_PROVIDER and the
-# RR_DEFAULT_*_* env vars are provided directly via environmentVariables /
-# environmentSecrets above — the chart detects that and skips this guard.
-blobStorage: {}
-  # s3:
-  #   bucket: my-rr-bucket
-  #   region: us-east-1
-  #   endpoint: ""                              # optional, for S3-compatible (MinIO, R2, etc.)
-  #   accessKeyId: AKIA...
-  #   # Provide secretAccessKey OR the secretName/secretKey pair below.
-  #   secretAccessKey: ""
-  #   secretAccessKeySecretName: ""
-  #   secretAccessKeySecretKey: secret-access-key
-  #
-  # gcs:
-  #   bucket: my-rr-bucket
-  #   # Provide credentials (JSON string) OR the secretName/secretKey pair below.
-  #   credentials: ""
-  #   credentialsSecretName: ""
-  #   credentialsSecretKey: credentials.json
-  #
-  # azure:
-  #   container: my-rr-container
-  #   # Provide connectionString OR the secretName/secretKey pair below.
-  #   connectionString: ""
-  #   connectionStringSecretName: ""
-  #   connectionStringSecretKey: connection-string
-
 codeExecutor:
   # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed
@@ -848,59 +765,439 @@ codeExecutor:
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
-# === R2 (Retool agent runtime) =============================================
-# Master switch for the whole R2 stack: the r2Agent worker, jsExecutor,
-# agentSandbox, and mcp server. Set `r2.enabled: true` to turn them all on with
-# one line. Each component's own `enabled` (left null by default) inherits this
-# switch; set a component's `enabled` to true/false to override the master for
-# that component only. Shared R2 configuration can be added under this block
-# later.
-r2:
+# === RR (Retool agent runtime) =============================================
+# Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
+# components nested below — jsExecutor, agent, and agentSandbox — with a
+# single line. Each component's own `enabled` (left null by default) inherits
+# this switch; set a component's `enabled` to true/false to override the master
+# for that component only. The gitServer and blobStorage blocks below
+# provide the React Retool git server and the object storage the stack needs.
+# (The MCP server is configured separately at the top level: it needs its own
+# OAuth opt-in and is intentionally independent of this master switch.)
+rr:
   enabled: false
 
-# JS Executor
-jsExecutor:
-  # Inherits .Values.r2.enabled when left unset (null); set true/false to override.
-  enabled: null
+  # JS Executor
+  jsExecutor:
+    # Inherits .Values.rr.enabled when left unset (null); set true/false to override.
+    enabled: null
 
-  image:
-    repository: tryretool/js-executor-service
-    # defaults to top level image.tag
-    tag: null
-    pullPolicy: IfNotPresent
+    image:
+      repository: tryretool/js-executor-service
+      # defaults to top level image.tag
+      tag: null
+      pullPolicy: IfNotPresent
 
-  replicaCount: 1
+    replicaCount: 1
 
-  seccompLocalhostProfile: profiles/nsjail-seccomp.json
+    seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
-  # JS-executor-specific environment; not inherited from the top-level
-  # .Values.env / .Values.environmentSecrets / .Values.environmentVariables.
-  env: {}
-  environmentSecrets: []
-  environmentVariables: []
+    # JS-executor-specific environment; not inherited from the top-level
+    # .Values.env / .Values.environmentSecrets / .Values.environmentVariables.
+    env: {}
+    environmentSecrets: []
+    environmentVariables: []
 
-  # Annotations for JS executor pods
-  annotations: {}
+    # Annotations for JS executor pods
+    annotations: {}
 
-  # Labels for JS executor pods
-  labels: {}
+    # Labels for JS executor pods
+    labels: {}
 
-  volumes: {}
-  volumeMounts: {}
+    volumes: {}
+    volumeMounts: {}
 
-  # Config affinity and anti-affinity rules for the JS executor pods
-  affinity: {}
+    # Config affinity and anti-affinity rules for the JS executor pods
+    affinity: {}
 
-  # Resources for the JS executor. Memory request and limit are kept equal:
-  # JSE reads its memory limit and rejects requests at 80% of it, so the
-  # request must reserve the full amount to avoid premature rejections.
-  resources:
-    limits:
-      cpu: 6000m
-      memory: 6Gi
-    requests:
-      cpu: 6000m
-      memory: 6Gi
+    # Resources for the JS executor. Memory request and limit are kept equal:
+    # JSE reads its memory limit and rejects requests at 80% of it, so the
+    # request must reserve the full amount to avoid premature rejections.
+    resources:
+      limits:
+        cpu: 6000m
+        memory: 6Gi
+      requests:
+        cpu: 6000m
+        memory: 6Gi
+
+  # RR Agent: server-side agent loop worker (independent from agents above).
+  agent:
+    # Inherits .Values.rr.enabled when left unset (null); set true/false to override.
+    enabled: null
+
+    # Labels for RR agent worker pods
+    labels: {}
+
+    # RR agent configuration
+    config: {}
+
+    # Annotations for RR agent worker pods
+    annotations: {}
+
+    # RR agent worker configuration
+    worker:
+      replicaCount: 1
+
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 4096Mi
+        requests:
+          cpu: 1000m
+          memory: 2048Mi
+
+  # Agent Sandbox Service: sandboxed code execution for AI agents.
+  # Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
+  # and ephemeral Job-based sandboxes. Uses Postgres for controller/proxy state.
+  agentSandbox:
+    # Inherits .Values.rr.enabled when left unset (null); set true/false to override.
+    enabled: null
+
+    image:
+      repository: tryretool/agent-sandbox-service
+      # defaults to top level image.tag
+      tag: null
+      pullPolicy: IfNotPresent
+
+    # Lightweight init image used by the prepuller and seccomp DaemonSets.
+    # Pinning by digest is recommended for production.
+    initImage:
+      repository: busybox
+      tag: '1.37.0'
+      # Manifest list digest — set to '' in test environments where images are
+      # pre-loaded (containerd 2.0 can't resolve digest references for side-loaded images).
+      digest: ''
+
+    # Annotations for agent sandbox pods
+    annotations: {}
+
+    # Labels for agent sandbox pods
+    labels: {}
+
+    # === Secrets ============================================================
+    # Provide each secret as a plaintext value below, OR set externalSecret.name
+    # to a pre-existing Secret with keys jwt-public-key, jwt-private-key,
+    # encryption-key, api-secret, postgres-url. A plaintext value always wins over
+    # the external secret for that key.
+    externalSecret:
+      name: ''                 # optional: existing Secret holding all keys below
+
+    jwtPublicKey: ''           # REQUIRED (ES256) unless provided via externalSecret
+    jwtPrivateKey: ''          # REQUIRED (ES256) unless provided via externalSecret
+    encryptionKey: ''          # optional: hex 256-bit; must match backend AGENT_SANDBOX_ENCRYPTION_KEY
+    apiSecret: ''              # optional: admin/test endpoints
+
+    # === Postgres state backend =============================================
+    # By DEFAULT (all options below left blank) the agent sandbox reuses the
+    # backend's Postgres connection from config.postgresql / the postgresql
+    # subchart -- same instance and database, separate schema (see schema below).
+    # So enabling it on an existing deployment needs nothing here. (Exception:
+    # if the backend's DB password is supplied via external secrets / envFrom, it
+    # can't be inherited by a separate pod -- set an option below in that case.)
+    # To point the sandbox at a different database, set exactly ONE option:
+    postgres:
+      # -- Option 1: plaintext DSN --
+      url: ''
+
+      # -- Option 2: assemble from fields --
+      # The password is passed via PGPASSWORD (never embedded in the URL), so any
+      # characters are safe and a password-only secret can be reused as-is.
+      # Set either password or passwordSecretName.
+      # user/database are embedded in the DSN verbatim (user may contain '@', e.g.
+      # Azure user@servername); for values with : / ? # use Option 1 or 3.
+      host: ''
+      port: 5432
+      database: ''
+      user: ''
+      password: ''
+      passwordSecretName: ''
+      passwordSecretKey: 'password'
+
+      # -- Option 3: existing Secret holding the full DSN --
+      urlSecretName: ''
+      urlSecretKey: 'postgres-url'
+
+      # -- Option 4: reuse externalSecret.name (its postgres-url key) --
+      # Selected by setting rr.agentSandbox.externalSecret.name (in the Secrets
+      # section above), not by anything here. Used when options 1-3 are blank.
+      #
+      # If options 1-4 are ALL unset, the default (inherit config.postgresql)
+      # applies -- see the note at the top of this block.
+
+      # -- Optional tuning (defaults shown) --
+      schema: 'agent_executor'
+      poolMax: 10
+      sweeperIntervalMs: 60000
+
+    # Sandbox network access via pasta userspace networking.
+    # When enabled, sandboxes get isolated outbound access with L7 filtering.
+    sandboxNetwork:
+      enabled: true
+      # Request smarter-devices/net_tun via resources.limits on sandbox pods.
+      # When true, the kubelet grants /dev/net/tun device cgroup access without
+      # privileged mode. Requires smarter-device-manager to be running on each
+      # node (see deployDaemonSet below).
+      devicePlugin: true
+      # Deploy the smarter-device-manager DaemonSet from this Helm release.
+      # Set to false when another release (or external process) already manages
+      # the DaemonSet — only one instance should run per node.
+      deployDaemonSet: true
+      # HTTP proxy for sandbox egress L7 filtering. Defaults to the in-cluster
+      # agent-sandbox-proxy service URL when empty.
+      httpProxy: ''
+
+    # smarter-device-manager: registers /dev/net/tun with the kubelet so sandbox
+    # pods can request it via resources.limits.
+    devicePlugin:
+      image:
+        repository: ghcr.io/smarter-project/smarter-device-manager
+        tag: v1.20.12
+      # Number of /dev/net/tun device slots to register.
+      # Set high enough to accommodate maxTotalJobs + prewarm pool.
+      maxDevices: 130
+
+      # When possible, we want the devicePlugin daemonset to preempt normal pods.
+      # Note: in some cases this is inconvenient or unsupported, i.e. in GKE which
+      # requires a custom ResourceQuota to use the `system-node-critical`
+      # PriorityClass in user namespaces. In those cases, set this to `null`.
+      priorityClassName: system-node-critical
+
+    # Seccomp profile path relative to /var/lib/kubelet/seccomp/.
+    # The seccomp node-installer DaemonSet copies the profile to this path
+    # on every node automatically.
+    seccompProfile: retool/gvisor-seccomp.json
+
+    # S3-compatible snapshot storage.
+    # When s3Bucket is set, snapshots are persisted to S3 and survive pod restarts.
+    snapshotStorage:
+      s3Bucket: ''
+      s3Endpoint: ''
+      s3Region: 'us-east-1'
+      # Name of a K8s Secret containing keys awsAccessKeyId and awsSecretAccessKey.
+      # If empty, falls back to the main agent sandbox secret.
+      credentialsSecretName: ''
+
+    # Sandbox (Job) configuration
+    sandbox:
+      port: 3017
+      resources:
+        requests:
+          cpu: 1
+          memory: 2Gi
+        limits:
+          cpu: '2'
+          memory: 4Gi
+      # Idle timeout (ms) before an unassigned sandbox self-terminates.
+      sandboxIdleTimeoutMs: 600000
+      # Hard ceiling (ms) on total sandbox lifetime, regardless of activity. When
+      # reached, the sandbox is destroyed (deferred until the current agent loop
+      # ends). Defaults to 2.5 hours.
+      sandboxGlobalLifetimeMs: 9000000
+      tmpDirSizeLimit: 20Gi
+      # Separate limit for the rootfs-appjob volume — the sandbox root filesystem
+      # is a static ~600MB extraction, so 2Gi provides headroom without the 20Gi
+      # allocated for /tmp.
+      rootfsSizeLimit: 2Gi
+      # Additional environment variables for sandbox containers.
+      extraEnv: []
+
+    # Controller: tracks capacity, assigns sandbox pods, manages scaling
+    controller:
+      replicaCount: 1
+      port: 3018
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      scaling:
+        prewarmPoolSize: 5
+        maxTotalJobs: 50
+        maxConcurrentCreates: 3
+        jobRetentionSeconds: 300
+        assignedSandboxTtlSeconds: 3600
+        reconcileIntervalMs: 5000
+        leaderTtlMs: 10000
+        leaderRenewMs: 3000
+        perUserSandboxLimit: 5
+
+    # Proxy: HTTP proxy for sandbox egress with credential injection.
+    # The proxy must be reachable by frontend browsers for WebSocket connections.
+    proxy:
+      replicaCount: 1
+      port: 3019
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      allowedDomains: ''
+      # URL the proxy uses to reach the Retool backend for token exchange.
+      # Defaults to http://<fullname>:3000 (same-cluster backend service).
+      backendUrl: ''
+      backendDomainSuffixes: ''
+      sandboxProxyTimeoutMs: '180000'  # 3 minutes
+      service:
+        # Set to LoadBalancer or NodePort to expose the proxy externally.
+        type: ClusterIP
+        annotations: {}
+      # Optional ingress to expose the proxy to frontend browsers for WebSocket connections.
+      # This is separate from the main Retool ingress since the proxy typically runs on its own domain.
+      ingress:
+        enabled: false
+        # ingressClassName:
+        annotations: {}
+        # kubernetes.io/ingress.class: nginx
+        # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+        # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+        host: ''
+        # e.g. sandbox.yourdomain.com
+        tls: []
+        # - secretName: sandbox-tls
+        #   hosts:
+        #     - sandbox.yourdomain.com
+
+    # Backend integration: these tell the Retool backend how to reach agent executor.
+    # controllerUrl and proxyUrl default to internal service URLs when empty.
+    controllerUrl: ''
+    proxyUrl: ''
+    # Public URL for frontend browsers to reach the proxy via WebSocket.
+    # Leave EMPTY for self-hosted: the backend then serves the sandbox same-origin
+    # as the editor (your Retool base URL) and the front server reverse-proxies the
+    # /sandbox/* WS+Vite paths to the in-cluster proxy Service — so no dedicated
+    # proxy domain or ingress is required, and your catch-all ingress is untouched.
+    # Only set this (e.g. https://sandbox.yourdomain.com) if you deliberately want
+    # the proxy on a separate domain, in which case also enable proxy.ingress above.
+    frontendWsProxyDomain: ''
+    # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
+    proxyDomain: ''
+
+    # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
+    # Strongly recommended for production to isolate sandbox egress.
+    networkPolicy:
+      enabled: false
+      # CIDR ranges to block in proxy egress rules. Must stay in sync with
+      # DEFAULT_BLOCKED_CIDRS in the agent-executor source.
+      blockedRanges:
+        - 169.254.0.0/16    # link-local / cloud metadata
+        - 10.0.0.0/8        # private (RFC 1918)
+        - 172.16.0.0/12     # private (RFC 1918)
+        - 192.168.0.0/16    # private (RFC 1918)
+        - 100.64.0.0/10     # carrier-grade NAT (RFC 6598)
+        - 127.0.0.0/8       # loopback
+        - 0.0.0.0/8         # "this network" (RFC 791)
+      blockedRanges6:
+        - fc00::/7           # IPv6 unique local addresses
+        - fe80::/10          # IPv6 link-local
+        - '::1/128'         # IPv6 loopback
+      # Restrict DNS egress to pods matching this selector (typically kube-dns/coredns).
+      # Set to empty to allow DNS to any destination (not recommended).
+      dnsSelector:
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+      extraEgress: []
+      # CIDRs allowed in proxy egress even if they fall within blockedRanges
+      # (e.g. private backend endpoint).
+      backendAllowlist: []
+      # Override sandbox ingress source selector (defaults to retool backend pods).
+      ingressFrom: []
+
+    # Node placement overrides (falls back to global nodeSelector/tolerations if empty)
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  gitServer:
+    # Runs the React Retool Git Server in-process on the main backend pod
+    # (SERVICE_TYPE=...,RR_GIT_SERVER). The main backend internally proxies
+    # /api/ai/rr/git/v2/* to localhost:RR_GIT_SERVER_PORT, so no extra ingress
+    # routing is required. Required for the rr / React Retool app pipeline.
+    #
+    # When enabled, exactly one of blobStorage.s3, blobStorage.gcs, or
+    # blobStorage.azure must be configured below — git_server stores all
+    # objects/packs in blob storage.
+    enabled: false
+
+    # Optional: number of loose objects before git_server triggers a repack.
+    # Backend default is 100; unset to inherit it.
+    repackThreshold: ~
+
+    # Escape hatch for the blob-storage validation below. The chart can only
+    # inspect blobStorage, env, environmentVariables, and environmentSecrets at
+    # template time; it cannot see env vars injected via envFrom (Secret/ConfigMap
+    # splat). Set this to true to bypass the check when RR_BLOB_STORAGE_PROVIDER /
+    # RR_DEFAULT_* are provided that way.
+    skipBlobStorageValidation: false
+
+    # Optionally split the git server out of the main backend into its own
+    # deployment + service (mirrors how the workload is split in Retool Cloud).
+    # Requires rr.gitServer.enabled: true. When enabled:
+    #   - a dedicated <release>-git-server Deployment runs SERVICE_TYPE=RR_GIT_SERVER
+    #   - the main backend drops RR_GIT_SERVER from its SERVICE_TYPE and proxies git
+    #     traffic to the service via RR_GIT_SERVER_HOST / RR_GIT_SERVER_PORT
+    #   - the MCP server (if enabled) is auto-pointed at the same service unless
+    #     mcp.config.retoolGitServerUrl is set explicitly
+    # The blobStorage config below is rendered onto the git-server pod instead of
+    # the main backend in this mode.
+    separate:
+      enabled: false
+      replicaCount: 1
+      # Port the git server listens on (RR_GIT_SERVER_PORT) and that its service exposes.
+      port: 3010
+      # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+      resources: {}
+      # Falls back to top-level `affinity` if unset.
+      affinity: {}
+      # Annotations/labels applied to the git-server pod template.
+      annotations: {}
+      labels: {}
+      # Annotations/labels applied to the git-server Service (kept separate from
+      # the pod ones above).
+      service:
+        annotations: {}
+        labels: {}
+
+  # Shared blob-storage config used by git_server (and other features that
+  # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
+  # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
+  # the backend deployment.
+  #
+  # This block can be omitted entirely if RR_BLOB_STORAGE_PROVIDER and the
+  # RR_DEFAULT_*_* env vars are provided directly via environmentVariables /
+  # environmentSecrets above — the chart detects that and skips this guard.
+  blobStorage: {}
+    # s3:
+    #   bucket: my-rr-bucket
+    #   region: us-east-1
+    #   endpoint: ""                              # optional, for S3-compatible (MinIO, R2, etc.)
+    #   accessKeyId: AKIA...
+    #   # Provide secretAccessKey OR the secretName/secretKey pair below.
+    #   secretAccessKey: ""
+    #   secretAccessKeySecretName: ""
+    #   secretAccessKeySecretKey: secret-access-key
+    #
+    # gcs:
+    #   bucket: my-rr-bucket
+    #   # Provide credentials (JSON string) OR the secretName/secretKey pair below.
+    #   credentials: ""
+    #   credentialsSecretName: ""
+    #   credentialsSecretKey: credentials.json
+    #
+    # azure:
+    #   container: my-rr-container
+    #   # Provide connectionString OR the secretName/secretKey pair below.
+    #   connectionString: ""
+    #   connectionStringSecretName: ""
+    #   connectionStringSecretKey: connection-string
 
 agents:
   # Enable AI Agents
@@ -938,301 +1235,6 @@ agents:
 
   # Annotations for agent worker pods
   annotations: {}
-
-# R2 Agent: server-side agent loop worker (independent from agents above).
-r2Agent:
-  # Inherits .Values.r2.enabled when left unset (null); set true/false to override.
-  enabled: null
-
-  # Labels for R2 agent worker pods
-  labels: {}
-
-  # R2 agent configuration
-  config: {}
-
-  # Annotations for R2 agent worker pods
-  annotations: {}
-
-  # R2 agent worker configuration
-  worker:
-    replicaCount: 1
-
-    resources:
-      limits:
-        cpu: 2000m
-        memory: 4096Mi
-      requests:
-        cpu: 1000m
-        memory: 2048Mi
-
-# Agent Sandbox Service: sandboxed code execution for AI agents.
-# Deploys a controller (manages sandbox lifecycle), proxy (HTTP proxy for sandbox egress),
-# and ephemeral Job-based sandboxes. Uses Postgres for controller/proxy state.
-agentSandbox:
-  # Inherits .Values.r2.enabled when left unset (null); set true/false to override.
-  enabled: null
-
-  image:
-    repository: tryretool/agent-sandbox-service
-    # defaults to top level image.tag
-    tag: null
-    pullPolicy: IfNotPresent
-
-  # Lightweight init image used by the prepuller and seccomp DaemonSets.
-  # Pinning by digest is recommended for production.
-  initImage:
-    repository: busybox
-    tag: '1.37.0'
-    # Manifest list digest — set to '' in test environments where images are
-    # pre-loaded (containerd 2.0 can't resolve digest references for side-loaded images).
-    digest: ''
-
-  # Annotations for agent sandbox pods
-  annotations: {}
-
-  # Labels for agent sandbox pods
-  labels: {}
-
-  # === Secrets ============================================================
-  # Provide each secret as a plaintext value below, OR set externalSecret.name
-  # to a pre-existing Secret with keys jwt-public-key, jwt-private-key,
-  # encryption-key, api-secret, postgres-url. A plaintext value always wins over
-  # the external secret for that key.
-  externalSecret:
-    name: ''                 # optional: existing Secret holding all keys below
-
-  jwtPublicKey: ''           # REQUIRED (ES256) unless provided via externalSecret
-  jwtPrivateKey: ''          # REQUIRED (ES256) unless provided via externalSecret
-  encryptionKey: ''          # optional: hex 256-bit; must match backend AGENT_SANDBOX_ENCRYPTION_KEY
-  apiSecret: ''              # optional: admin/test endpoints
-
-  # === Postgres state backend =============================================
-  # By DEFAULT (all options below left blank) the agent sandbox reuses the
-  # backend's Postgres connection from config.postgresql / the postgresql
-  # subchart -- same instance and database, separate schema (see schema below).
-  # So enabling it on an existing deployment needs nothing here. (Exception:
-  # if the backend's DB password is supplied via external secrets / envFrom, it
-  # can't be inherited by a separate pod -- set an option below in that case.)
-  # To point the sandbox at a different database, set exactly ONE option:
-  postgres:
-    # -- Option 1: plaintext DSN --
-    url: ''
-
-    # -- Option 2: assemble from fields --
-    # The password is passed via PGPASSWORD (never embedded in the URL), so any
-    # characters are safe and a password-only secret can be reused as-is.
-    # Set either password or passwordSecretName.
-    # user/database are embedded in the DSN verbatim (user may contain '@', e.g.
-    # Azure user@servername); for values with : / ? # use Option 1 or 3.
-    host: ''
-    port: 5432
-    database: ''
-    user: ''
-    password: ''
-    passwordSecretName: ''
-    passwordSecretKey: 'password'
-
-    # -- Option 3: existing Secret holding the full DSN --
-    urlSecretName: ''
-    urlSecretKey: 'postgres-url'
-
-    # -- Option 4: reuse externalSecret.name (its postgres-url key) --
-    # Selected by setting agentSandbox.externalSecret.name (in the Secrets
-    # section above), not by anything here. Used when options 1-3 are blank.
-    #
-    # If options 1-4 are ALL unset, the default (inherit config.postgresql)
-    # applies -- see the note at the top of this block.
-
-    # -- Optional tuning (defaults shown) --
-    schema: 'agent_executor'
-    poolMax: 10
-    sweeperIntervalMs: 60000
-
-  # Sandbox network access via pasta userspace networking.
-  # When enabled, sandboxes get isolated outbound access with L7 filtering.
-  sandboxNetwork:
-    enabled: true
-    # Request smarter-devices/net_tun via resources.limits on sandbox pods.
-    # When true, the kubelet grants /dev/net/tun device cgroup access without
-    # privileged mode. Requires smarter-device-manager to be running on each
-    # node (see deployDaemonSet below).
-    devicePlugin: true
-    # Deploy the smarter-device-manager DaemonSet from this Helm release.
-    # Set to false when another release (or external process) already manages
-    # the DaemonSet — only one instance should run per node.
-    deployDaemonSet: true
-    # HTTP proxy for sandbox egress L7 filtering. Defaults to the in-cluster
-    # agent-sandbox-proxy service URL when empty.
-    httpProxy: ''
-
-  # smarter-device-manager: registers /dev/net/tun with the kubelet so sandbox
-  # pods can request it via resources.limits.
-  devicePlugin:
-    image:
-      repository: ghcr.io/smarter-project/smarter-device-manager
-      tag: v1.20.12
-    # Number of /dev/net/tun device slots to register.
-    # Set high enough to accommodate maxTotalJobs + prewarm pool.
-    maxDevices: 130
-
-    # When possible, we want the devicePlugin daemonset to preempt normal pods.
-    # Note: in some cases this is inconvenient or unsupported, i.e. in GKE which
-    # requires a custom ResourceQuota to use the `system-node-critical`
-    # PriorityClass in user namespaces. In those cases, set this to `null`.
-    priorityClassName: system-node-critical
-
-  # Seccomp profile path relative to /var/lib/kubelet/seccomp/.
-  # The seccomp node-installer DaemonSet copies the profile to this path
-  # on every node automatically.
-  seccompProfile: retool/gvisor-seccomp.json
-
-  # S3-compatible snapshot storage.
-  # When s3Bucket is set, snapshots are persisted to S3 and survive pod restarts.
-  snapshotStorage:
-    s3Bucket: ''
-    s3Endpoint: ''
-    s3Region: 'us-east-1'
-    # Name of a K8s Secret containing keys awsAccessKeyId and awsSecretAccessKey.
-    # If empty, falls back to the main agent sandbox secret.
-    credentialsSecretName: ''
-
-  # Sandbox (Job) configuration
-  sandbox:
-    port: 3017
-    resources:
-      requests:
-        cpu: 1
-        memory: 2Gi
-      limits:
-        cpu: '2'
-        memory: 4Gi
-    # Idle timeout (ms) before an unassigned sandbox self-terminates.
-    sandboxIdleTimeoutMs: 600000
-    # Hard ceiling (ms) on total sandbox lifetime, regardless of activity. When
-    # reached, the sandbox is destroyed (deferred until the current agent loop
-    # ends). Defaults to 2.5 hours.
-    sandboxGlobalLifetimeMs: 9000000
-    tmpDirSizeLimit: 20Gi
-    # Separate limit for the rootfs-appjob volume — the sandbox root filesystem
-    # is a static ~600MB extraction, so 2Gi provides headroom without the 20Gi
-    # allocated for /tmp.
-    rootfsSizeLimit: 2Gi
-    # Additional environment variables for sandbox containers.
-    extraEnv: []
-
-  # Controller: tracks capacity, assigns sandbox pods, manages scaling
-  controller:
-    replicaCount: 1
-    port: 3018
-    resources:
-      requests:
-        cpu: 250m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    scaling:
-      prewarmPoolSize: 5
-      maxTotalJobs: 50
-      maxConcurrentCreates: 3
-      jobRetentionSeconds: 300
-      assignedSandboxTtlSeconds: 3600
-      reconcileIntervalMs: 5000
-      leaderTtlMs: 10000
-      leaderRenewMs: 3000
-      perUserSandboxLimit: 5
-
-  # Proxy: HTTP proxy for sandbox egress with credential injection.
-  # The proxy must be reachable by frontend browsers for WebSocket connections.
-  proxy:
-    replicaCount: 1
-    port: 3019
-    resources:
-      requests:
-        cpu: 250m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    allowedDomains: ''
-    # URL the proxy uses to reach the Retool backend for token exchange.
-    # Defaults to http://<fullname>:3000 (same-cluster backend service).
-    backendUrl: ''
-    backendDomainSuffixes: ''
-    sandboxProxyTimeoutMs: '180000'  # 3 minutes
-    service:
-      # Set to LoadBalancer or NodePort to expose the proxy externally.
-      type: ClusterIP
-      annotations: {}
-    # Optional ingress to expose the proxy to frontend browsers for WebSocket connections.
-    # This is separate from the main Retool ingress since the proxy typically runs on its own domain.
-    ingress:
-      enabled: false
-      # ingressClassName:
-      annotations: {}
-      # kubernetes.io/ingress.class: nginx
-      # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-      # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-      host: ''
-      # e.g. sandbox.yourdomain.com
-      tls: []
-      # - secretName: sandbox-tls
-      #   hosts:
-      #     - sandbox.yourdomain.com
-
-  # Backend integration: these tell the Retool backend how to reach agent executor.
-  # controllerUrl and proxyUrl default to internal service URLs when empty.
-  controllerUrl: ''
-  proxyUrl: ''
-  # Public URL for frontend browsers to reach the proxy via WebSocket.
-  # Leave EMPTY for self-hosted: the backend then serves the sandbox same-origin
-  # as the editor (your Retool base URL) and the front server reverse-proxies the
-  # /sandbox/* WS+Vite paths to the in-cluster proxy Service — so no dedicated
-  # proxy domain or ingress is required, and your catch-all ingress is untouched.
-  # Only set this (e.g. https://sandbox.yourdomain.com) if you deliberately want
-  # the proxy on a separate domain, in which case also enable proxy.ingress above.
-  frontendWsProxyDomain: ''
-  # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
-  proxyDomain: ''
-
-  # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
-  # Strongly recommended for production to isolate sandbox egress.
-  networkPolicy:
-    enabled: false
-    # CIDR ranges to block in proxy egress rules. Must stay in sync with
-    # DEFAULT_BLOCKED_CIDRS in the agent-executor source.
-    blockedRanges:
-      - 169.254.0.0/16    # link-local / cloud metadata
-      - 10.0.0.0/8        # private (RFC 1918)
-      - 172.16.0.0/12     # private (RFC 1918)
-      - 192.168.0.0/16    # private (RFC 1918)
-      - 100.64.0.0/10     # carrier-grade NAT (RFC 6598)
-      - 127.0.0.0/8       # loopback
-      - 0.0.0.0/8         # "this network" (RFC 791)
-    blockedRanges6:
-      - fc00::/7           # IPv6 unique local addresses
-      - fe80::/10          # IPv6 link-local
-      - '::1/128'         # IPv6 loopback
-    # Restrict DNS egress to pods matching this selector (typically kube-dns/coredns).
-    # Set to empty to allow DNS to any destination (not recommended).
-    dnsSelector:
-      namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-    extraEgress: []
-    # CIDRs allowed in proxy egress even if they fall within blockedRanges
-    # (e.g. private backend endpoint).
-    backendAllowlist: []
-    # Override sandbox ingress source selector (defaults to retool backend pods).
-    ingressFrom: []
-
-  # Node placement overrides (falls back to global nodeSelector/tolerations if empty)
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
 
 # SHARED TEMPORAL CONFIGURATION
 # This configuration is shared between all workers.
