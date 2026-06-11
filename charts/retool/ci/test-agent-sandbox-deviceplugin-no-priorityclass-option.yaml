@@ -1,0 +1,27 @@
+rr:
+
+  # Agent Sandbox — device-plugin DaemonSet with priorityClassName opted OUT.
+  #
+  # Regression guard for the GKE path documented in values.yaml: GKE doesn't allow
+  # the `system-node-critical` PriorityClass in user namespaces, so operators set
+  #   rr.agentSandbox.devicePlugin.priorityClassName: null
+  # to drop it. The DaemonSet template must OMIT the priorityClassName field in that
+  # case — a bare `{{ ... }}` on a nil value would render the literal `<no value>`,
+  # producing an invalid manifest that the kubelet rejects (and that kubeconform
+  # rejects here in CI).
+  #
+  # Overlaid on test-install-values.yaml.
+  agentSandbox:
+    enabled: true
+
+    externalSecret:
+      name: agent-sandbox-secrets
+
+    sandboxNetwork:
+      enabled: true
+      devicePlugin: true
+      deployDaemonSet: true
+
+    devicePlugin:
+      # The GKE opt-out — DaemonSet must render with no priorityClassName field.
+      priorityClassName: null

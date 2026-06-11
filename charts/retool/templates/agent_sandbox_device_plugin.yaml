@@ -39,7 +39,9 @@ spec:
 {{- end }}
     spec:
       automountServiceAccountToken: false
+      {{- if $as.devicePlugin.priorityClassName }}
       priorityClassName: {{ $as.devicePlugin.priorityClassName }}
+      {{- end }}
 {{- if $nodeSelector }}
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
