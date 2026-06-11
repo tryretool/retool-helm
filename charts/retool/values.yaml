@@ -804,8 +804,8 @@ rr:
     # Labels for JS executor pods
     labels: {}
 
-    volumes: {}
-    volumeMounts: {}
+    volumes: []
+    volumeMounts: []
 
     # Config affinity and anti-affinity rules for the JS executor pods
     affinity: {}
