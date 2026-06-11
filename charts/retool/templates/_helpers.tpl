@@ -1025,7 +1025,7 @@ Two classes of stale config are caught:
 {{- end -}}
 {{- end -}}
 {{- if $found -}}
-{{- fail (printf "\n\nThe RR (formerly \"r2\") values layout changed: the master switch and every component it needs now live under the top-level `rr:` block. These keys in your values are NO LONGER READ and would silently disable RR. Rename / move them as shown:\n\n%s\n\nThe master switch is now `rr.enabled`. See values.yaml for the new layout." (join "\n" $found)) -}}
+{{- fail (printf "\n\nACTION REQUIRED: update your Helm values file.\n\nThe RR (formerly \"r2\") values layout changed: the master switch and every component it needs now live under the top-level `rr:` block. The keys below are still set in your values but are NO LONGER READ, which would silently disable RR. This deploy is blocked until you fix it.\n\nTo fix: edit your values file (values.yaml / your Helm values overrides) and rename / move these keys:\n\n%s\n\nThe master switch is now `rr.enabled`. See the chart's values.yaml for the full new layout." (join "\n" $found)) -}}
 {{- end -}}
 {{- end -}}
 
