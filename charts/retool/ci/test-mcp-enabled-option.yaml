@@ -4,6 +4,7 @@ mcp:
   config:
     oauthMainDomain: https://oauth.example.com
     oauthIntrospectionAuthToken: test-oauth-introspection-token
+    agentSandboxJwtPrivateKey: test-agent-sandbox-jwt-private-key
     enabledToolsets:
       - apps
       - resources
