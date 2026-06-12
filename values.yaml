@@ -624,6 +624,15 @@ mcp:
   #   # is provided directly in mcp.environmentVariables.
   #   oauthIntrospectionAuthToken:
   #
+  #   # Secret-backed private key used by MCP to sign agent sandbox requests.
+  #   # Usually points at the same key as rr.agentSandbox.externalSecret.name.
+  #   agentSandboxJwtPrivateKeySecretName:
+  #   agentSandboxJwtPrivateKeySecretKey: jwt-private-key
+  #
+  #   # Literal private key override for development/testing only. Prefer the
+  #   # secret-backed setting above for real deployments.
+  #   agentSandboxJwtPrivateKey:
+  #
   #   # Optional Node.js options for the MCP server process. Unset by default.
   #   nodeOptions: --max_old_space_size=1024
   #

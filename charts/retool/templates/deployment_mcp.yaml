@@ -146,6 +146,16 @@ spec:
           - name: OAUTH_INTROSPECTION_AUTH_TOKEN
             value: {{ $mcpConfig.oauthIntrospectionAuthToken | quote }}
           {{- end }}
+          {{- if $mcpConfig.agentSandboxJwtPrivateKeySecretName }}
+          - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ $mcpConfig.agentSandboxJwtPrivateKeySecretName }}
+                key: {{ $mcpConfig.agentSandboxJwtPrivateKeySecretKey | default "jwt-private-key" }}
+          {{- else if $mcpConfig.agentSandboxJwtPrivateKey }}
+          - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
+            value: {{ $mcpConfig.agentSandboxJwtPrivateKey | quote }}
+          {{- end }}
           {{- if $mcpConfig.nodeOptions }}
           - name: NODE_OPTIONS
             value: {{ $mcpConfig.nodeOptions | quote }}
