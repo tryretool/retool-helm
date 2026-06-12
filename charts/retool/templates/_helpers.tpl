@@ -646,6 +646,26 @@ telemetry.retool.com/service-name: agent-sandbox-proxy
 {{- end -}}
 
 {{/*
+Internal URL for server-side callers to reach the agent sandbox proxy Service.
+The fully-qualified cluster DNS name keeps this default valid even when callers
+run outside the proxy Service's namespace.
+*/}}
+{{- define "retool.agentSandbox.proxyUrl" -}}
+{{- .Values.rr.agentSandbox.proxyUrl | default (printf "http://%s.%s.svc.cluster.local:%s" (include "retool.agentSandbox.proxy.name" .) .Release.Namespace (toString .Values.rr.agentSandbox.proxy.port)) -}}
+{{- end -}}
+
+{{/*
+Agent sandbox proxy env var for server-side callers. Keep this separate from
+AGENT_*_FRONTEND_WS_PROXY_DOMAIN, which is browser-facing public config.
+*/}}
+{{- define "retool.agentSandbox.proxyEnvVars" -}}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}
+- name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
+  value: {{ include "retool.agentSandbox.proxyUrl" . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Validate that an enabled agent sandbox has its required secrets supplied. The
 controller and proxy fail to boot without a Postgres connection and a JWT
 public key, and the Retool backend needs the JWT private key to sign sandbox
@@ -790,8 +810,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
   value: "postgres"
 - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
   value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
-- name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
-  value: {{ .Values.rr.agentSandbox.proxyUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.proxy.name" .) (toString .Values.rr.agentSandbox.proxy.port)) | quote }}
+{{- include "retool.agentSandbox.proxyEnvVars" . }}
 {{- if .Values.rr.agentSandbox.frontendWsProxyDomain }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
   value: {{ .Values.rr.agentSandbox.frontendWsProxyDomain | quote }}

@@ -1067,8 +1067,10 @@ rr:
         #   hosts:
         #     - sandbox.yourdomain.com
 
-    # Backend integration: these tell the Retool backend how to reach agent executor.
-    # controllerUrl and proxyUrl default to internal service URLs when empty.
+    # Backend integration: these tell server-side Retool callers how to reach agent executor.
+    # controllerUrl defaults to the internal controller service URL when empty.
+    # proxyUrl defaults to the namespace-qualified in-cluster proxy Service URL:
+    # http://<release-fullname>-agent-sandbox-proxy.<namespace>.svc.cluster.local:<proxy.port>
     controllerUrl: ''
     proxyUrl: ''
     # Public URL for frontend browsers to reach the proxy via WebSocket.
