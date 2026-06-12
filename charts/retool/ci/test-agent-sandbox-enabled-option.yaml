@@ -31,6 +31,9 @@ rr:
       name: agent-sandbox-secrets
 
     postgres:
+      # Option 4 is opt-in: route Postgres to the external secret's postgres-url key.
+      # externalSecret.name alone only covers the JWT/encryption keys, not Postgres.
+      fromExternalSecret: true
       schema: agent_executor
       poolMax: 10
 

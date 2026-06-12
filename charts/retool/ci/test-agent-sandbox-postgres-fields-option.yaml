@@ -21,6 +21,8 @@ rr:
 
     jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AI\nY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
     jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49\nAwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoB\nQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
+    # encryption key is required (proxy derives the asset-token HMAC key from it)
+    encryptionKey: a12b01429fe0fe69a80da94e9e837ab2f1e9bda378ed8a25905a238f6fea6b7a
 
     # Option 2: host + user + database, password via PGPASSWORD secretKeyRef.
     postgres:

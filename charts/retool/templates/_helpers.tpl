@@ -676,14 +676,14 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" -}}
 {{- $as := .Values.rr.agentSandbox -}}
 {{- $ext := $as.externalSecret.name -}}
-{{- $explicitPg := or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host $ext -}}
+{{- $explicitPg := or $as.postgres.url $as.postgres.urlSecretName $as.postgres.host (and $ext $as.postgres.fromExternalSecret) -}}
 {{- if not $explicitPg -}}
 {{- /* No explicit source: inherit the backend's Postgres connection. */ -}}
 {{- if not (include "retool.postgresql.host" . | trimAll "\"") -}}
-{{- fail "agentSandbox.enabled defaults to reusing the backend's Postgres connection, but config.postgresql resolved no host. Set agentSandbox.postgres.url / .host / .urlSecretName / externalSecret.name, or configure config.postgresql." -}}
+{{- fail "agentSandbox.enabled defaults to reusing the backend's Postgres connection, but config.postgresql resolved no host. Set agentSandbox.postgres.url / .host / .urlSecretName, or agentSandbox.externalSecret.name together with agentSandbox.postgres.fromExternalSecret: true (externalSecret.name alone is only used for the JWT/encryption keys, not Postgres), or configure config.postgresql." -}}
 {{- end -}}
 {{- if not (or .Values.postgresql.enabled .Values.config.postgresql.passwordSecretName (eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1")) -}}
-{{- fail "agentSandbox.postgres is unset so it would inherit the backend's Postgres password, but that password is supplied via external secrets (envFrom) and cannot be referenced from a separate pod. Set agentSandbox.postgres.url / .urlSecretName / .host (+ passwordSecretName), or agentSandbox.externalSecret.name." -}}
+{{- fail "agentSandbox.postgres is unset so it would inherit the backend's Postgres password, but that password is supplied via external secrets (envFrom) and cannot be referenced from a separate pod. Set agentSandbox.postgres.url / .urlSecretName / .host (+ passwordSecretName), or agentSandbox.externalSecret.name together with agentSandbox.postgres.fromExternalSecret: true (externalSecret.name alone is only used for the JWT/encryption keys, not Postgres)." -}}
 {{- end -}}
 {{- end -}}
 {{- if $as.postgres.host -}}
@@ -714,6 +714,9 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if not (or $as.jwtPrivateKey $ext) -}}
 {{- fail "agentSandbox.enabled requires a JWT private key (the backend signs sandbox tokens with it). Set agentSandbox.jwtPrivateKey or agentSandbox.externalSecret.name." -}}
 {{- end -}}
+{{- if not (or $as.encryptionKey $ext) -}}
+{{- fail "agentSandbox.enabled requires an encryption key: the proxy derives the sandbox-iframe asset-token HMAC key from it and throws when serving a sandbox without it, and the backend must use the same value. Set agentSandbox.encryptionKey (64 hex chars, openssl rand -hex 32) or agentSandbox.externalSecret.name (with an encryption-key entry)." -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -721,8 +724,10 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 Render the AGENT_SANDBOX_POSTGRES_URL env entry for the controller/proxy (plus a
 PGPASSWORD entry when assembling from fields). validateSecrets guarantees one of
 these applies, in order: postgres.url -> postgres.host -> postgres.urlSecretName
--> externalSecret.name -> inherit the backend's config.postgresql connection
-(the default when nothing agent-specific is set).
+-> externalSecret.name (only when postgres.fromExternalSecret is true) -> inherit
+the backend's config.postgresql connection (the default when nothing
+agent-specific is set, including when externalSecret.name is set only for the JWT
+keypair -- it must NOT silently hijack the Postgres source).
 
 For the host path the password is passed via PGPASSWORD rather than embedded in
 the URL: node-postgres reads PGPASSWORD when the connection string omits the
@@ -761,7 +766,7 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
     secretKeyRef:
       name: {{ $pg.urlSecretName }}
       key: {{ $pg.urlSecretKey | default "postgres-url" }}
-{{- else if $ext }}
+{{- else if and $ext $pg.fromExternalSecret }}
 - name: AGENT_SANDBOX_POSTGRES_URL
   valueFrom:
     secretKeyRef:
