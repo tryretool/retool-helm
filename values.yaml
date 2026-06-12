@@ -887,8 +887,10 @@ rr:
     # === Secrets ============================================================
     # Provide each secret as a plaintext value below, OR set externalSecret.name
     # to a pre-existing Secret with keys jwt-public-key, jwt-private-key,
-    # encryption-key, api-secret, postgres-url. A plaintext value always wins over
-    # the external secret for that key.
+    # encryption-key, api-secret, postgres-url. A plaintext value always wins
+    # over the external secret for that key. The postgres-url key can either
+    # include or omit an embedded password; if the password is omitted, it can
+    # be provided separately via rr.agentSandbox.postgres.passwordSecretName.
     externalSecret:
       name: ''                 # optional: existing Secret holding all keys below
 
