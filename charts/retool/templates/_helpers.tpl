@@ -747,6 +747,13 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
     secretKeyRef:
       name: {{ $ext }}
       key: postgres-url
+{{- if $pg.passwordSecretName }}
+- name: PGPASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pg.passwordSecretName }}
+      key: {{ $pg.passwordSecretKey | default "password" }}
+{{- end }}
 {{- else }}
 {{- /*
   Default: inherit the backend's Postgres connection (config.postgresql or the
