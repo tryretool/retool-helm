@@ -230,6 +230,17 @@ spec:
             value: http://{{ template "retool.jsExecutor.name" $ }}
           {{- end }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
+          {{- if $.Values.rr.gitServer.enabled }}
+          {{- /*
+            Snapshot blob storage: the agentExecutor / snapshotRetention temporal
+            activities run on this worker and read RR_SNAPSHOTS_* with an
+            RR_DEFAULT_* fallback (backend getBlobStoreForSnapshots). Render the
+            same blobStorage env the backend and git-server get, so the fallback
+            resolves here too. No git-server host/port split is needed -- the
+            worker is a blob-storage client, not the git server itself.
+          */}}
+          {{- include "retool.gitServer.commonEnv" $ | nindent 10 }}
+          {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
 
