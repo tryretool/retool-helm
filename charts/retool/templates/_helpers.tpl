@@ -725,7 +725,8 @@ Render the AGENT_SANDBOX_POSTGRES_URL env entry for the controller/proxy (plus a
 PGPASSWORD entry when assembling from fields). validateSecrets guarantees one of
 these applies, in order: postgres.url -> postgres.host -> postgres.urlSecretName
 -> inherit the backend's config.postgresql connection (the default when nothing
-agent-specific is set). externalSecret.name covers only the JWT/encryption keys
+agent-specific is set; the inherited DSN also carries sslmode=no-verify when the
+backend uses SSL). externalSecret.name covers only the JWT/encryption keys
 -- it never sources Postgres. To read a DSN from that same secret, point
 postgres.urlSecretName at it (its postgres-url key is the urlSecretKey default).
 
@@ -803,8 +804,10 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
       name: {{ template "retool.fullname" . }}
       key: postgresql-password
       {{- end }}
+{{- /* inherit the backend's SSL too (mirror POSTGRES_SSL_ENABLED) */}}
+{{- $sslSuffix := ternary "?sslmode=no-verify" "" (eq (include "retool.postgresql.ssl_enabled" . | trimAll "\"") "true") }}
 - name: AGENT_SANDBOX_POSTGRES_URL
-  value: {{ printf "postgres://%s@%s:%s/%s" (include "retool.postgresql.user" . | trimAll "\"") (include "retool.postgresql.host" . | trimAll "\"") (include "retool.postgresql.port" . | trimAll "\"" | default "5432") (include "retool.postgresql.database" . | trimAll "\"") | quote }}
+  value: {{ printf "postgres://%s@%s:%s/%s%s" (include "retool.postgresql.user" . | trimAll "\"") (include "retool.postgresql.host" . | trimAll "\"") (include "retool.postgresql.port" . | trimAll "\"" | default "5432") (include "retool.postgresql.database" . | trimAll "\"") $sslSuffix | quote }}
 {{- end }}
 {{- end -}}
 
