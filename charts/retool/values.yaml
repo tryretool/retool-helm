@@ -887,14 +887,16 @@ rr:
     # === Secrets ============================================================
     # Provide each secret as a plaintext value below, OR set externalSecret.name
     # to a pre-existing Secret with keys jwt-public-key, jwt-private-key,
-    # encryption-key, api-secret, postgres-url. A plaintext value always wins over
-    # the external secret for that key.
+    # encryption-key, api-secret. A plaintext value always wins over the external
+    # secret for that key. externalSecret.name covers ONLY these app secrets --
+    # it does not source Postgres. To read a DSN from that same Secret, point
+    # postgres.urlSecretName at it (see Postgres Option 3 below).
     externalSecret:
-      name: ''                 # optional: existing Secret holding all keys below
+      name: ''                 # optional: existing Secret holding the keys below
 
     jwtPublicKey: ''           # REQUIRED (ES256) unless provided via externalSecret
     jwtPrivateKey: ''          # REQUIRED (ES256) unless provided via externalSecret
-    encryptionKey: ''          # optional: hex 256-bit; must match backend AGENT_SANDBOX_ENCRYPTION_KEY
+    encryptionKey: ''          # REQUIRED: 64 hex chars (openssl rand -hex 32, NOT base64). Proxy throws when serving a sandbox without it; must match the backend's AGENT_SANDBOX_ENCRYPTION_KEY. May instead be supplied via externalSecret.name (encryption-key entry).
     apiSecret: ''              # optional: admin/test endpoints
 
     # === Postgres state backend =============================================
@@ -923,15 +925,16 @@ rr:
       passwordSecretName: ''
       passwordSecretKey: 'password'
 
-      # -- Option 3: existing Secret holding the full DSN --
+      # -- Option 3: DSN from an existing Secret --
+      # Set urlSecretName (urlSecretKey defaults to postgres-url). To reuse the
+      # Secret in rr.agentSandbox.externalSecret.name, just point urlSecretName at
+      # it -- externalSecret.name itself never sources Postgres.
+      # The DSN may omit the password; supply it separately via passwordSecretName
+      # (above) so an auto-rotated password isn't duplicated into the DSN secret.
       urlSecretName: ''
       urlSecretKey: 'postgres-url'
 
-      # -- Option 4: reuse externalSecret.name (its postgres-url key) --
-      # Selected by setting rr.agentSandbox.externalSecret.name (in the Secrets
-      # section above), not by anything here. Used when options 1-3 are blank.
-      #
-      # If options 1-4 are ALL unset, the default (inherit config.postgresql)
+      # If options 1-3 are ALL unset, the default (inherit config.postgresql)
       # applies -- see the note at the top of this block.
 
       # -- Optional tuning (defaults shown) --
