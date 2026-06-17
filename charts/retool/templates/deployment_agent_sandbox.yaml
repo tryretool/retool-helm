@@ -366,6 +366,12 @@ spec:
             httpGet:
               path: /livez
               port: http
+              {{- with .Values.livenessProbe.host }}
+              host: {{ . | quote }}
+              {{- end }}
+              {{- with .Values.livenessProbe.scheme }}
+              scheme: {{ . }}
+              {{- end }}
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -374,6 +380,12 @@ spec:
             httpGet:
               path: /health
               port: http
+              {{- with .Values.readinessProbe.host }}
+              host: {{ . | quote }}
+              {{- end }}
+              {{- with .Values.readinessProbe.scheme }}
+              scheme: {{ . }}
+              {{- end }}
             initialDelaySeconds: 1
             periodSeconds: 2
             timeoutSeconds: 3
@@ -542,6 +554,12 @@ spec:
             httpGet:
               path: /livez
               port: http
+              {{- with .Values.livenessProbe.host }}
+              host: {{ . | quote }}
+              {{- end }}
+              {{- with .Values.livenessProbe.scheme }}
+              scheme: {{ . }}
+              {{- end }}
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -550,6 +568,12 @@ spec:
             httpGet:
               path: /health
               port: http
+              {{- with .Values.readinessProbe.host }}
+              host: {{ . | quote }}
+              {{- end }}
+              {{- with .Values.readinessProbe.scheme }}
+              scheme: {{ . }}
+              {{- end }}
             initialDelaySeconds: 1
             periodSeconds: 2
             timeoutSeconds: 3
