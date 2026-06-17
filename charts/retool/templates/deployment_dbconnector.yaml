@@ -47,6 +47,12 @@ spec:
           httpGet:
             path: {{ .Values.readinessProbe.path }}
             port: {{ .Values.dbconnector.port }}
+            {{- with .Values.readinessProbe.host }}
+            host: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.readinessProbe.scheme }}
+            scheme: {{ . }}
+            {{- end }}
           initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
@@ -55,6 +61,12 @@ spec:
           httpGet:
             path: {{ .Values.livenessProbe.path }}
             port: {{ .Values.dbconnector.port }}
+            {{- with .Values.livenessProbe.host }}
+            host: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.livenessProbe.scheme }}
+            scheme: {{ . }}
+            {{- end }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
