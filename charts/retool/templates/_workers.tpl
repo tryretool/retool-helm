@@ -154,12 +154,12 @@ spec:
             value: {{ $workerPoolMaxSize | quote }}
           {{- if $.Values.dbconnector.enabled }}
           - name: DB_CONNECTOR_HOST
-            value: http://{{ template "retool.fullname" $ }}-dbconnector
+            value: http://{{ include "retool.dbconnector.name" $ }}
           - name: DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.port | quote }}
           {{- if $.Values.dbconnector.java.enabled }}
           - name: JAVA_DB_CONNECTOR_HOST
-            value: http://{{ template "retool.fullname" $ }}-dbconnector
+            value: http://{{ include "retool.dbconnector.name" $ }}
           - name: JAVA_DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}

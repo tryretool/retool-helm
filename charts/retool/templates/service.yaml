@@ -1,9 +1,8 @@
-{{- $mcpNeedsBackendApi := eq (include "retool.mcp.needsBackendApi" .) "true" -}}
+{{- $mcpEnabled := ((.Values.mcp).enabled) | default false -}}
 {{- $backendApiService := (((.Values.mcp).backendMetadata).service) | default dict -}}
-{{- $servicePortName := .Values.service.portName | default "http" -}}
-{{- $backendApiPortName := $backendApiService.portName | default "http-api" -}}
-{{- if and $mcpNeedsBackendApi (eq $servicePortName $backendApiPortName) -}}
-{{- fail "When MCP backend API routing is enabled, .Values.service.portName and .Values.mcp.backendMetadata.service.portName must be different" -}}
+{{- $backendApiServiceEnabled := $mcpEnabled -}}
+{{- if hasKey $backendApiService "enabled" -}}
+{{- $backendApiServiceEnabled = and $mcpEnabled $backendApiService.enabled -}}
 {{- end -}}
 apiVersion: v1
 kind: Service
@@ -38,14 +37,8 @@ spec:
 {{- if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{ .Values.service.nodePort }}
 {{- end }}
-{{- if or .Values.service.portName $mcpNeedsBackendApi }}
-      name: {{ $servicePortName }}
-{{- end }}
-{{- if $mcpNeedsBackendApi }}
-    - name: {{ $backendApiPortName }}
-      port: {{ $backendApiService.externalPort | default 3001 }}
-      targetPort: {{ $backendApiService.internalPort | default 3001 }}
-      protocol: TCP
+{{- if .Values.service.portName }}
+      name: {{ .Values.service.portName }}
 {{- end }}
 {{- if .Values.service.externalIPs }}
   externalIPs:
@@ -58,4 +51,34 @@ spec:
 {{- end }}
 {{- if .Values.service.loadBalancerIP }}
   loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+{{- end }}
+{{- if $backendApiServiceEnabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- range $key, $value := $backendApiService.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  name: {{ template "retool.backendApi.name" . }}
+  {{- with $backendApiService.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: {{ $backendApiService.portName | default "http-api" }}
+      port: {{ $backendApiService.externalPort | default 3001 }}
+      targetPort: {{ $backendApiService.internalPort | default 3001 }}
+      protocol: TCP
+  selector:
+{{- include "retool.selectorLabels" . | nindent 4 }}
+{{- range $key, $value := .Values.service.selector }}
+    {{ $key }}: {{ $value | quote }}
+{{- end }}
 {{- end }}

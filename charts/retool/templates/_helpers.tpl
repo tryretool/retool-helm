@@ -24,34 +24,18 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Whether MCP routing needs the main Retool Service to expose the backend API
-listener in addition to the primary frontend-facing port.
+Append a suffix to retool.fullname while preserving the 63-character DNS label
+limit used by Service names and label values.
 */}}
-{{- define "retool.mcp.needsBackendApi" -}}
-{{- $mcp := .Values.mcp | default dict -}}
-{{- $mcpIngress := $mcp.ingress | default dict -}}
-{{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
-{{- $needsBackendApi := false -}}
-{{- if and .Values.ingress.enabled $mcp.enabled $mcpIngress.enabled -}}
-{{- range ($mcpIngress.paths | default list) -}}
-{{- if eq (.target | default "mcp") "backendApi" -}}
-{{- $needsBackendApi = true -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- if and .Values.httpRoute.enabled $mcp.enabled $mcpHttpRoute.enabled -}}
-{{- range ($mcpHttpRoute.rules | default list) -}}
-{{- if eq (.target | default "mcp") "backendApi" -}}
-{{- $needsBackendApi = true -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- if $needsBackendApi -}}true{{- else -}}false{{- end -}}
+{{- define "retool.fullnameWithSuffix" -}}
+{{- $root := index . 0 -}}
+{{- $suffix := index . 1 -}}
+{{- printf "%s-%s" (include "retool.fullname" $root | trunc (sub 62 (len $suffix) | int) | trimSuffix "-") $suffix | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*
 Render an MCP-related Ingress path. By default paths route to the MCP service;
-target: backendApi routes to the main backend API listener instead.
+target: backendApi routes to the main backend API Service instead.
 */}}
 {{- define "retool.ingress.mcpPath" -}}
 {{- $root := .root -}}
@@ -65,7 +49,7 @@ target: backendApi routes to the main backend API listener instead.
 {{- $servicePort := $path.port | default ($mcpService.externalPort | default 4010) -}}
 {{- $pathType := $path.pathType | default "ImplementationSpecific" -}}
 {{- if eq $target "backendApi" -}}
-{{- $serviceName = include "retool.fullname" $root -}}
+{{- $serviceName = include "retool.backendApi.name" $root -}}
 {{- $servicePort = $path.port | default (.backendApiPort | default 3001) -}}
 {{- $pathType = $path.pathType | default "Exact" -}}
 {{- end -}}
@@ -87,7 +71,7 @@ target: backendApi routes to the main backend API listener instead.
 
 {{/*
 Render an MCP-related HTTPRoute rule. By default rules route to the MCP service;
-target: backendApi routes to the main backend API listener instead.
+target: backendApi routes to the main backend API Service instead.
 */}}
 {{- define "retool.httpRoute.mcpRule" -}}
 {{- $root := .root -}}
@@ -101,7 +85,7 @@ target: backendApi routes to the main backend API listener instead.
 {{- $servicePort := $rule.port | default ($mcpService.externalPort | default 4010) -}}
 {{- $pathType := $rule.pathType | default "PathPrefix" -}}
 {{- if eq $target "backendApi" -}}
-{{- $serviceName = include "retool.fullname" $root -}}
+{{- $serviceName = include "retool.backendApi.name" $root -}}
 {{- $servicePort = $rule.port | default (.backendApiPort | default 3001) -}}
 {{- $pathType = $rule.pathType | default "Exact" -}}
 {{- end -}}
@@ -507,63 +491,63 @@ Set Temporal namespace
 Set dbconnector service name
 */}}
 {{- define "retool.dbconnector.name" -}}
-{{ template "retool.fullname" . }}-dbconnector
+{{ include "retool.fullnameWithSuffix" (list . "dbconnector") }}
 {{- end -}}
 
 {{/*
 Set workflow backend service name
 */}}
 {{- define "retool.workflowBackend.name" -}}
-{{ template "retool.fullname" . }}-workflow-backend
+{{ include "retool.fullnameWithSuffix" (list . "workflow-backend") }}
 {{- end -}}
 
 {{/*
 Set workflow worker service name
 */}}
 {{- define "retool.workflowWorker.name" -}}
-{{ template "retool.fullname" . }}-workflow-worker
+{{ include "retool.fullnameWithSuffix" (list . "workflow-worker") }}
 {{- end -}}
 
 {{/*
 Set code executor service name
 */}}
 {{- define "retool.codeExecutor.name" -}}
-{{ template "retool.fullname" . }}-code-executor
+{{ include "retool.fullnameWithSuffix" (list . "code-executor") }}
 {{- end -}}
 
 {{/*
 Set JS executor service name
 */}}
 {{- define "retool.jsExecutor.name" -}}
-{{ template "retool.fullname" . }}-js-executor
+{{ include "retool.fullnameWithSuffix" (list . "js-executor") }}
 {{- end -}}
 
 {{/*
 Set multiplayer service name
 */}}
 {{- define "retool.multiplayer.name" -}}
-{{ template "retool.fullname" . }}-multiplayer-ws
+{{ include "retool.fullnameWithSuffix" (list . "multiplayer-ws") }}
 {{- end -}}
 
 {{/*
 Set agent worker service name
 */}}
 {{- define "retool.agentWorker.name" -}}
-{{ template "retool.fullname" . }}-agent-worker
+{{ include "retool.fullnameWithSuffix" (list . "agent-worker") }}
 {{- end -}}
 
 {{/*
 Set agent eval worker service name
 */}}
 {{- define "retool.agentEvalWorker.name" -}}
-{{ template "retool.fullname" . }}-agent-eval-worker
+{{ include "retool.fullnameWithSuffix" (list . "agent-eval-worker") }}
 {{- end -}}
 
 {{/*
 Set RR agent worker service name
 */}}
 {{- define "retool.rrAgentWorker.name" -}}
-{{ template "retool.fullname" . }}-r2-agent-worker
+{{ include "retool.fullnameWithSuffix" (list . "r2-agent-worker") }}
 {{- end -}}
 
 {{/*
@@ -587,21 +571,21 @@ telemetry.retool.com/service-name: r2-agent-worker
 Set agent sandbox base name
 */}}
 {{- define "retool.agentSandbox.name" -}}
-{{ template "retool.fullname" . }}-agent-sandbox
+{{ include "retool.fullnameWithSuffix" (list . "agent-sandbox") }}
 {{- end -}}
 
 {{/*
 Set agent sandbox controller name
 */}}
 {{- define "retool.agentSandbox.controller.name" -}}
-{{ template "retool.fullname" . }}-agent-sandbox-controller
+{{ include "retool.fullnameWithSuffix" (list . "agent-sandbox-controller") }}
 {{- end -}}
 
 {{/*
 Set agent sandbox proxy name
 */}}
 {{- define "retool.agentSandbox.proxy.name" -}}
-{{ template "retool.fullname" . }}-agent-sandbox-proxy
+{{ include "retool.fullnameWithSuffix" (list . "agent-sandbox-proxy") }}
 {{- end -}}
 
 {{/*
@@ -874,14 +858,21 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 Set MCP server service name
 */}}
 {{- define "retool.mcp.name" -}}
-{{ template "retool.fullname" . }}-mcp
+{{ include "retool.fullnameWithSuffix" (list . "mcp") }}
+{{- end -}}
+
+{{/*
+Set backend API service name
+*/}}
+{{- define "retool.backendApi.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "backend-api") }}
 {{- end -}}
 
 {{/*
 Set git server deployment/service name (only used when rr.gitServer.separate is enabled)
 */}}
 {{- define "retool.gitServer.name" -}}
-{{ template "retool.fullname" . }}-git-server
+{{ include "retool.fullnameWithSuffix" (list . "git-server") }}
 {{- end -}}
 
 {{/*
@@ -902,7 +893,8 @@ Port the standalone git server listens on (RR_GIT_SERVER_PORT) and exposes via i
 {{- end -}}
 
 {{/*
-In-cluster URL of the standalone git server service, e.g. http://<release>-git-server:3010.
+In-cluster URL of the standalone git server service, e.g. http://<fullname>-git-server:3010
+(truncated to fit Kubernetes' 63-character DNS label limit when needed).
 Used to point the MCP server (and any other consumer) at the split-out git server.
 */}}
 {{- define "retool.gitServer.url" -}}
