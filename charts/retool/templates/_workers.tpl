@@ -230,7 +230,7 @@ spec:
             value: http://{{ template "retool.jsExecutor.name" $ }}
           {{- end }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
-          {{- if $.Values.rr.gitServer.enabled }}
+          {{- if eq (include "retool.gitServer.enabled" $) "1" }}
           {{- /*
             Snapshot blob storage: the agentExecutor / snapshotRetention temporal
             activities run on this worker and read RR_SNAPSHOTS_* with an

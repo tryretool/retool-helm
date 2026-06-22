@@ -106,7 +106,7 @@ spec:
             Run the git server in-process on the main backend unless it has been
             split out into its own deployment (rr.gitServer.separate.enabled).
           */}}
-          {{- if and .Values.rr.gitServer.enabled (not (include "retool.gitServer.separateEnabled" .)) }}
+          {{- if and (eq (include "retool.gitServer.enabled" .) "1") (not (include "retool.gitServer.separateEnabled" .)) }}
             {{- $serviceType = append $serviceType "RR_GIT_SERVER" }}
           {{- end }}
           - name: SERVICE_TYPE
@@ -261,7 +261,7 @@ spec:
                 {{- end }}
           {{- end }}
           {{- end }}
-          {{- if .Values.rr.gitServer.enabled }}
+          {{- if eq (include "retool.gitServer.enabled" .) "1" }}
           {{- if include "retool.gitServer.separateEnabled" . }}
           {{- /*
             git server runs in its own deployment; point the main backend's

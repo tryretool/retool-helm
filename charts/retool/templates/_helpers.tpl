@@ -453,6 +453,15 @@ Usage: (include "retool.agent.enabled" .)
 {{- include "retool.rr.componentEnabled" (dict "root" . "component" "agent") -}}
 {{- end -}}
 
+{{/*
+Set RR git server enabled. Honors the shared RR master switch (rr.enabled)
+unless rr.gitServer.enabled is set explicitly true|false.
+Usage: (include "retool.gitServer.enabled" .)
+*/}}
+{{- define "retool.gitServer.enabled" -}}
+{{- include "retool.rr.componentEnabled" (dict "root" . "component" "gitServer") -}}
+{{- end -}}
+
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
@@ -880,7 +889,7 @@ Returns "1" when the git server should run as its own deployment/service
 (rr.gitServer.enabled AND rr.gitServer.separate.enabled), empty otherwise.
 */}}
 {{- define "retool.gitServer.separateEnabled" -}}
-{{- if and .Values.rr.gitServer.enabled (.Values.rr.gitServer.separate | default dict).enabled -}}
+{{- if and (eq (include "retool.gitServer.enabled" .) "1") (.Values.rr.gitServer.separate | default dict).enabled -}}
 1
 {{- end -}}
 {{- end -}}
@@ -975,17 +984,16 @@ directly via environmentVariables / environmentSecrets).
 {{- end -}}
 
 {{/*
-Validate that exactly one blob-storage provider is configured when rr.gitServer
-is enabled. Skipped when the user has plumbed the RR_BLOB_STORAGE_PROVIDER /
-RR_DEFAULT_*_* env vars in directly via env/environmentVariables/environmentSecrets,
-which is treated as an opt-out from the first-class blobStorage config.
-Also skipped entirely when rr.gitServer.skipBlobStorageValidation is true, which
-is the escape hatch for sources we cannot inspect at template time (e.g. env
-vars injected via envFrom from a Secret/ConfigMap).
-No-op when rr.gitServer is disabled.
+Returns "1" when the git server is enabled but blob storage is misconfigured --
+i.e. NOT exactly one of rr.blobStorage.s3/gcs/azure is set (zero or 2+). Skipped
+when the user has plumbed RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*_* in directly
+via env/environmentVariables/environmentSecrets (treated as an opt-out from the
+first-class blobStorage config). Empty when gitServer is disabled or blob storage
+is configured. Does NOT consider skipBlobStorageValidation -- that flag only
+decides whether this is fatal (validateBlobStorage) or a NOTES.txt warning.
 */}}
-{{- define "retool.gitServer.validateBlobStorage" -}}
-{{- if and .Values.rr.gitServer.enabled (not .Values.rr.gitServer.skipBlobStorageValidation) -}}
+{{- define "retool.gitServer.blobStorageMisconfigured" -}}
+{{- if eq (include "retool.gitServer.enabled" .) "1" -}}
 {{- $hasDirectEnv := false -}}
 {{- range $name, $value := .Values.env -}}
 {{- if or (hasPrefix "RR_DEFAULT_" $name) (eq $name "RR_BLOB_STORAGE_PROVIDER") -}}
@@ -1008,10 +1016,20 @@ No-op when rr.gitServer is disabled.
 {{- if $bs.s3 }}{{ $providers = append $providers "s3" }}{{ end -}}
 {{- if $bs.gcs }}{{ $providers = append $providers "gcs" }}{{ end -}}
 {{- if $bs.azure }}{{ $providers = append $providers "azure" }}{{ end -}}
-{{- if ne (len $providers) 1 -}}
-{{- fail "rr.gitServer.enabled requires exactly one of rr.blobStorage.s3, rr.blobStorage.gcs, rr.blobStorage.azure to be configured, or set RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via env / environmentVariables / environmentSecrets. If those vars are supplied another way (e.g. envFrom), set rr.gitServer.skipBlobStorageValidation=true to bypass this check." -}}
+{{- if ne (len $providers) 1 -}}1{{- end -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Hard-fail when the git server is enabled but blob storage is misconfigured.
+Downgraded to a non-fatal NOTES.txt warning when rr.gitServer.skipBlobStorageValidation
+is true -- the escape hatch for providers we cannot inspect at template time (e.g.
+RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* injected via envFrom). No-op otherwise.
+*/}}
+{{- define "retool.gitServer.validateBlobStorage" -}}
+{{- if and (eq (include "retool.gitServer.blobStorageMisconfigured" .) "1") (not .Values.rr.gitServer.skipBlobStorageValidation) -}}
+{{- fail "rr git server is enabled but blob storage is misconfigured: set exactly one of rr.blobStorage.s3, rr.blobStorage.gcs, rr.blobStorage.azure, or supply RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* via env / environmentVariables / environmentSecrets. If those vars are injected another way (e.g. envFrom), set rr.gitServer.skipBlobStorageValidation=true to downgrade this hard error to a warning." -}}
 {{- end -}}
 {{- end -}}
 

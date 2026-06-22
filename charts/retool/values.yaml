@@ -1143,8 +1143,12 @@ rr:
     #
     # When enabled, exactly one of blobStorage.s3, blobStorage.gcs, or
     # blobStorage.azure must be configured below — git_server stores all
-    # objects/packs in blob storage.
-    enabled: false
+    # objects/packs in blob storage. If it isn't, the render FAILS (set
+    # skipBlobStorageValidation below to downgrade that to a NOTES.txt warning).
+    #
+    # Tri-state, like jsExecutor/agent/agentSandbox: leave null to INHERIT the
+    # rr.enabled master switch; set true|false to override explicitly.
+    enabled: null
 
     # Optional: number of loose objects before git_server triggers a repack.
     # Backend default is 100; unset to inherit it.
@@ -1153,13 +1157,14 @@ rr:
     # Escape hatch for the blob-storage validation below. The chart can only
     # inspect blobStorage, env, environmentVariables, and environmentSecrets at
     # template time; it cannot see env vars injected via envFrom (Secret/ConfigMap
-    # splat). Set this to true to bypass the check when RR_BLOB_STORAGE_PROVIDER /
-    # RR_DEFAULT_* are provided that way.
+    # splat). Set this to true to DOWNGRADE the hard-fail to a non-fatal NOTES.txt
+    # warning when RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* are provided that way.
     skipBlobStorageValidation: false
 
     # Optionally split the git server out of the main backend into its own
     # deployment + service (mirrors how the workload is split in Retool Cloud).
-    # Requires rr.gitServer.enabled: true. When enabled:
+    # Requires the git server to be enabled (rr.gitServer.enabled: true, or
+    # inherited from rr.enabled). When enabled:
     #   - a dedicated <release>-git-server Deployment runs SERVICE_TYPE=RR_GIT_SERVER
     #   - the main backend drops RR_GIT_SERVER from its SERVICE_TYPE and proxies git
     #     traffic to the service via RR_GIT_SERVER_HOST / RR_GIT_SERVER_PORT
