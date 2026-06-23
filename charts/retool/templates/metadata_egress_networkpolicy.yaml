@@ -1,0 +1,53 @@
+{{- if eq (include "retool.networkPolicy.blockMetadata.enabled" .) "1" }}
+{{- $np := .Values.networkPolicy | default dict }}
+{{- /*
+=======================================================================
+  Backend metadata-egress NetworkPolicy
+  -----------------------------------------------------------------------
+  Allows all egress EXCEPT the cloud instance-metadata endpoint
+  (169.254.169.254 -- AWS IMDS, GCP metadata.google.internal, Azure IMDS),
+  closing the SSRF -> metadata credential-theft vector from the backend
+  pods that execute user-defined resource requests. Safe alongside keyless
+  blob storage auth (IRSA / Workload Identity / managed identity), whose
+  credentials come from a projected token file + the provider STS/IAM
+  endpoint, not the metadata service.
+
+  Enforced only by CNIs that implement egress NetworkPolicy (Cilium,
+  Calico, AWS VPC CNI network-policy agent). Defense in depth -- pair with
+  IMDS hop-limit=1 at the node level and the application-layer SSRF filter.
+=======================================================================
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "retool.fullname" . }}-block-metadata
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "retool.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow all IPv4 egress except the metadata endpoint (and any extra ranges).
+    # DNS and in-cluster traffic fall within 0.0.0.0/0 and stay permitted.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+              {{- range $np.blockedRanges }}
+              - {{ . }}
+              {{- end }}
+    # Allow all IPv6 egress (metadata is IPv4-only); restrict only if configured.
+    - to:
+        - ipBlock:
+            cidr: ::/0
+            {{- with $np.blockedRanges6 }}
+            except:
+              {{- range . }}
+              - {{ . }}
+              {{- end }}
+            {{- end }}
+{{- end }}
