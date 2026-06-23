@@ -532,10 +532,27 @@ Set code executor service name
 {{- end -}}
 
 {{/*
+Internal URL for server-side callers to reach the code executor Service.
+Fully-qualified because the backend resolves via c-ares, which does not
+apply /etc/resolv.conf search domains.
+*/}}
+{{- define "retool.codeExecutor.url" -}}
+{{- .Values.codeExecutor.url | default (printf "http://%s.%s.svc.cluster.local" (include "retool.codeExecutor.name" .) .Release.Namespace) -}}
+{{- end -}}
+
+{{/*
 Set JS executor service name
 */}}
 {{- define "retool.jsExecutor.name" -}}
 {{ template "retool.fullname" . }}-js-executor
+{{- end -}}
+
+{{/*
+Internal URL for server-side callers to reach the JS executor Service.
+Same FQDN rationale as retool.codeExecutor.url.
+*/}}
+{{- define "retool.jsExecutor.url" -}}
+{{- .Values.rr.jsExecutor.url | default (printf "http://%s.%s.svc.cluster.local" (include "retool.jsExecutor.name" .) .Release.Namespace) -}}
 {{- end -}}
 
 {{/*

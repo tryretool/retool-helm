@@ -728,6 +728,12 @@ codeExecutor:
   # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
   # explicitly set other fields as needed
 
+  # Internal URL the backend uses to reach code-executor. Defaults to the
+  # fully-qualified Service DNS name in the release namespace. Override only
+  # for non-default cluster domains or custom routing.
+  # url: http://my-code-executor.my-namespace.svc.cluster.local
+  url: null
+
   image:
     repository: tryretool/code-executor-service
     pullPolicy: IfNotPresent
@@ -790,6 +796,12 @@ rr:
   jsExecutor:
     # Inherits .Values.rr.enabled when left unset (null); set true/false to override.
     enabled: null
+
+    # Internal URL the backend uses to reach js-executor. Defaults to the
+    # fully-qualified Service DNS name in the release namespace. Override only
+    # for non-default cluster domains or custom routing.
+    # url: http://my-js-executor.my-namespace.svc.cluster.local
+    url: null
 
     image:
       repository: tryretool/js-executor-service

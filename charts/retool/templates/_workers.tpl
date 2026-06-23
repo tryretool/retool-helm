@@ -224,10 +224,10 @@ spec:
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.codeExecutor.name" $ }}
+            value: {{ include "retool.codeExecutor.url" $ }}
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.jsExecutor.name" $ }}
+            value: {{ include "retool.jsExecutor.url" $ }}
           {{- end }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
           {{- if eq (include "retool.gitServer.enabled" $) "1" }}
