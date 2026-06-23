@@ -263,6 +263,13 @@ serviceAccount:
 livenessProbe:
   enabled: true
   path: /api/checkHealth
+  # host and scheme are optional. On IPv6-primary or dual-stack clusters, set
+  # host to 127.0.0.1 so the kubelet probes the IPv4 loopback. Some services
+  # (e.g. code-executor) listen on IPv4 only, so probing the Pod's IPv6 address
+  # fails with "connection refused" and the pod CrashLoops. Leave unset for the
+  # default behavior (the kubelet probes the Pod IP).
+  # host: 127.0.0.1
+  # scheme: HTTP
   initialDelaySeconds: 30
   timeoutSeconds: 10
   periodSeconds: 10
@@ -271,6 +278,9 @@ livenessProbe:
 readinessProbe:
   enabled: true
   path: /api/checkHealth
+  # Optional; see livenessProbe above. Set host: 127.0.0.1 on IPv6/dual-stack clusters.
+  # host: 127.0.0.1
+  # scheme: HTTP
   initialDelaySeconds: 30
   timeoutSeconds: 10
   periodSeconds: 10
@@ -283,6 +293,9 @@ preStopHook:
 startupProbe:
   enabled: false
   path: /api/checkHealth
+  # Optional; see livenessProbe above. Set host: 127.0.0.1 on IPv6/dual-stack clusters.
+  # host: 127.0.0.1
+  # scheme: HTTP
   initialDelaySeconds: 60
   timeoutSeconds: 10
   periodSeconds: 10

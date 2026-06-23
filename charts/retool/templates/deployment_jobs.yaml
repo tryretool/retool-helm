@@ -226,6 +226,12 @@ spec:
           httpGet:
             path: /api/checkJobsRunnerHealth
             port: 3003
+            {{- with .Values.livenessProbe.host }}
+            host: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.livenessProbe.scheme }}
+            scheme: {{ . }}
+            {{- end }}
           initialDelaySeconds: 120
           periodSeconds: 30
           timeoutSeconds: 3
@@ -233,6 +239,12 @@ spec:
           httpGet:
             path: /api/checkJobsRunnerHealth
             port: 3003
+            {{- with .Values.readinessProbe.host }}
+            host: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.readinessProbe.scheme }}
+            scheme: {{ . }}
+            {{- end }}
           initialDelaySeconds: 120
           periodSeconds: 30
           timeoutSeconds: 3

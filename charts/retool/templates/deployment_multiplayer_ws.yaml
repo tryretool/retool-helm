@@ -178,11 +178,23 @@ spec:
           httpGet:
             path: /api/checkHealth
             port: 3001
+            {{- with .Values.readinessProbe.host }}
+            host: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.readinessProbe.scheme }}
+            scheme: {{ . }}
+            {{- end }}
           periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /api/checkHealth
             port: 3001
+            {{- with .Values.livenessProbe.host }}
+            host: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.livenessProbe.scheme }}
+            scheme: {{ . }}
+            {{- end }}
           initialDelaySeconds: 100
           failureThreshold: 10
           timeoutSeconds: 10
