@@ -55,6 +55,9 @@ commandline:
 env:
   # required env var for backend to start up, but not actually registered
   BASE_DOMAIN: "https://helm-ci.retool.dev"
+  # CI runs all pods at once in kind. Avoid failing chart install on transient
+  # DNS/startup ordering while the code executor service is coming up.
+  IGNORE_CODE_EXECUTOR_STARTUP_CHECK: "true"
 
 # Optionally specify additional environment variables to be populated from Kubernetes secrets.
 # Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.

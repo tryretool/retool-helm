@@ -13,6 +13,11 @@
 rr:
   enabled: true
 
+  blobStorage:
+    s3:
+      bucket: rr-test-bucket
+      region: us-east-1
+
   agentSandbox:
     # jwtPublicKey is injected raw into the sandbox job-template JSON, so it MUST
     # be single-line (\n-escaped) or templating breaks.

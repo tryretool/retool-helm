@@ -601,9 +601,9 @@ mcp:
   # them. When unset, the MCP service uses its runtime defaults:
   #   enabledToolsets: all available toolsets
   #     apps, resources, workflows, folders, environments, users,
-  #     organization, user_invites, feedback
+  #     groups, organization, user_invites, feedback, r2_themes
   #   maxTransportSessions: 1000
-  #   sessionIdleTimeoutMs: 1800000 (30 minutes)
+  #   sessionIdleTimeoutMs: 3600000 (1 hour)
   #   sessionSweepIntervalMs: 60000 (1 minute)
   #   sessionGaugeEmitIntervalMs: 30000 (30 seconds)
   config: {}
@@ -617,43 +617,54 @@ mcp:
   #   # Unset by default.
   #   retoolGitServerUrl:
   #
-  #   # Public Retool URL used for links. Set explicitly when the request
-  #   # origin is not the right public URL.
+  #   # Optional public Retool origin used for client-facing MCP upload URLs
+  #   # when the request Host header is not enough. Do not include /mcp.
+  #   mcpServiceExternalUrl:
+  #
+  #   # Deprecated alias for mcpServiceExternalUrl.
   #   retoolUrl:
   #
-  #   # Public OAuth domain used by MCP OAuth metadata routes. Set explicitly
-  #   # when the request origin is not the right OAuth base URL.
+  #   # Required when mcp.enabled is true unless OAUTH_MAIN_DOMAIN is provided
+  #   # directly in mcp.environmentVariables. Public Retool host that serves MCP
+  #   # OAuth metadata routes and /api/oauth2/* endpoints. This is usually the
+  #   # same host users use to access Retool, not an oauth.* subdomain. The MCP
+  #   # service expects a host here, but the chart also accepts URL-shaped values
+  #   # and strips http(s)://.
   #   oauthMainDomain:
   #
-  #   # Secret-backed token used by MCP to call /api/oauth2/introspect.
-  #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
-  #   # is provided directly in mcp.environmentVariables.
+  #   # Secret-backed token used by MCP to call /api/oauth2/introspect. When
+  #   # unset, the chart auto-generates one in the release Secret on first deploy
+  #   # if chart-owned config secrets are enabled. Set this when using an
+  #   # externally managed Secret instead.
   #   oauthIntrospectionAuthTokenSecretName:
   #   oauthIntrospectionAuthTokenSecretKey: oauthIntrospectionAuthToken
   #
   #   # Literal token override for development/testing only. Prefer the
   #   # secret-backed setting above for real deployments.
-  #   # Required when mcp.enabled is true unless OAUTH_INTROSPECTION_AUTH_TOKEN
-  #   # is provided directly in mcp.environmentVariables.
   #   oauthIntrospectionAuthToken:
   #
-  #   # Secret-backed private key used by MCP to sign agent sandbox requests.
-  #   # Usually points at the same key as rr.agentSandbox.externalSecret.name.
+  #   # Optional override for the secret-backed private key used by MCP to sign
+  #   # agent sandbox requests. When unset and rr.agentSandbox is enabled, MCP
+  #   # reuses rr.agentSandbox.externalSecret.name with key jwt-private-key.
   #   agentSandboxJwtPrivateKeySecretName:
   #   agentSandboxJwtPrivateKeySecretKey: jwt-private-key
   #
-  #   # Literal private key override for development/testing only. Prefer the
-  #   # secret-backed setting above for real deployments.
+  #   # Literal private key override for development/testing only. When unset and
+  #   # rr.agentSandbox is enabled, MCP can reuse rr.agentSandbox.jwtPrivateKey.
+  #   # Prefer the secret-backed setting above for real deployments.
   #   agentSandboxJwtPrivateKey:
   #
   #   # Optional Node.js options for the MCP server process. Unset by default.
   #   nodeOptions: --max_old_space_size=1024
   #
-  #   # Optional MCP service configuration. If unset, all available toolsets
-  #   # are enabled by default.
+  #   # Optional MCP service configuration. If enabledToolsets is unset, all
+  #   # available toolsets are enabled by default.
   #   enabledToolsets:
   #     - apps
   #     - resources
+  #   # Optional max concurrent MCP transport sessions. Renders as
+  #   # MCP_MAX_TRANSPORT_SESSIONS. If unset, the MCP service uses its runtime
+  #   # default.
   #   maxTransportSessions: 1000
   #   sessionIdleTimeoutMs: 1800000
   #   sessionSweepIntervalMs: 60000
@@ -669,15 +680,19 @@ mcp:
       memory: "4096Mi"
 
   # MCP OAuth metadata routes are served by the main Retool backend, not the MCP
-  # pod. This config exposes the backend API listener as an additional port on
-  # the main Retool service when a route uses target: backendApi.
+  # pod. When MCP is enabled, this config creates a dedicated backend API
+  # Service named <fullname>-backend-api for metadata routes, truncated to fit
+  # Kubernetes' 63-character DNS label limit when needed.
   backendMetadata:
     service:
+      enabled: true
       # Service port that exposes the backend API listener for metadata paths
       # that should not fall through to the static frontend server.
       portName: http-api
       externalPort: 3001
       internalPort: 3001
+      annotations: {}
+      labels: {}
 
   # Public MCP-related ingress paths. Paths are emitted in order before the main
   # Retool route. Use target: backendApi for OAuth metadata routes that must hit
@@ -1178,7 +1193,8 @@ rr:
     # deployment + service (mirrors how the workload is split in Retool Cloud).
     # Requires the git server to be enabled (rr.gitServer.enabled: true, or
     # inherited from rr.enabled). When enabled:
-    #   - a dedicated <release>-git-server Deployment runs SERVICE_TYPE=RR_GIT_SERVER
+    #   - a dedicated <fullname>-git-server Deployment runs SERVICE_TYPE=RR_GIT_SERVER
+    #     (truncated to fit Kubernetes' 63-character DNS label limit when needed)
     #   - the main backend drops RR_GIT_SERVER from its SERVICE_TYPE and proxies git
     #     traffic to the service via RR_GIT_SERVER_HOST / RR_GIT_SERVER_PORT
     #   - the MCP server (if enabled) is auto-pointed at the same service unless

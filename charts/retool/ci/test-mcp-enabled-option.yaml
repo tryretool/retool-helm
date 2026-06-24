@@ -2,8 +2,8 @@ mcp:
   enabled: true
   replicaCount: 2
   config:
-    oauthMainDomain: https://oauth.example.com
-    oauthIntrospectionAuthToken: test-oauth-introspection-token
+    mcpServiceExternalUrl: https://retool.example.com
+    oauthMainDomain: example.retool.com
     agentSandboxJwtPrivateKey: test-agent-sandbox-jwt-private-key
     enabledToolsets:
       - apps

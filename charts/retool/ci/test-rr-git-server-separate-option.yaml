@@ -37,5 +37,5 @@ rr:
 mcp:
   enabled: true
   config:
-    oauthMainDomain: https://oauth.example.com
+    oauthMainDomain: example.retool.com
     oauthIntrospectionAuthToken: test-oauth-introspection-token

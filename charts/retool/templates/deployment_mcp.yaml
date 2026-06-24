@@ -1,15 +1,49 @@
 {{- if .Values.mcp.enabled }}
-{{- $mcpConfig := .Values.mcp.config | default dict }}
-{{- $hasOAuthIntrospectionAuthTokenEnv := false }}
-{{- range .Values.mcp.environmentVariables }}
-{{- if eq .name "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
-{{- $hasOAuthIntrospectionAuthTokenEnv = true }}
-{{- end }}
-{{- end }}
-{{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv) }}
-{{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled)" }}
-{{- end }}
-{{- $mcpInternalPort := .Values.mcp.service.internalPort | default 4010 }}
+  {{- $mcpConfig := .Values.mcp.config | default dict }}
+  {{- $chartOwnedConfigSecret := eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1" }}
+  {{- $mcpServiceExternalUrl := ($mcpConfig.mcpServiceExternalUrl | default $mcpConfig.retoolUrl | default "") }}
+  {{- $mcpServiceExternalUrl = trimSuffix "/" (toString $mcpServiceExternalUrl) }}
+  {{- if and $mcpServiceExternalUrl (not (or (hasPrefix "http://" $mcpServiceExternalUrl) (hasPrefix "https://" $mcpServiceExternalUrl))) }}
+    {{- $mcpServiceExternalUrl = printf "https://%s" $mcpServiceExternalUrl }}
+  {{- end }}
+  {{- $mcpOAuthMainDomain := ($mcpConfig.oauthMainDomain | default "") }}
+  {{- $mcpOAuthMainDomain = trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $mcpOAuthMainDomain))) }}
+  {{- $hasOAuthMainDomainEnv := false }}
+  {{- range .Values.mcp.environmentVariables }}
+    {{- if eq .name "OAUTH_MAIN_DOMAIN" }}
+      {{- $hasOAuthMainDomainEnv = true }}
+    {{- end }}
+  {{- end }}
+  {{- $hasOAuthIntrospectionAuthTokenEnv := false }}
+  {{- range .Values.mcp.environmentVariables }}
+    {{- if eq .name "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
+      {{- $hasOAuthIntrospectionAuthTokenEnv = true }}
+    {{- end }}
+  {{- end }}
+  {{- $hasAgentSandboxJwtPrivateKeyEnv := false }}
+  {{- range .Values.mcp.environmentVariables }}
+    {{- if eq .name "AGENT_SANDBOX_JWT_PRIVATE_KEY" }}
+      {{- $hasAgentSandboxJwtPrivateKeyEnv = true }}
+    {{- end }}
+  {{- end }}
+  {{- $agentSandboxEnabled := eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}
+  {{- $mcpAgentSandboxJwtPrivateKeySecretName := ($mcpConfig.agentSandboxJwtPrivateKeySecretName | default "") }}
+  {{- $mcpAgentSandboxJwtPrivateKeySecretKey := ($mcpConfig.agentSandboxJwtPrivateKeySecretKey | default "jwt-private-key") }}
+  {{- $mcpAgentSandboxJwtPrivateKey := ($mcpConfig.agentSandboxJwtPrivateKey | default "") }}
+  {{- if and (not $mcpAgentSandboxJwtPrivateKeySecretName) (not $mcpAgentSandboxJwtPrivateKey) $agentSandboxEnabled }}
+    {{- if .Values.rr.agentSandbox.jwtPrivateKey }}
+      {{- $mcpAgentSandboxJwtPrivateKey = .Values.rr.agentSandbox.jwtPrivateKey }}
+    {{- else if .Values.rr.agentSandbox.externalSecret.name }}
+      {{- $mcpAgentSandboxJwtPrivateKeySecretName = .Values.rr.agentSandbox.externalSecret.name }}
+    {{- end }}
+  {{- end }}
+  {{- if not (or $mcpOAuthMainDomain $hasOAuthMainDomainEnv) }}
+    {{- fail "Please set .Values.mcp.config.oauthMainDomain or an OAUTH_MAIN_DOMAIN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled)" }}
+  {{- end }}
+  {{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv $chartOwnedConfigSecret) }}
+    {{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when the MCP server is enabled and chart-owned config secrets are disabled" }}
+  {{- end }}
+  {{- $mcpInternalPort := .Values.mcp.service.internalPort | default 4010 }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -128,33 +162,39 @@ spec:
           - name: RETOOL_GIT_SERVER_URL
             value: {{ $retoolGitServerUrl | quote }}
           {{- end }}
-          {{- if $mcpConfig.retoolUrl }}
-          - name: RETOOL_URL
-            value: {{ $mcpConfig.retoolUrl | quote }}
+          {{- if $mcpServiceExternalUrl }}
+          - name: MCP_SERVICE_EXTERNAL_URL
+            value: {{ $mcpServiceExternalUrl | quote }}
           {{- end }}
-          {{- if $mcpConfig.oauthMainDomain }}
+          {{- if and $mcpOAuthMainDomain (not $hasOAuthMainDomainEnv) }}
           - name: OAUTH_MAIN_DOMAIN
-            value: {{ $mcpConfig.oauthMainDomain | quote }}
+            value: {{ $mcpOAuthMainDomain | quote }}
           {{- end }}
-          {{- if $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
+          {{- if and $mcpConfig.oauthIntrospectionAuthTokenSecretName (not $hasOAuthIntrospectionAuthTokenEnv) }}
           - name: OAUTH_INTROSPECTION_AUTH_TOKEN
             valueFrom:
               secretKeyRef:
                 name: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
                 key: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretKey | default "oauthIntrospectionAuthToken" }}
-          {{- else if $mcpConfig.oauthIntrospectionAuthToken }}
+          {{- else if and $mcpConfig.oauthIntrospectionAuthToken (not $hasOAuthIntrospectionAuthTokenEnv) }}
           - name: OAUTH_INTROSPECTION_AUTH_TOKEN
             value: {{ $mcpConfig.oauthIntrospectionAuthToken | quote }}
+          {{- else if and $chartOwnedConfigSecret (not $hasOAuthIntrospectionAuthTokenEnv) }}
+          - name: OAUTH_INTROSPECTION_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "retool.fullname" . }}
+                key: oauthIntrospectionAuthToken
           {{- end }}
-          {{- if $mcpConfig.agentSandboxJwtPrivateKeySecretName }}
+          {{- if and $mcpAgentSandboxJwtPrivateKeySecretName (not $hasAgentSandboxJwtPrivateKeyEnv) }}
           - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
             valueFrom:
               secretKeyRef:
-                name: {{ $mcpConfig.agentSandboxJwtPrivateKeySecretName }}
-                key: {{ $mcpConfig.agentSandboxJwtPrivateKeySecretKey | default "jwt-private-key" }}
-          {{- else if $mcpConfig.agentSandboxJwtPrivateKey }}
+                name: {{ $mcpAgentSandboxJwtPrivateKeySecretName }}
+                key: {{ $mcpAgentSandboxJwtPrivateKeySecretKey }}
+          {{- else if and $mcpAgentSandboxJwtPrivateKey (not $hasAgentSandboxJwtPrivateKeyEnv) }}
           - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
-            value: {{ $mcpConfig.agentSandboxJwtPrivateKey | quote }}
+            value: {{ $mcpAgentSandboxJwtPrivateKey | quote }}
           {{- end }}
           {{- if $mcpConfig.nodeOptions }}
           - name: NODE_OPTIONS
