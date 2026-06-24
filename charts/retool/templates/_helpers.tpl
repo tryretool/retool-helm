@@ -34,23 +34,44 @@ limit used by Service names and label values.
 {{- end }}
 
 {{/*
+Resolve the public host that serves MCP OAuth metadata routes. An explicit
+mcp.config.oauthMainDomain wins; when unset, fall back to the common backend
+BASE_DOMAIN value from .Values.env. Secret-backed or valueFrom-style BASE_DOMAIN
+settings are intentionally not inferred because their values are not available
+at template time.
+*/}}
+{{- define "retool.mcp.oauthMainDomain" -}}
+{{- $mcpConfig := (.Values.mcp.config | default dict) -}}
+{{- $domain := ($mcpConfig.oauthMainDomain | default "") -}}
+{{- if not $domain -}}
+{{- $baseDomain := get (.Values.env | default dict) "BASE_DOMAIN" | default "" -}}
+{{- if kindIs "map" $baseDomain -}}
+{{- $domain = get $baseDomain "value" | default "" -}}
+{{- else -}}
+{{- $domain = $baseDomain -}}
+{{- end -}}
+{{- end -}}
+{{- trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $domain))) -}}
+{{- end }}
+
+{{/*
 Render an MCP-related Ingress path. By default paths route to the MCP service;
-target: backendApi routes to the main backend API Service instead.
+target: backendInternal routes to the main backend API Service instead.
 */}}
 {{- define "retool.ingress.mcpPath" -}}
 {{- $root := .root -}}
 {{- $path := .path -}}
 {{- $target := .target | default ($path.target | default "mcp") -}}
-{{- if not (or (eq $target "mcp") (eq $target "backendApi")) -}}
-{{- fail (printf "Invalid mcp.ingress.paths target %q for path %q. Valid targets are \"mcp\" and \"backendApi\"." $target $path.path) -}}
+{{- if not (or (eq $target "mcp") (eq $target "backendInternal")) -}}
+{{- fail (printf "Invalid mcp.ingress.paths target %q for path %q. Valid targets are \"mcp\" and \"backendInternal\"." $target $path.path) -}}
 {{- end -}}
 {{- $mcpService := (($root.Values.mcp).service) | default dict -}}
 {{- $serviceName := include "retool.mcp.name" $root -}}
 {{- $servicePort := $path.port | default ($mcpService.externalPort | default 4010) -}}
 {{- $pathType := $path.pathType | default "ImplementationSpecific" -}}
-{{- if eq $target "backendApi" -}}
-{{- $serviceName = include "retool.backendApi.name" $root -}}
-{{- $servicePort = $path.port | default (.backendApiPort | default 3001) -}}
+{{- if eq $target "backendInternal" -}}
+{{- $serviceName = include "retool.backendInternal.name" $root -}}
+{{- $servicePort = $path.port | default (.backendInternalPort | default 3001) -}}
 {{- $pathType = $path.pathType | default "Exact" -}}
 {{- end -}}
 - path: {{ $path.path }}
@@ -71,22 +92,22 @@ target: backendApi routes to the main backend API Service instead.
 
 {{/*
 Render an MCP-related HTTPRoute rule. By default rules route to the MCP service;
-target: backendApi routes to the main backend API Service instead.
+target: backendInternal routes to the main backend API Service instead.
 */}}
 {{- define "retool.httpRoute.mcpRule" -}}
 {{- $root := .root -}}
 {{- $rule := .rule -}}
 {{- $target := .target | default ($rule.target | default "mcp") -}}
-{{- if not (or (eq $target "mcp") (eq $target "backendApi")) -}}
-{{- fail (printf "Invalid mcp.httpRoute.rules target %q for path %q. Valid targets are \"mcp\" and \"backendApi\"." $target $rule.path) -}}
+{{- if not (or (eq $target "mcp") (eq $target "backendInternal")) -}}
+{{- fail (printf "Invalid mcp.httpRoute.rules target %q for path %q. Valid targets are \"mcp\" and \"backendInternal\"." $target $rule.path) -}}
 {{- end -}}
 {{- $mcpService := (($root.Values.mcp).service) | default dict -}}
 {{- $serviceName := include "retool.mcp.name" $root -}}
 {{- $servicePort := $rule.port | default ($mcpService.externalPort | default 4010) -}}
 {{- $pathType := $rule.pathType | default "PathPrefix" -}}
-{{- if eq $target "backendApi" -}}
-{{- $serviceName = include "retool.backendApi.name" $root -}}
-{{- $servicePort = $rule.port | default (.backendApiPort | default 3001) -}}
+{{- if eq $target "backendInternal" -}}
+{{- $serviceName = include "retool.backendInternal.name" $root -}}
+{{- $servicePort = $rule.port | default (.backendInternalPort | default 3001) -}}
 {{- $pathType = $rule.pathType | default "Exact" -}}
 {{- end -}}
 - matches:
@@ -862,10 +883,10 @@ Set MCP server service name
 {{- end -}}
 
 {{/*
-Set backend API service name
+Set backend internal service name
 */}}
-{{- define "retool.backendApi.name" -}}
-{{ include "retool.fullnameWithSuffix" (list . "backend-api") }}
+{{- define "retool.backendInternal.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "backend-internal") }}
 {{- end -}}
 
 {{/*
