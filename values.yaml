@@ -624,11 +624,12 @@ mcp:
   #   # Deprecated alias for mcpServiceExternalUrl.
   #   retoolUrl:
   #
-  #   # Public Retool host that serves MCP OAuth metadata routes and
-  #   # /api/oauth2/* endpoints. Defaults to env.BASE_DOMAIN when unset. This is
-  #   # usually the same host users use to access Retool, not an oauth.*
-  #   # subdomain. The MCP service expects a host here, but the chart also
-  #   # accepts URL-shaped values and strips http(s)://.
+  #   # Required when mcp.enabled is true unless OAUTH_MAIN_DOMAIN is provided
+  #   # directly in mcp.environmentVariables. Public Retool host that serves MCP
+  #   # OAuth metadata routes and /api/oauth2/* endpoints. This is usually the
+  #   # same host users use to access Retool, not an oauth.* subdomain. The MCP
+  #   # service expects a host here, but the chart also accepts URL-shaped values
+  #   # and strips http(s)://.
   #   oauthMainDomain:
   #
   #   # Secret-backed token used by MCP to call /api/oauth2/introspect. When
@@ -678,14 +679,14 @@ mcp:
     limits:
       memory: "4096Mi"
 
-  # Public ingress routes OAuth discovery metadata to the main Retool backend.
-  # When MCP is enabled, this config creates a dedicated backend API Service
-  # named <fullname>-backend-internal for those discovery routes, truncated to
-  # fit Kubernetes' 63-character DNS label limit when needed.
+  # MCP OAuth metadata routes are served by the main Retool backend, not the MCP
+  # pod. When MCP is enabled, this config creates a dedicated backend API
+  # Service named <fullname>-backend-api for metadata routes, truncated to fit
+  # Kubernetes' 63-character DNS label limit when needed.
   backendMetadata:
     service:
       enabled: true
-      # Service port that exposes the backend API listener for discovery routes
+      # Service port that exposes the backend API listener for metadata paths
       # that should not fall through to the static frontend server.
       portName: http-api
       externalPort: 3001
@@ -694,55 +695,56 @@ mcp:
       labels: {}
 
   # Public MCP-related ingress paths. Paths are emitted in order before the main
-  # Retool route:
-  #   - OAuth well-known metadata paths hit the main backend API listener.
-  #   - /mcp and its subpaths hit the MCP service.
-  #
-  # If you manage ingress outside this Helm chart, mcp.enabled only creates the
-  # chart-side resources. Your external ingress must route these paths, in this
-  # order before the "/" catch-all:
-  #
-  #   <fullname>-backend-internal:3001
-  #     /.well-known/oauth-authorization-server
-  #     /.well-known/oauth-protected-resource
-  #     /.well-known/oauth-protected-resource/mcp
-  #
-  #   <fullname>-mcp:4010
-  #     /mcp (Prefix; covers /mcp/.well-known/oauth-protected-resource)
-  #
-  #   <fullname>:3000
-  #     / (Prefix)
-  #
-  # Otherwise OAuth metadata requests can fall through to the frontend and
-  # return HTML instead of JSON. If you use nameOverride, fullnameOverride, or a
-  # non-default release name, service names may differ; run "kubectl get svc"
-  # after installation and look for the main Retool service, the *-backend-internal
-  # service, and the *-mcp service.
+  # Retool route. Use target: backendApi for OAuth metadata routes that must hit
+  # the main backend API listener; use target: mcp for MCP server routes.
   ingress:
     # This conditional is dependent on mcp.enabled.
     enabled: true
     paths:
       - path: /.well-known/oauth-authorization-server
         pathType: Exact
-        target: backendInternal
-      - path: /.well-known/oauth-protected-resource
-        pathType: Exact
-        target: backendInternal
+        target: backendApi
+        port: 3001
       - path: /.well-known/oauth-protected-resource/mcp
         pathType: Exact
-        target: backendInternal
+        target: backendApi
+        port: 3001
+      - path: /mcp/.well-known/oauth-protected-resource
+        pathType: Exact
+        target: backendApi
+        port: 3001
       - path: /mcp
-        pathType: Prefix
+        target: mcp
+        port: 4010
+      - path: /.well-known/oauth-protected-resource
+        pathType: Exact
+        target: mcp
+        port: 4010
 
   # HTTPRoute rules for MCP when using Gateway API instead of ingress.
   httpRoute:
     # This conditional is dependent on mcp.enabled.
     enabled: true
     rules:
-      - path: ^/\.well-known/oauth
-        pathType: RegularExpression
-        target: backendInternal
+      - path: /.well-known/oauth-authorization-server
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /.well-known/oauth-protected-resource/mcp
+        pathType: Exact
+        target: backendApi
+        port: 3001
+      - path: /mcp/.well-known/oauth-protected-resource
+        pathType: Exact
+        target: backendApi
+        port: 3001
       - path: /mcp
+        target: mcp
+        port: 4010
+      - path: /.well-known/oauth-protected-resource
+        pathType: Exact
+        target: mcp
+        port: 4010
 
   service:
     externalPort: 4010

@@ -4,8 +4,8 @@
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
 {{- $mcpIngress := $mcp.ingress | default dict -}}
-{{- $backendInternalService := $mcpBackendMetadata.service | default dict -}}
-{{- $backendInternalPort := $backendInternalService.externalPort | default 3001 -}}
+{{- $backendApiService := $mcpBackendMetadata.service | default dict -}}
+{{- $backendApiPort := $backendApiService.externalPort | default 3001 -}}
 {{- $pathType := .Values.ingress.pathType -}}
 {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version -}}
 apiVersion: networking.k8s.io/v1
@@ -52,7 +52,7 @@ spec:
           # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
           {{- if ( and ((.Values.mcp).enabled) $mcpIngress.enabled ) }}
           {{- range $mcpIngress.paths }}
-          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
+          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendApiPort" $backendApiPort) | nindent 10 }}
           {{- end }}
           {{- end }}
           - path:
@@ -94,7 +94,7 @@ spec:
           # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
           {{- if ( and (($.Values.mcp).enabled) $mcpIngress.enabled ) }}
           {{- range $mcpIngress.paths }}
-          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
+          {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendApiPort" $backendApiPort) | nindent 10 }}
           {{- end }}
           {{- end }}
           {{- range .paths }}
