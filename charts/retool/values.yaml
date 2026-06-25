@@ -678,15 +678,17 @@ mcp:
     limits:
       memory: "4096Mi"
 
-  # Public ingress routes OAuth discovery metadata to the main Retool backend.
-  # When MCP is enabled, this config creates a dedicated backend API Service
-  # named <fullname>-backend-internal for those discovery routes, truncated to
-  # fit Kubernetes' 63-character DNS label limit when needed.
+  # Public ingress routes for MCP-related OAuth metadata. When MCP is enabled,
+  # this config creates a dedicated backend API Service named
+  # <fullname>-backend-internal for metadata routes that require the backend API
+  # listener, truncated to fit Kubernetes' 63-character DNS label limit when
+  # needed.
   backendMetadata:
     service:
       enabled: true
-      # Service port that exposes the backend API listener for discovery routes
-      # that should not fall through to the static frontend server.
+      # Service port that exposes the backend API listener for metadata routes
+      # that should not fall through to the static frontend server or MCP
+      # service.
       portName: http-api
       externalPort: 3001
       internalPort: 3001
@@ -695,8 +697,8 @@ mcp:
 
   # Public MCP-related ingress paths. Paths are emitted in order before the main
   # Retool route:
-  #   - OAuth well-known metadata paths hit the main backend API listener.
-  #   - /mcp and its subpaths hit the MCP service.
+  #   - OAuth authorization-server metadata hits the backend API service.
+  #   - Protected-resource metadata, /mcp, and /mcp subpaths hit the MCP service.
   #
   # If you manage ingress outside this Helm chart, mcp.enabled only creates the
   # chart-side resources. Your external ingress must route these paths, in this
@@ -704,11 +706,10 @@ mcp:
   #
   #   <fullname>-backend-internal:3001
   #     /.well-known/oauth-authorization-server
-  #     /.well-known/oauth-protected-resource
-  #     /.well-known/oauth-protected-resource/mcp
   #
   #   <fullname>-mcp:4010
-  #     /mcp (Prefix; covers /mcp/.well-known/oauth-protected-resource)
+  #     /.well-known/oauth-protected-resource
+  #     /mcp (Prefix)
   #
   #   <fullname>:3000
   #     / (Prefix)
@@ -727,10 +728,6 @@ mcp:
         target: backendInternal
       - path: /.well-known/oauth-protected-resource
         pathType: Exact
-        target: backendInternal
-      - path: /.well-known/oauth-protected-resource/mcp
-        pathType: Exact
-        target: backendInternal
       - path: /mcp
         pathType: Prefix
 
@@ -739,9 +736,11 @@ mcp:
     # This conditional is dependent on mcp.enabled.
     enabled: true
     rules:
-      - path: ^/\.well-known/oauth
-        pathType: RegularExpression
+      - path: /.well-known/oauth-authorization-server
+        pathType: Exact
         target: backendInternal
+      - path: /.well-known/oauth-protected-resource
+        pathType: Exact
       - path: /mcp
 
   service:
