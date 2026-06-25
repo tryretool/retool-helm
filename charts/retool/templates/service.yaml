@@ -1,8 +1,8 @@
 {{- $mcpEnabled := ((.Values.mcp).enabled) | default false -}}
-{{- $backendApiService := (((.Values.mcp).backendMetadata).service) | default dict -}}
-{{- $backendApiServiceEnabled := $mcpEnabled -}}
-{{- if hasKey $backendApiService "enabled" -}}
-{{- $backendApiServiceEnabled = and $mcpEnabled $backendApiService.enabled -}}
+{{- $backendInternalService := (((.Values.mcp).backendMetadata).service) | default dict -}}
+{{- $backendInternalServiceEnabled := $mcpEnabled -}}
+{{- if hasKey $backendInternalService "enabled" -}}
+{{- $backendInternalServiceEnabled = and $mcpEnabled $backendInternalService.enabled -}}
 {{- end -}}
 apiVersion: v1
 kind: Service
@@ -52,18 +52,18 @@ spec:
 {{- if .Values.service.loadBalancerIP }}
   loadBalancerIP: {{ .Values.service.loadBalancerIP }}
 {{- end }}
-{{- if $backendApiServiceEnabled }}
+{{- if $backendInternalServiceEnabled }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     {{- include "retool.labels" . | nindent 4 }}
-  {{- range $key, $value := $backendApiService.labels }}
+  {{- range $key, $value := $backendInternalService.labels }}
     {{ $key }}: {{ $value | quote }}
   {{- end }}
-  name: {{ template "retool.backendApi.name" . }}
-  {{- with $backendApiService.annotations }}
+  name: {{ template "retool.backendInternal.name" . }}
+  {{- with $backendInternalService.annotations }}
   annotations:
     {{- range $key, $value := . }}
       {{ $key }}: {{ $value | quote }}
@@ -72,9 +72,9 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - name: {{ $backendApiService.portName | default "http-api" }}
-      port: {{ $backendApiService.externalPort | default 3001 }}
-      targetPort: {{ $backendApiService.internalPort | default 3001 }}
+    - name: {{ $backendInternalService.portName | default "http-api" }}
+      port: {{ $backendInternalService.externalPort | default 3001 }}
+      targetPort: {{ $backendInternalService.internalPort | default 3001 }}
       protocol: TCP
   selector:
 {{- include "retool.selectorLabels" . | nindent 4 }}

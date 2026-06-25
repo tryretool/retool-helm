@@ -6,8 +6,7 @@
   {{- if and $mcpServiceExternalUrl (not (or (hasPrefix "http://" $mcpServiceExternalUrl) (hasPrefix "https://" $mcpServiceExternalUrl))) }}
     {{- $mcpServiceExternalUrl = printf "https://%s" $mcpServiceExternalUrl }}
   {{- end }}
-  {{- $mcpOAuthMainDomain := ($mcpConfig.oauthMainDomain | default "") }}
-  {{- $mcpOAuthMainDomain = trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $mcpOAuthMainDomain))) }}
+  {{- $mcpOAuthMainDomain := include "retool.mcp.oauthMainDomain" . }}
   {{- $hasOAuthMainDomainEnv := false }}
   {{- range .Values.mcp.environmentVariables }}
     {{- if eq .name "OAUTH_MAIN_DOMAIN" }}
@@ -38,7 +37,7 @@
     {{- end }}
   {{- end }}
   {{- if not (or $mcpOAuthMainDomain $hasOAuthMainDomainEnv) }}
-    {{- fail "Please set .Values.mcp.config.oauthMainDomain or an OAUTH_MAIN_DOMAIN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled)" }}
+    {{- fail "Please set .Values.mcp.config.oauthMainDomain, .Values.env.BASE_DOMAIN, or an OAUTH_MAIN_DOMAIN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled)" }}
   {{- end }}
   {{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv $chartOwnedConfigSecret) }}
     {{- fail "Please set .Values.mcp.config.oauthIntrospectionAuthTokenSecretName, .Values.mcp.config.oauthIntrospectionAuthToken, or an OAUTH_INTROSPECTION_AUTH_TOKEN entry in .Values.mcp.environmentVariables when the MCP server is enabled and chart-owned config secrets are disabled" }}
