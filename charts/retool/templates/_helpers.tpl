@@ -55,8 +55,8 @@ at template time.
 {{- end }}
 
 {{/*
-Render an MCP-related Ingress path. By default paths route to the MCP service;
-target: backendInternal routes to the main backend API Service instead.
+Render an MCP-related Ingress path. By default paths route to the MCP service.
+target: backendInternal routes to the backend API Service.
 */}}
 {{- define "retool.ingress.mcpPath" -}}
 {{- $root := .root -}}
@@ -91,8 +91,8 @@ target: backendInternal routes to the main backend API Service instead.
 {{- end }}
 
 {{/*
-Render an MCP-related HTTPRoute rule. By default rules route to the MCP service;
-target: backendInternal routes to the main backend API Service instead.
+Render an MCP-related HTTPRoute rule. By default rules route to the MCP service.
+target: backendInternal routes to the backend API Service.
 */}}
 {{- define "retool.httpRoute.mcpRule" -}}
 {{- $root := .root -}}
