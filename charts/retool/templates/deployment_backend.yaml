@@ -287,6 +287,49 @@ spec:
           {{- with .Values.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
+          {{- if .Values.mcp.enabled }}
+          {{- /* The backend serves /api/oauth2/introspect and rejects the call unless
+                 OAUTH_INTROSPECTION_AUTH_TOKEN matches what MCP sends. Pull it from the
+                 same source the MCP deployment uses so they stay in sync. Skip if the
+                 operator already set the token on the backend. */}}
+          {{- $mcpConfig := .Values.mcp.config | default dict }}
+          {{- $chartOwnedConfigSecret := eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1" }}
+          {{- $mcpEnvHasIntrospectionToken := false }}
+          {{- range .Values.mcp.environmentVariables }}
+          {{- if eq .name "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
+          {{- $mcpEnvHasIntrospectionToken = true }}
+          {{- end }}
+          {{- end }}
+          {{- $backendHasIntrospectionToken := hasKey (.Values.env | default dict) "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
+          {{- range .Values.environmentSecrets }}
+          {{- if eq .name "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
+          {{- $backendHasIntrospectionToken = true }}
+          {{- end }}
+          {{- end }}
+          {{- range .Values.environmentVariables }}
+          {{- if eq .name "OAUTH_INTROSPECTION_AUTH_TOKEN" }}
+          {{- $backendHasIntrospectionToken = true }}
+          {{- end }}
+          {{- end }}
+          {{- if not $backendHasIntrospectionToken }}
+          {{- if and $mcpConfig.oauthIntrospectionAuthTokenSecretName (not $mcpEnvHasIntrospectionToken) }}
+          - name: OAUTH_INTROSPECTION_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
+                key: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretKey | default "oauthIntrospectionAuthToken" }}
+          {{- else if and $mcpConfig.oauthIntrospectionAuthToken (not $mcpEnvHasIntrospectionToken) }}
+          - name: OAUTH_INTROSPECTION_AUTH_TOKEN
+            value: {{ $mcpConfig.oauthIntrospectionAuthToken | quote }}
+          {{- else if and $chartOwnedConfigSecret (not $mcpEnvHasIntrospectionToken) }}
+          - name: OAUTH_INTROSPECTION_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "retool.fullname" . }}
+                key: oauthIntrospectionAuthToken
+          {{- end }}
+          {{- end }}
+          {{- end }}
         {{- if .Values.externalSecrets.enabled }}
         envFrom:
         - secretRef:
