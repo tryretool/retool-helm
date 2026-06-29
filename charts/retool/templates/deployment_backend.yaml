@@ -312,13 +312,13 @@ spec:
           {{- end }}
           {{- end }}
           {{- if not $backendHasIntrospectionToken }}
-          {{- if $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
+          {{- if and $mcpConfig.oauthIntrospectionAuthTokenSecretName (not $mcpEnvHasIntrospectionToken) }}
           - name: OAUTH_INTROSPECTION_AUTH_TOKEN
             valueFrom:
               secretKeyRef:
                 name: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretName }}
                 key: {{ $mcpConfig.oauthIntrospectionAuthTokenSecretKey | default "oauthIntrospectionAuthToken" }}
-          {{- else if $mcpConfig.oauthIntrospectionAuthToken }}
+          {{- else if and $mcpConfig.oauthIntrospectionAuthToken (not $mcpEnvHasIntrospectionToken) }}
           - name: OAUTH_INTROSPECTION_AUTH_TOKEN
             value: {{ $mcpConfig.oauthIntrospectionAuthToken | quote }}
           {{- else if and $chartOwnedConfigSecret (not $mcpEnvHasIntrospectionToken) }}
