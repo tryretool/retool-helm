@@ -634,7 +634,12 @@ mcp:
   #   # Secret-backed token used by MCP to call /api/oauth2/introspect. When
   #   # unset, the chart auto-generates one in the release Secret on first deploy
   #   # if chart-owned config secrets are enabled. Set this when using an
-  #   # externally managed Secret instead.
+  #   # externally managed Secret instead. The chart injects the same token into
+  #   # the main Retool backend (which serves /api/oauth2/introspect), so no
+  #   # separate backend env configuration is needed. The exception is supplying
+  #   # the token only via mcp.environmentVariables: that targets the MCP pod
+  #   # alone, so you must also set OAUTH_INTROSPECTION_AUTH_TOKEN in the global
+  #   # env: block for the backend.
   #   oauthIntrospectionAuthTokenSecretName:
   #   oauthIntrospectionAuthTokenSecretKey: oauthIntrospectionAuthToken
   #
