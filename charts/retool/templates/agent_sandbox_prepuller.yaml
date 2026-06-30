@@ -37,6 +37,10 @@ spec:
 {{- end }}
       tolerations:
 {{ toYaml $tolerations | indent 8 }}
+{{- if $as.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
       terminationGracePeriodSeconds: 5
       initContainers:
         - name: pull-image

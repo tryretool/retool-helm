@@ -938,6 +938,9 @@ rr:
       # pre-loaded (containerd 2.0 can't resolve digest references for side-loaded images).
       digest: ''
 
+    # DaemonSets set hostNetwork: true by default
+    hostNetwork: true
+
     # Annotations for agent sandbox pods
     annotations: {}
 
