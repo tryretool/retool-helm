@@ -260,6 +260,36 @@ serviceAccount:
   labels: {}
   automountToken: false
 
+# NetworkPolicy applied to the main Retool backend pods. Enforced only by CNIs
+# that implement egress NetworkPolicy (Cilium, Calico, AWS VPC CNI network-policy
+# agent); a no-op on CNIs that don't.
+networkPolicy:
+  # Block egress to the cloud instance-metadata endpoint (169.254.169.254 -- AWS
+  # IMDS, GCP metadata.google.internal, Azure IMDS) from the backend pods. They
+  # execute user-defined resource requests and are the primary SSRF surface, so
+  # this closes the SSRF -> metadata credential-theft vector. Allows all other
+  # egress (only that one IP is denied).
+  #
+  # Tri-state:
+  #   null (default) -> auto: ON when blob storage is keyless (no static
+  #                     credential set), OFF otherwise. Keyless auth (S3 IRSA /
+  #                     GCS Workload Identity / Azure managed identity) resolves
+  #                     credentials via a projected token file + the provider
+  #                     STS/IAM endpoint, NOT the metadata service, so blocking
+  #                     metadata is safe and is the recommended pairing.
+  #   true / false   -> force on/off.
+  #
+  # Do NOT enable if the backend relies on the metadata endpoint for credentials
+  # (e.g. an IAM-role data source connection using the instance profile).
+  # Defense in depth -- pair with IMDS hop-limit=1 at the node level and the
+  # application-layer SSRF filter.
+  blockCloudMetadataEgress: null
+  # Additional CIDRs to deny in backend egress (beyond the metadata IP). e.g.
+  # private ranges you don't want reachable from user-defined requests.
+  blockedRanges: []
+  # IPv6 CIDRs to deny. Empty leaves IPv6 egress fully allowed (metadata is IPv4).
+  blockedRanges6: []
+
 livenessProbe:
   enabled: true
   path: /api/checkHealth
@@ -1232,11 +1262,23 @@ rr:
   # This block can be omitted entirely if RR_BLOB_STORAGE_PROVIDER and the
   # RR_DEFAULT_*_* env vars are provided directly via environmentVariables /
   # environmentSecrets above — the chart detects that and skips this guard.
+  #
+  # Keyless auth: each provider can authenticate as the pod's own identity
+  # instead of a static credential. Leave the credential field unset and set
+  # serviceAccount.annotations so the pod carries the right identity:
+  #   - s3:    omit accessKeyId/secret -> AWS default chain (EKS IRSA via the
+  #            eks.amazonaws.com/role-arn annotation, instance profile, ECS role)
+  #   - gcs:   omit credentials -> Application Default Credentials (GKE Workload
+  #            Identity via the iam.gke.io/gcp-service-account annotation)
+  #   - azure: set accountUrl instead of a connection string -> managed identity
+  #            (azure.workload.identity/client-id annotation + the
+  #            azure.workload.identity/use: "true" pod label)
   blobStorage: {}
     # s3:
     #   bucket: my-rr-bucket
     #   region: us-east-1
     #   endpoint: ""                              # optional, for S3-compatible (MinIO, R2, etc.)
+    #   # Omit accessKeyId + secret to use the AWS default credential chain (IAM role / IRSA).
     #   accessKeyId: AKIA...
     #   # Provide secretAccessKey OR the secretName/secretKey pair below.
     #   secretAccessKey: ""
@@ -1245,17 +1287,19 @@ rr:
     #
     # gcs:
     #   bucket: my-rr-bucket
-    #   # Provide credentials (JSON string) OR the secretName/secretKey pair below.
+    #   # Omit credentials to use Application Default Credentials (Workload Identity).
     #   credentials: ""
     #   credentialsSecretName: ""
     #   credentialsSecretKey: credentials.json
     #
     # azure:
     #   container: my-rr-container
-    #   # Provide connectionString OR the secretName/secretKey pair below.
+    #   # Provide connectionString OR the secretName/secretKey pair below, OR set
+    #   # accountUrl on its own to authenticate via managed identity.
     #   connectionString: ""
     #   connectionStringSecretName: ""
     #   connectionStringSecretKey: connection-string
+    #   accountUrl: ""                            # e.g. https://<account>.blob.core.windows.net
 
 agents:
   # Enable AI Agents
