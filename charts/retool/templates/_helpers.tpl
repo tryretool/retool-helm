@@ -988,12 +988,51 @@ directly via environmentVariables / environmentSecrets).
 {{- else if $bs.azure.connectionString }}
 - name: RR_DEFAULT_AZURE_CONNECTION_STRING
   value: {{ $bs.azure.connectionString | quote }}
+{{- else if $bs.azure.accountUrl }}
+- name: RR_DEFAULT_AZURE_ACCOUNT_URL
+  value: {{ $bs.azure.accountUrl | quote }}
 {{- end }}
 {{- end }}
 {{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
   value: {{ .Values.rr.gitServer.repackThreshold | quote }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Returns "1" when blob storage is configured to authenticate keyless -- i.e. a
+provider block is set but its static credential is omitted, so the backend
+resolves credentials from the pod's own identity (S3 IRSA / instance profile,
+GCS Workload Identity, Azure managed identity) rather than a baked-in key.
+Empty otherwise (no provider, or a static credential is present).
+*/}}
+{{- define "retool.blobStorage.keyless" -}}
+{{- $bs := .Values.rr.blobStorage | default dict -}}
+{{- if $bs.s3 -}}
+{{- if not (or $bs.s3.accessKeyId $bs.s3.secretAccessKey $bs.s3.secretAccessKeySecretName) -}}1{{- end -}}
+{{- else if $bs.gcs -}}
+{{- if not (or $bs.gcs.credentials $bs.gcs.credentialsSecretName) -}}1{{- end -}}
+{{- else if $bs.azure -}}
+{{- if and $bs.azure.accountUrl (not (or $bs.azure.connectionString $bs.azure.connectionStringSecretName)) -}}1{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns "1" when the backend metadata-egress NetworkPolicy should be rendered.
+networkPolicy.blockCloudMetadataEgress is tri-state: an explicit bool forces
+on/off; null (default) auto-enables only when blob storage is keyless -- in that
+mode credentials come from a projected token file + the provider STS/IAM
+endpoint, never the metadata service, so blocking metadata is safe. Left off for
+non-keyless setups, which may legitimately read credentials from the metadata
+endpoint (e.g. an IAM-role data source using the instance profile).
+*/}}
+{{- define "retool.networkPolicy.blockMetadata.enabled" -}}
+{{- $v := (.Values.networkPolicy | default dict).blockCloudMetadataEgress -}}
+{{- if kindIs "bool" $v -}}
+{{- if $v -}}1{{- end -}}
+{{- else -}}
+{{- include "retool.blobStorage.keyless" . -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
