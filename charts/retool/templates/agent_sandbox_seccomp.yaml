@@ -43,6 +43,10 @@ spec:
 {{- end }}
       tolerations:
 {{ toYaml $tolerations | indent 8 }}
+{{- if $as.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
       initContainers:
         - name: install
           image: "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}"

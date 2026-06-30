@@ -48,6 +48,10 @@ spec:
 {{- end }}
       tolerations:
 {{ toYaml $tolerations | indent 8 }}
+{{- if $as.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
       containers:
         - name: smarter-device-manager
           image: "{{ $as.devicePlugin.image.repository }}:{{ $as.devicePlugin.image.tag }}"
