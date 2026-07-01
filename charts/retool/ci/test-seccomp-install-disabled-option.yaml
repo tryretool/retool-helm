@@ -1,0 +1,18 @@
+# Exercises codeExecutor.installSeccompProfile / rr.jsExecutor.installSeccompProfile
+# set to false: the chart must render the seccompProfile.localhostProfile reference
+# but omit the install-seccomp initContainer, its ConfigMap, and the hostPath volume.
+# Overlaid on top of test-install-values.yaml.
+
+# Enable the code-executor (image.tag "latest" in the base does not match the
+# workflows semver gate, so enable it explicitly).
+workflows:
+  enabled: true
+
+codeExecutor:
+  useSeccompProfile: true
+  installSeccompProfile: false
+
+rr:
+  jsExecutor:
+    enabled: true
+    installSeccompProfile: false

@@ -1,4 +1,5 @@
 {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
+{{- if .Values.rr.jsExecutor.installSeccompProfile }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,4 +9,5 @@ metadata:
 data:
   nsjail-seccomp.json: |
     {{- .Files.Get "files/nsjail-seccomp.json" | nindent 4 }}
+{{- end }}
 {{- end }}

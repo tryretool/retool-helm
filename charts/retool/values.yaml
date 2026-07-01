@@ -834,6 +834,14 @@ codeExecutor:
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
+  # Only has an effect when useSeccompProfile is true. Set to false if a cluster
+  # admin installs the seccomp profile named by seccompLocalhostProfile out of band
+  # (baked into the node image, a separate DaemonSet, etc.). When false the chart
+  # skips the install-seccomp initContainer, its ConfigMap, and the hostPath mount,
+  # but the container still references the profile by that path -- which must already
+  # exist on every node, or the pod will fail to start.
+  installSeccompProfile: true
+
 # === RR (Retool agent runtime) =============================================
 # Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
 # components nested below — jsExecutor, agent, and agentSandbox — with a
@@ -860,6 +868,14 @@ rr:
     replicaCount: 1
 
     seccompLocalhostProfile: profiles/nsjail-seccomp.json
+
+    # Set to false if a cluster admin installs the seccomp profile named by
+    # seccompLocalhostProfile out of band (baked into the node image, a separate
+    # DaemonSet, etc.). When false the chart skips the install-seccomp initContainer,
+    # its ConfigMap, and the hostPath mount, but the container still references the
+    # profile by that path -- which must already exist on every node, or the pod will
+    # fail to start.
+    installSeccompProfile: true
 
     # JS-executor-specific environment; not inherited from the top-level
     # .Values.env / .Values.environmentSecrets / .Values.environmentVariables.
