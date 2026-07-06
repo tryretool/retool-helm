@@ -43,4 +43,20 @@ Ensure exactly one blob-storage provider is supplied another way (e.g. envFrom) 
 otherwise git operations will FAIL at runtime. git_server stores all objects/packs
 in blob storage.
 ***************************************************************************
-{{- end }} 
+{{- end }}
+{{- if and .Release.IsInstall (eq (include "retool.networkPolicy.blockMetadata.enabled" .) "1") }}
+
+***************************************************************************
+NOTE: blob storage is keyless, so the metadata-egress NetworkPolicy is ENABLED
+(networkPolicy.blockCloudMetadataEgress). Backend pods can no longer reach the
+cloud instance-metadata endpoint (169.254.169.254).
+
+No action needed for EKS IRSA / GKE Workload Identity / Azure Workload Identity --
+those obtain credentials from a projected token, not the metadata service.
+
+But if blob storage authenticates via an EC2 instance profile, a GCE default
+service account, or an Azure IMDS-based managed identity, those read credentials
+FROM 169.254.169.254 and will FAIL. In that case set:
+  networkPolicy.blockCloudMetadataEgress: false
+***************************************************************************
+{{- end }}

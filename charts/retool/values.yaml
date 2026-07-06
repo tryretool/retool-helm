@@ -272,15 +272,19 @@ networkPolicy:
   #
   # Tri-state:
   #   null (default) -> auto: ON when blob storage is keyless (no static
-  #                     credential set), OFF otherwise. Keyless auth (S3 IRSA /
-  #                     GCS Workload Identity / Azure managed identity) resolves
-  #                     credentials via a projected token file + the provider
-  #                     STS/IAM endpoint, NOT the metadata service, so blocking
-  #                     metadata is safe and is the recommended pairing.
+  #                     credential set), OFF otherwise.
   #   true / false   -> force on/off.
   #
-  # Do NOT enable if the backend relies on the metadata endpoint for credentials
-  # (e.g. an IAM-role data source connection using the instance profile).
+  # Auto-ON is safe for TOKEN-FEDERATED identities (EKS IRSA, GKE Workload
+  # Identity, Azure Workload Identity): they resolve credentials via a projected
+  # token file + the provider STS/IAM endpoint, not the metadata service.
+  #
+  # But "no static credential" also covers METADATA-BASED identities that the
+  # block breaks. Set this to false if blob storage authenticates via an EC2
+  # instance profile, a GCE default service account, or an Azure IMDS-based
+  # managed identity -- those read credentials from 169.254.169.254 and are
+  # misdetected as keyless. Also set false if a data source connection relies on
+  # the metadata endpoint (e.g. an IAM-role connection using the instance profile).
   # Defense in depth -- pair with IMDS hop-limit=1 at the node level and the
   # application-layer SSRF filter.
   blockCloudMetadataEgress: null
