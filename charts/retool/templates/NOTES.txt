@@ -47,7 +47,7 @@ in blob storage.
 {{- if and .Release.IsInstall (eq (include "retool.networkPolicy.blockMetadata.enabled" .) "1") }}
 
 ***************************************************************************
-NOTE: blob storage is keyless, so the metadata-egress NetworkPolicy is ENABLED
+NOTE: metadata-egress blocking is enabled for backend pods
 (networkPolicy.blockCloudMetadataEgress). Backend pods can no longer reach the
 cloud instance-metadata endpoint (169.254.169.254).
 
