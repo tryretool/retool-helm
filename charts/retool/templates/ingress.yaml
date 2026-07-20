@@ -49,7 +49,6 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
-          # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
           {{- if ( and ((.Values.mcp).enabled) $mcpIngress.enabled ) }}
           {{- range $mcpIngress.paths }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
@@ -91,7 +90,6 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
-          # MCP-related paths must be added before the main path to avoid less specific paths being matched first.
           {{- if ( and (($.Values.mcp).enabled) $mcpIngress.enabled ) }}
           {{- range $mcpIngress.paths }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}

@@ -34,11 +34,8 @@ limit used by Service names and label values.
 {{- end }}
 
 {{/*
-Resolve the public host that serves MCP OAuth metadata routes. An explicit
-mcp.config.oauthMainDomain wins; when unset, fall back to the common backend
-BASE_DOMAIN value from .Values.env. Secret-backed or valueFrom-style BASE_DOMAIN
-settings are intentionally not inferred because their values are not available
-at template time.
+Resolve the public OAuth host. mcp.config.oauthMainDomain takes precedence over
+env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 */}}
 {{- define "retool.mcp.oauthMainDomain" -}}
 {{- $mcpConfig := (.Values.mcp.config | default dict) -}}
@@ -876,7 +873,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- end -}}
 
 {{/*
-Set MCP server service name
+Return the MCP server Service name.
 */}}
 {{- define "retool.mcp.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "mcp") }}
