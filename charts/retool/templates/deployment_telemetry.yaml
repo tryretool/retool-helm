@@ -75,6 +75,9 @@ spec:
           - name: RTEL_SEND_TO_RETOOL
             value: {{ .Values.telemetry.sendToRetool.enabled | quote }}
           {{- if .Values.telemetry.sendToRetool.enabled }}
+          {{- if not .Values.telemetry.sendToRetool.inputs }}
+          {{ fail "telemetry.sendToRetool.enabled is true, so telemetry.sendToRetool.inputs must contain at least one element" }}
+          {{- end }}
           - name: RTEL_SEND_TO_RETOOL_INPUT_ALLOWLIST
             value: {{ join "," .Values.telemetry.sendToRetool.inputs | quote }}
           {{- end }}
