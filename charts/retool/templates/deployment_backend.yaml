@@ -288,10 +288,7 @@ spec:
 {{ toYaml . | indent 10 }}
           {{- end }}
           {{- if .Values.mcp.enabled }}
-          {{- /* The backend serves /api/oauth2/introspect and rejects the call unless
-                 OAUTH_INTROSPECTION_AUTH_TOKEN matches what MCP sends. Pull it from the
-                 same source the MCP deployment uses so they stay in sync. Skip if the
-                 operator already set the token on the backend. */}}
+          {{- /* Share MCP's introspection token unless either workload overrides it. */}}
           {{- $mcpConfig := .Values.mcp.config | default dict }}
           {{- $chartOwnedConfigSecret := eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1" }}
           {{- $mcpEnvHasIntrospectionToken := false }}

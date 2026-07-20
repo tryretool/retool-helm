@@ -149,10 +149,7 @@ spec:
           - name: RETOOL_BACKEND_URL
             value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s:%v" (include "retool.fullname" .) .Values.service.externalPort) | quote }}
           {{- include "retool.agentSandbox.proxyEnvVars" . | nindent 10 }}
-          {{- /*
-            Prefer an explicit mcp.config.retoolGitServerUrl; otherwise, when the
-            git server is split into its own deployment, auto-point MCP at it.
-          */}}
+          {{- /* Route git API calls directly to the split Service unless overridden. */}}
           {{- $retoolGitServerUrl := $mcpConfig.retoolGitServerUrl }}
           {{- if and (not $retoolGitServerUrl) (include "retool.gitServer.separateEnabled" .) }}
           {{- $retoolGitServerUrl = include "retool.gitServer.url" . }}
