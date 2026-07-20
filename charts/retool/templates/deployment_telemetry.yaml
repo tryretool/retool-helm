@@ -74,6 +74,10 @@ spec:
             value: {{ include "retool.telemetry.logSourcePodLabels" . | quote }}
           - name: RTEL_SEND_TO_RETOOL
             value: {{ .Values.telemetry.sendToRetool.enabled | quote }}
+          {{- if .Values.telemetry.sendToRetool.enabled }}
+          - name: RTEL_SEND_TO_RETOOL_INPUT_ALLOWLIST
+            value: {{ join "," .Values.telemetry.sendToRetool.inputs | quote }}
+          {{- end }}
           {{- if .Values.telemetry.extraEnv }}
           {{- .Values.telemetry.extraEnv | toYaml | nindent 10 }}
           {{- end }}
