@@ -1525,6 +1525,15 @@ telemetry:
     # Should not be changed except for chart testing.
     address: "https://telemetry.retool.com:443"
 
+    # Only relevant when `telemetry.sendToRetool.enabled = true`.
+    # Specify which inputs to send to Retool. Must not be empty.
+    # Available inputs are:
+    #   container_logs  - logs from all pods
+    #   metrics         - app and infra metrics
+    #   otlp_traces     - app request traces
+    inputs:
+      - metrics
+
   image:
     repository: "tryretool/telemetry"
 
