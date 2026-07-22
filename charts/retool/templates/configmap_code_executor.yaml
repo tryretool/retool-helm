@@ -1,5 +1,5 @@
 {{- if include "retool.workflows.enabled" . }}
-{{- if and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile }}
+{{- if and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile .Values.codeExecutor.installSeccompProfile }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

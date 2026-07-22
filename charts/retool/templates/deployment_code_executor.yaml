@@ -1,6 +1,8 @@
 {{- if include "retool.workflows.enabled" . }}
 {{- /* Use the less-privileged seccomp sandbox (see codeExecutor.useSeccompProfile in values.yaml) only when it is enabled and no explicit codeExecutor.securityContext is set. */ -}}
 {{- $useSecComp := and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile -}}
+{{- /* Install the seccomp profile via initContainer only when the sandbox is enabled and the admin hasn't opted to manage the profile out of band. */ -}}
+{{- $installSeccomp := and $useSecComp .Values.codeExecutor.installSeccompProfile -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -53,9 +55,9 @@ spec:
 {{- if $useSecComp }}
       hostUsers: false
 {{- end }}
-{{- if or $useSecComp .Values.initContainers }}
+{{- if or $installSeccomp .Values.initContainers }}
       initContainers:
-{{- if $useSecComp }}
+{{- if $installSeccomp }}
         - name: install-seccomp
           image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
           securityContext:
@@ -185,7 +187,7 @@ spec:
 {{ tpl . $ | indent 6 }}
 {{- end }}
       volumes:
-{{- if $useSecComp }}
+{{- if $installSeccomp }}
         - name: seccomp-profile
           configMap:
             name: {{ template "retool.fullname" . }}-code-executor-seccomp
