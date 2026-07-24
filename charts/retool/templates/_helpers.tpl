@@ -52,6 +52,31 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- end }}
 
 {{/*
+MCP Service env var for the main Retool backend. Explicit backend env settings
+take precedence over the chart-generated in-cluster Service URL.
+*/}}
+{{- define "retool.mcp.backendEnvVars" -}}
+{{- if .Values.mcp.enabled }}
+{{- $backendHasMcpServiceIngressDomain := hasKey (.Values.env | default dict) "MCP_SERVICE_INGRESS_DOMAIN" -}}
+{{- range .Values.environmentSecrets }}
+{{- if eq .name "MCP_SERVICE_INGRESS_DOMAIN" }}
+{{- $backendHasMcpServiceIngressDomain = true }}
+{{- end }}
+{{- end }}
+{{- range .Values.environmentVariables }}
+{{- if eq .name "MCP_SERVICE_INGRESS_DOMAIN" }}
+{{- $backendHasMcpServiceIngressDomain = true }}
+{{- end }}
+{{- end }}
+{{- if not $backendHasMcpServiceIngressDomain }}
+{{- $mcpService := .Values.mcp.service | default dict }}
+- name: MCP_SERVICE_INGRESS_DOMAIN
+  value: {{ printf "http://%s:%v" (include "retool.mcp.name" .) ($mcpService.externalPort | default 4010) | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Render an MCP-related Ingress path. By default paths route to the MCP service.
 target: backendInternal routes to the backend API Service.
 */}}
