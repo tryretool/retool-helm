@@ -734,14 +734,14 @@ mcp:
   # Retool 4.0.7 and later support a simplified ingress setup: route all public
   # paths, including /mcp and /.well-known, to the main Retool Service on port
   # 3000. The main backend must also be able to relay /mcp to the in-cluster MCP
-  # Service. Set its internal URL through the top-level env block:
+  # Service. When mcp.enabled is true, the chart configures the backend with
+  # MCP_SERVICE_INGRESS_DOMAIN=http://<fullname>-mcp:<service.externalPort>.
+  # You can override it through the top-level env, environmentSecrets, or
+  # environmentVariables settings.
   #
-  #   env:
-  #     MCP_SERVICE_INGRESS_DOMAIN: http://<fullname>-mcp:4010
-  #
-  # With that backend setting, omit or disable the MCP-specific ingress or
-  # HTTPRoute rules below and keep only the normal "/" route to
-  # <fullname>:3000. Replace <fullname> with this chart release's full name.
+  # With that setting, omit or disable the MCP-specific ingress or HTTPRoute
+  # rules below and keep only the normal "/" route to <fullname>:3000. Replace
+  # <fullname> with this chart release's full name.
   #
   # Retool versions before 4.0.7 require the explicit MCP routes below,
   # rendered before the main Retool route. External ingress must preserve this
