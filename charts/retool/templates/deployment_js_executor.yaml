@@ -46,7 +46,9 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
       {{- end }}
+{{- if or .Values.rr.jsExecutor.installSeccompProfile .Values.initContainers }}
       initContainers:
+{{- if .Values.rr.jsExecutor.installSeccompProfile }}
         - name: install-seccomp
           image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
           securityContext:
@@ -74,7 +76,7 @@ spec:
               mountPath: /seccomp-profile
             - name: host-seccomp
               mountPath: /host-seccomp
-{{- if .Values.initContainers }}
+{{- end }}
 {{- range $key, $value := .Values.initContainers }}
         - name: "{{ $key }}"
 {{ toYaml $value | indent 10 }}
@@ -158,6 +160,7 @@ spec:
 {{ tpl . $ | indent 6 }}
 {{- end }}
       volumes:
+{{- if .Values.rr.jsExecutor.installSeccompProfile }}
         - name: seccomp-profile
           configMap:
             name: {{ template "retool.fullname" . }}-js-executor-seccomp
@@ -165,6 +168,7 @@ spec:
           hostPath:
             path: /var/lib/kubelet/seccomp
             type: DirectoryOrCreate
+{{- end }}
 {{- if .Values.rr.jsExecutor.volumes }}
 {{ toYaml .Values.rr.jsExecutor.volumes | indent 8 }}
 {{- end }}
