@@ -1,0 +1,89 @@
+# Full install values for ct install: exercises the nsjail AppArmor profile
+# installer DaemonSet and the localhost/retool-executor annotation on the
+# code-executor pod. The DaemonSet loads AppArmor profiles via nsenter into the
+# host kernel; the code-executor then starts under the retool-executor profile
+# instead of unconfined.
+#
+# Identical to test-install-values.yaml except for the codeExecutor block.
+
+config:
+  licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
+  useInsecureCookies: false
+  encryptionKey: '0000000000'
+  jwtSecret: '0000000000'
+  postgresql: {}
+
+image:
+  repository: "tryretool/backend"
+  tag: "latest"
+  pullPolicy: "IfNotPresent"
+
+env:
+  BASE_DOMAIN: "https://helm-ci.retool.dev"
+  IGNORE_CODE_EXECUTOR_STARTUP_CHECK: "true"
+
+codeExecutor:
+  useSeccompProfile: true
+  appArmorProfileInstaller: true
+
+ingress:
+  enabled: true
+  labels: {}
+  annotations: {}
+  kubernetes.io/ingress.class: nginx
+  hosts:
+  - host: retool.example.com
+    paths:
+      - path: /
+  tls: []
+  pathType: ImplementationSpecific
+
+postgresql:
+  enabled: true
+  ssl_enabled: false
+  auth:
+    database: hammerhead_production
+    username: postgres
+    password: retool
+  service:
+    port: 5432
+  image:
+    repository: "postgres"
+    tag: "13"
+  postgresqlDataDir: "/data/pgdata"
+  primary:
+    persistence:
+      enabled: true
+      mountPath: "/data/"
+
+serviceAccount:
+  create: true
+
+livenessProbe:
+  enabled: true
+  path: /api/checkHealth
+  initialDelaySeconds: 30
+  timeoutSeconds: 30
+  periodSeconds: 1
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  path: /api/checkHealth
+  initialDelaySeconds: 30
+  timeoutSeconds: 30
+  periodSeconds: 5
+  successThreshold: 5
+
+resources:
+  limits:
+    cpu: 4096m
+    memory: 8192Mi
+  requests:
+    cpu: 256m
+    memory: 1024Mi
+
+replicaCount: 1
+revisionHistoryLimit: 3
+tolerations: []
+nodeSelector: {}

@@ -165,7 +165,11 @@ data:
                   "readOnlyRootFilesystem": true,
                   "capabilities": {"drop": ["ALL"]},
                   "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"},
+                  {{- if $as.appArmorProfileInstaller }}
+                  "appArmorProfile": {"type": "Localhost", "localhostProfile": "retool-agent-sandbox"}
+                  {{- else }}
                   "appArmorProfile": {"type": "Unconfined"}
+                  {{- end }}
                 },
                 "env": [
                   {"name": "NODE_ENV", "value": "production"}

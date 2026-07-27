@@ -27,6 +27,10 @@ spec:
       retoolService: {{ include "retool.agentSandbox.name" . }}-node-installer
   template:
     metadata:
+{{- if $as.appArmorProfileInstaller }}
+      annotations:
+        checksum/apparmor-profiles: {{ include (print $.Template.BasePath "/apparmor_agent_sandbox_configmap.yaml") . | sha256sum }}
+{{- end }}
       labels:
         retoolService: {{ include "retool.agentSandbox.name" . }}-node-installer
         app.kubernetes.io/name: {{ include "retool.agentSandbox.name" . }}-node-installer
@@ -47,8 +51,11 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 {{- end }}
+{{- if $as.appArmorProfileInstaller }}
+      hostPID: true
+{{- end }}
       initContainers:
-        - name: install
+        - name: install-seccomp
           image: "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}"
           securityContext:
             allowPrivilegeEscalation: false
@@ -68,6 +75,30 @@ spec:
               mountPath: /seccomp-profile
             - name: host-seccomp
               mountPath: /host-seccomp
+{{- if $as.appArmorProfileInstaller }}
+        - name: install-apparmor
+          image: "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}"
+          securityContext:
+            privileged: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              cp /apparmor-profiles/retool-agent-sandbox /host-apparmor/retool-agent-sandbox
+              if nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
+                nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-agent-sandbox
+                echo "AppArmor profile retool-agent-sandbox loaded successfully"
+              else
+                echo "apparmor_parser not found on host — AppArmor not available, skipping"
+              fi
+          volumeMounts:
+            - name: apparmor-profiles
+              mountPath: /apparmor-profiles
+              readOnly: true
+            - name: host-apparmor
+              mountPath: /host-apparmor
+{{- end }}
       containers:
         - name: pause
           image: "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}"
@@ -92,4 +123,13 @@ spec:
           hostPath:
             path: /var/lib/kubelet/seccomp
             type: DirectoryOrCreate
+{{- if $as.appArmorProfileInstaller }}
+        - name: apparmor-profiles
+          configMap:
+            name: {{ include "retool.agentSandbox.name" . }}-apparmor
+        - name: host-apparmor
+          hostPath:
+            path: /etc/apparmor.d
+            type: DirectoryOrCreate
+{{- end }}
 {{- end }}

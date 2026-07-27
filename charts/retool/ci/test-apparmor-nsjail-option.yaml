@@ -1,0 +1,22 @@
+# Exercises the AppArmor profile installer for nsjail (code-executor and
+# js-executor). When codeExecutor.appArmorProfileInstaller is true the chart
+# renders:
+#   - apparmor_nsjail_configmap.yaml  (usr.bin.nsjail + retool-executor profiles)
+#   - apparmor_nsjail_daemonset.yaml  (DaemonSet that loads them on each node)
+#   - container.apparmor.security.beta.kubernetes.io annotations switch from
+#     "unconfined" to "localhost/retool-executor" on code-executor and js-executor
+#
+# Requires codeExecutor.useSeccompProfile: true (the annotation block is
+# gated on it) and workflows.enabled or image.tag: "latest" (the DaemonSet
+# template is gated on retool.workflows.enabled).
+#
+# Overlaid on test-install-values.yaml.
+
+codeExecutor:
+  enabled: true
+  useSeccompProfile: true
+  appArmorProfileInstaller: true
+
+rr:
+  jsExecutor:
+    enabled: true
