@@ -138,14 +138,14 @@ data:
               {
                 "name": "wait-for-apparmor",
                 "image": "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}",
-                "command": ["/bin/sh", "-c", "until [ -f /host-apparmor/.retool-agent-sandbox.loaded ]; do echo 'Waiting for AppArmor profile retool-agent-sandbox to be loaded by DaemonSet...'; sleep 2; done; echo 'AppArmor profile retool-agent-sandbox loaded'"],
+                "command": ["/bin/sh", "-c", "until [ -f /host-run/retool-agent-sandbox.loaded ]; do echo 'Waiting for AppArmor profile retool-agent-sandbox to be loaded by DaemonSet...'; sleep 2; done; echo 'AppArmor profile retool-agent-sandbox loaded'"],
                 "securityContext": {
                   "allowPrivilegeEscalation": false,
                   "readOnlyRootFilesystem": true,
                   "capabilities": {"drop": ["ALL"]}
                 },
                 "volumeMounts": [
-                  {"name": "host-apparmor", "mountPath": "/host-apparmor", "readOnly": true}
+                  {"name": "host-run", "mountPath": "/host-run", "readOnly": true}
                 ],
                 "resources": {
                   "requests": {"cpu": "1m", "memory": "4Mi"},
@@ -240,7 +240,7 @@ data:
             ],
             "volumes": [
               {{- if $as.appArmorProfileInstaller }}
-              {"name": "host-apparmor", "hostPath": {"path": "/etc/apparmor.d", "type": "Directory"}},
+              {"name": "host-run", "hostPath": {"path": "/run/retool/apparmor", "type": "DirectoryOrCreate"}},
               {{- end }}
               {{- if and $as.sandboxNetwork.enabled (not $as.sandboxNetwork.devicePlugin) }}
               {"name": "dev-tun", "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"}},
