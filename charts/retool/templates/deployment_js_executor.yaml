@@ -78,6 +78,35 @@ spec:
               mountPath: /seccomp-profile
             - name: host-seccomp
               mountPath: /host-seccomp
+{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+        - name: wait-for-apparmor
+          image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until [ -f /host-apparmor/retool-executor ]; do
+                echo "Waiting for AppArmor profile retool-executor to be installed by DaemonSet..."
+                sleep 2
+              done
+              echo "AppArmor profile retool-executor found"
+          volumeMounts:
+            - name: host-apparmor
+              mountPath: /host-apparmor
+              readOnly: true
+{{- end }}
 {{- if .Values.initContainers }}
 {{- range $key, $value := .Values.initContainers }}
         - name: "{{ $key }}"
@@ -169,6 +198,12 @@ spec:
           hostPath:
             path: /var/lib/kubelet/seccomp
             type: DirectoryOrCreate
+{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+        - name: host-apparmor
+          hostPath:
+            path: /etc/apparmor.d
+            type: Directory
+{{- end }}
 {{- if .Values.rr.jsExecutor.volumes }}
 {{ toYaml .Values.rr.jsExecutor.volumes | indent 8 }}
 {{- end }}

@@ -86,12 +86,12 @@ spec:
             - |
               set -e
               cp /apparmor-profiles/retool-agent-sandbox /host-apparmor/retool-agent-sandbox
-              if nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
-                nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-agent-sandbox
-                echo "AppArmor profile retool-agent-sandbox loaded successfully"
-              else
-                echo "apparmor_parser not found on host — AppArmor not available, skipping"
+              if ! nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
+                echo "ERROR: apparmor_parser not found on host but AppArmor profile installation was requested" >&2
+                exit 1
               fi
+              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-agent-sandbox
+              echo "AppArmor profile retool-agent-sandbox loaded successfully"
           volumeMounts:
             - name: apparmor-profiles
               mountPath: /apparmor-profiles
