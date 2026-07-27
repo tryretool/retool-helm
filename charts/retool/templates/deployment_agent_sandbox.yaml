@@ -138,7 +138,7 @@ data:
               {
                 "name": "wait-for-apparmor",
                 "image": "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}",
-                "command": ["/bin/sh", "-c", "until [ -f /host-apparmor/retool-agent-sandbox ]; do echo 'Waiting for AppArmor profile retool-agent-sandbox to be installed by DaemonSet...'; sleep 2; done; echo 'AppArmor profile retool-agent-sandbox found'"],
+                "command": ["/bin/sh", "-c", "until [ -f /host-apparmor/.retool-agent-sandbox.loaded ]; do echo 'Waiting for AppArmor profile retool-agent-sandbox to be loaded by DaemonSet...'; sleep 2; done; echo 'AppArmor profile retool-agent-sandbox loaded'"],
                 "securityContext": {
                   "allowPrivilegeEscalation": false,
                   "readOnlyRootFilesystem": true,

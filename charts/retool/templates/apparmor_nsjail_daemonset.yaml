@@ -43,6 +43,7 @@ spec:
             - -c
             - |
               set -e
+              rm -f /host-apparmor/.retool-executor.loaded
               cp /profiles/usr.bin.nsjail /host-apparmor/usr.bin.nsjail
               cp /profiles/retool-executor /host-apparmor/retool-executor
               if ! nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
@@ -51,6 +52,7 @@ spec:
               fi
               nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/usr.bin.nsjail
               nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-executor
+              touch /host-apparmor/.retool-executor.loaded
               echo "AppArmor profiles loaded successfully"
           volumeMounts:
             - name: apparmor-profiles

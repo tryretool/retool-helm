@@ -106,11 +106,11 @@ spec:
             - /bin/sh
             - -c
             - |
-              until [ -f /host-apparmor/retool-executor ]; do
-                echo "Waiting for AppArmor profile retool-executor to be installed by DaemonSet..."
+              until [ -f /host-apparmor/.retool-executor.loaded ]; do
+                echo "Waiting for AppArmor profile retool-executor to be loaded by DaemonSet..."
                 sleep 2
               done
-              echo "AppArmor profile retool-executor found"
+              echo "AppArmor profile retool-executor loaded"
           volumeMounts:
             - name: host-apparmor
               mountPath: /host-apparmor
