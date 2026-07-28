@@ -474,6 +474,7 @@ spec:
 {{ toYaml $as.labels | indent 8 }}
 {{- end }}
     spec:
+      terminationGracePeriodSeconds: 30
       automountServiceAccountToken: false
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
@@ -550,6 +551,10 @@ spec:
             - name: SANDBOX_PROXY_TIMEOUT_MS
               value: {{ $as.proxy.sandboxProxyTimeoutMs | quote }}
             {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           livenessProbe:
             httpGet:
               path: /livez
