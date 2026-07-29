@@ -95,6 +95,7 @@ echo "=== Deploying AppArmor profiles ==="
 
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
+helm repo add bitnami https://charts.bitnami.com/bitnami --force-update 2>/dev/null || true
 helm dependency build "$CHART_DIR" 2>/dev/null || true
 
 # Render only the AppArmor-related manifests (DaemonSets + ConfigMaps).

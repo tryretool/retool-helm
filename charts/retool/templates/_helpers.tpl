@@ -732,7 +732,7 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- end -}}
 
 {{/*
-Render the AGENT_SANDBOX_POSTGRES_URL env entry for the controller/proxy (plus a
+Render the AGENT_EXECUTOR_POSTGRES_URL env entry for the controller/proxy (plus a
 PGPASSWORD entry when assembling from fields). validateSecrets guarantees one of
 these applies, in order: postgres.url -> postgres.host -> postgres.urlSecretName
 -> inherit the backend's config.postgresql connection (the default when nothing
@@ -755,7 +755,7 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 {{- define "retool.agentSandbox.postgresUrlEnv" -}}
 {{- $pg := .Values.rr.agentSandbox.postgres -}}
 {{- if $pg.url }}
-- name: AGENT_SANDBOX_POSTGRES_URL
+- name: AGENT_EXECUTOR_POSTGRES_URL
   value: {{ $pg.url | quote }}
 {{- else if $pg.host }}
 {{- $port := $pg.port | default 5432 -}}
@@ -769,10 +769,10 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 - name: PGPASSWORD
   value: {{ $pg.password | quote }}
 {{- end }}
-- name: AGENT_SANDBOX_POSTGRES_URL
+- name: AGENT_EXECUTOR_POSTGRES_URL
   value: {{ printf "postgres://%s@%s:%v/%s" $pg.user $pg.host $port $pg.database | quote }}
 {{- else if $pg.urlSecretName }}
-- name: AGENT_SANDBOX_POSTGRES_URL
+- name: AGENT_EXECUTOR_POSTGRES_URL
   valueFrom:
     secretKeyRef:
       name: {{ $pg.urlSecretName }}
@@ -817,7 +817,7 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
       {{- end }}
 {{- /* inherit the backend's SSL too (mirror POSTGRES_SSL_ENABLED) */}}
 {{- $sslSuffix := ternary "?sslmode=no-verify" "" (eq (include "retool.postgresql.ssl_enabled" . | trimAll "\"") "true") }}
-- name: AGENT_SANDBOX_POSTGRES_URL
+- name: AGENT_EXECUTOR_POSTGRES_URL
   value: {{ printf "postgres://%s@%s:%s/%s%s" (include "retool.postgresql.user" . | trimAll "\"") (include "retool.postgresql.host" . | trimAll "\"") (include "retool.postgresql.port" . | trimAll "\"" | default "5432") (include "retool.postgresql.database" . | trimAll "\"") $sslSuffix | quote }}
 {{- end }}
 {{- end -}}

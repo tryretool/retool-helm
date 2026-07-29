@@ -201,9 +201,9 @@ data:
                   ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   ,{"name": "SANDBOX_READY_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxReadyTimeoutMs }}"}
                   {{- if $as.jwtPublicKey }}
-                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": {{ $as.jwtPublicKey | toJson }}}
+                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "value": {{ $as.jwtPublicKey | toJson }}}
                   {{- else if $as.externalSecret.name }}
-                  ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
+                  ,{"name": "AGENT_EXECUTOR_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "{{ $defaultSecretName }}", "key": "jwt-public-key"}}}
                   {{- end }}
                   {{- if $as.proxy.backendDomainSuffixes }}
                   ,{"name": "BACKEND_DOMAIN_SUFFIXES", "value": "{{ $as.proxy.backendDomainSuffixes }}"}
@@ -325,16 +325,16 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: AGENT_SANDBOX_ROLE
+            - name: AGENT_EXECUTOR_ROLE
               value: "controller"
             - name: CONTROLLER_PORT
               value: {{ $as.controller.port | quote }}
             - name: STATE_BACKEND
               value: "postgres"
             {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
-            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
+            - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
-            - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
+            - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
               value: {{ $as.postgres.poolMax | quote }}
             - name: STATE_SWEEPER_INTERVAL_MS
               value: {{ $as.postgres.sweeperIntervalMs | quote }}
@@ -379,10 +379,10 @@ spec:
             - name: DAEMONSET_NAME
               value: {{ include "retool.agentSandbox.name" . }}-image-prepuller
             {{- if $as.jwtPublicKey }}
-            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
               value: {{ $as.jwtPublicKey | quote }}
             {{- else if $as.externalSecret.name }}
-            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $defaultSecretName }}
@@ -415,8 +415,15 @@ spec:
             initialDelaySeconds: 1
             periodSeconds: 2
             timeoutSeconds: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml $as.controller.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: "256Mi"
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
@@ -523,16 +530,16 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: AGENT_SANDBOX_ROLE
+            - name: AGENT_EXECUTOR_ROLE
               value: "proxy"
             - name: PROXY_PORT
               value: {{ $as.proxy.port | quote }}
             - name: STATE_BACKEND
               value: "postgres"
             {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
-            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
+            - name: AGENT_EXECUTOR_POSTGRES_SCHEMA
               value: {{ $as.postgres.schema | quote }}
-            - name: AGENT_SANDBOX_POSTGRES_POOL_MAX
+            - name: AGENT_EXECUTOR_POSTGRES_POOL_MAX
               value: {{ $as.postgres.poolMax | quote }}
             - name: STATE_SWEEPER_INTERVAL_MS
               value: {{ $as.postgres.sweeperIntervalMs | quote }}
@@ -547,20 +554,20 @@ spec:
               value: {{ $as.proxy.backendDomainSuffixes | quote }}
             {{- end }}
             {{- if $as.encryptionKey }}
-            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+            - name: AGENT_EXECUTOR_ENCRYPTION_KEY
               value: {{ $as.encryptionKey | quote }}
             {{- else if $as.externalSecret.name }}
-            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+            - name: AGENT_EXECUTOR_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $defaultSecretName }}
                   key: encryption-key
             {{- end }}
             {{- if $as.jwtPublicKey }}
-            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
               value: {{ $as.jwtPublicKey | quote }}
             {{- else if $as.externalSecret.name }}
-            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+            - name: AGENT_EXECUTOR_JWT_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $defaultSecretName }}
@@ -603,8 +610,15 @@ spec:
             initialDelaySeconds: 1
             periodSeconds: 2
             timeoutSeconds: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml $as.proxy.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: "256Mi"
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
