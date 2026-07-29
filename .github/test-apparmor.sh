@@ -72,7 +72,7 @@ else
   curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
   echo "  Waiting for k3s to be ready..."
   for i in $(seq 1 60); do
-    if kubectl get nodes &>/dev/null; then break; fi
+    if kubectl get nodes --no-headers 2>/dev/null | grep -q .; then break; fi
     sleep 2
   done
   kubectl wait --for=condition=Ready node --all --timeout=120s
