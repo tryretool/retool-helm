@@ -834,7 +834,11 @@ codeExecutor:
   # When enabled, the code-executor and js-executor annotations switch from
   # "unconfined" to "localhost/retool-executor", which satisfies Ubuntu 24.04+'s
   # kernel.apparmor_restrict_unprivileged_userns=1 restriction by providing an
-  # explicit userns rule. Requires useSeccompProfile: true to take effect.
+  # explicit userns rule. Requires useSeccompProfile: true for code-executor to
+  # take effect (js-executor always uses the seccomp/AppArmor path). The
+  # DaemonSet itself renders whenever this is true and either workflows is
+  # enabled (for code-executor) or rr.jsExecutor is enabled -- it is not tied
+  # to workflows alone, since js-executor doesn't require workflows to run.
   appArmorProfileInstaller: false
 
 # === RR (Retool agent runtime) =============================================

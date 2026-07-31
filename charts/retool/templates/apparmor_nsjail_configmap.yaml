@@ -1,5 +1,4 @@
-{{- if include "retool.workflows.enabled" . }}
-{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+{{- if eq (include "retool.appArmorNsjailInstaller.enabled" .) "1" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -47,5 +46,4 @@ data:
       deny /sys/devices/virtual/powercap/** rwklx,
       deny /sys/kernel/security/** rwklx,
     }
-{{- end }}
 {{- end }}

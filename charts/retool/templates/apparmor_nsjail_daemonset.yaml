@@ -1,5 +1,4 @@
-{{- if include "retool.workflows.enabled" . }}
-{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+{{- if eq (include "retool.appArmorNsjailInstaller.enabled" .) "1" }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -90,5 +89,4 @@ spec:
           hostPath:
             path: /run/retool/apparmor
             type: DirectoryOrCreate
-{{- end }}
 {{- end }}
