@@ -139,11 +139,30 @@ jobs:
       - name: Run chart-testing (install)
         run: ct install --config .github/ct.yaml
 
+  test-apparmor:
+    name: test-apparmor
+    runs-on: ubuntu-latest
+    needs:
+      - lint-chart
+      - kubeconform-chart
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Helm
+        uses: azure/setup-helm@v3.5
+        with:
+          version: v3.6.3
+      - name: Run AppArmor integration test
+        run: sudo .github/test-apparmor.sh --cleanup
+
   pr-validated:
     name: pr-validated
     runs-on: ubuntu-latest
     needs:
       - install-chart
+      - test-apparmor
     steps:
       - name: validate
         run: echo "PR OK"
