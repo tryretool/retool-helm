@@ -1,0 +1,32 @@
+# Exercises the AppArmor profile installer for agent-sandbox pods.
+# When rr.agentSandbox.appArmorProfileInstaller is true the chart renders:
+#   - apparmor_agent_sandbox_configmap.yaml  (retool-agent-sandbox profile)
+#   - install-apparmor initContainer + hostPID on the node-installer DaemonSet
+#   - Sandbox job-template appArmorProfile switches from Unconfined to
+#     {"type":"Localhost","localhostProfile":"retool-agent-sandbox"}
+#
+# Overlaid on test-install-values.yaml.
+
+rr:
+  agentSandbox:
+    enabled: true
+    appArmorProfileInstaller: true
+
+    image:
+      repository: tryretool/agent-sandbox-service
+      tag: 3.123.4
+      pullPolicy: IfNotPresent
+
+    externalSecret:
+      name: agent-sandbox-secrets
+
+    postgres:
+      urlSecretName: agent-sandbox-secrets
+      urlSecretKey: postgres-url
+      schema: agent_executor
+
+    proxy:
+      allowedDomains: api.example.com
+      backendDomainSuffixes: .example.com
+      service:
+        type: ClusterIP

@@ -1,0 +1,47 @@
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
+{{- if .Values.rr.agentSandbox.appArmorProfileInstaller }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retool.agentSandbox.name" . }}-apparmor
+  labels:
+    {{- include "retool.agentSandbox.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: apparmor-installer
+data:
+  retool-agent-sandbox: |
+    #include <tunables/global>
+
+    profile retool-agent-sandbox flags=(attach_disconnected,mediate_deleted) {
+      #include <abstractions/base>
+
+      network,
+      capability,
+      file,
+      umount,
+      mount,
+      pivot_root,
+      userns,
+
+      signal (send,receive) peer=retool-agent-sandbox,
+      signal (receive) peer=unconfined,
+
+      ptrace (trace,read,tracedby,readby) peer=retool-agent-sandbox,
+
+      deny @{PROC}/* w,
+      deny @{PROC}/sys/[^k]*/** wklx,
+      deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} wklx,
+      deny @{PROC}/sysrq-trigger rwklx,
+      deny @{PROC}/kcore rwklx,
+
+      deny /sys/[^f]*/** wklx,
+      deny /sys/f[^s]*/** wklx,
+      deny /sys/fs/[^c]*/** wklx,
+      deny /sys/fs/c[^g]*/** wklx,
+      deny /sys/fs/cg[^r]*/** wklx,
+      deny /sys/firmware/** rwklx,
+      deny /sys/devices/virtual/powercap/** rwklx,
+      deny /sys/kernel/security/** rwklx,
+    }
+{{- end }}
+{{- end }}

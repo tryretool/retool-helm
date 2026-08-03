@@ -134,6 +134,25 @@ data:
             "tolerations": {{ toJson $tolerations }},
             {{- end }}
             "initContainers": [
+              {{- if $as.appArmorProfileInstaller }}
+              {
+                "name": "wait-for-apparmor",
+                "image": "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}",
+                "command": ["/bin/sh", "-c", "until [ -f /host-run/retool-agent-sandbox.loaded ]; do echo 'Waiting for AppArmor profile retool-agent-sandbox to be loaded by DaemonSet...'; sleep 2; done; echo 'AppArmor profile retool-agent-sandbox loaded'"],
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"]}
+                },
+                "volumeMounts": [
+                  {"name": "host-run", "mountPath": "/host-run", "readOnly": true}
+                ],
+                "resources": {
+                  "requests": {"cpu": "1m", "memory": "4Mi"},
+                  "limits": {"cpu": "10m", "memory": "16Mi"}
+                }
+              },
+              {{- end }}
               {
                 "name": "rootfs-etc-copy",
                 "image": "{{ $as.image.repository }}:__IMAGE_TAG__",
@@ -165,7 +184,11 @@ data:
                   "readOnlyRootFilesystem": true,
                   "capabilities": {"drop": ["ALL"]},
                   "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"},
+                  {{- if $as.appArmorProfileInstaller }}
+                  "appArmorProfile": {"type": "Localhost", "localhostProfile": "retool-agent-sandbox"}
+                  {{- else }}
                   "appArmorProfile": {"type": "Unconfined"}
+                  {{- end }}
                 },
                 "env": [
                   {"name": "NODE_ENV", "value": "production"}
@@ -216,6 +239,9 @@ data:
               }
             ],
             "volumes": [
+              {{- if $as.appArmorProfileInstaller }}
+              {"name": "host-run", "hostPath": {"path": "/run/retool/apparmor", "type": "DirectoryOrCreate"}},
+              {{- end }}
               {{- if and $as.sandboxNetwork.enabled (not $as.sandboxNetwork.devicePlugin) }}
               {"name": "dev-tun", "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"}},
               {{- end }}
@@ -389,8 +415,15 @@ spec:
             initialDelaySeconds: 1
             periodSeconds: 2
             timeoutSeconds: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml $as.controller.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: "256Mi"
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
@@ -474,6 +507,7 @@ spec:
 {{ toYaml $as.labels | indent 8 }}
 {{- end }}
     spec:
+      terminationGracePeriodSeconds: 30
       automountServiceAccountToken: false
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
@@ -550,6 +584,10 @@ spec:
             - name: SANDBOX_PROXY_TIMEOUT_MS
               value: {{ $as.proxy.sandboxProxyTimeoutMs | quote }}
             {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           livenessProbe:
             httpGet:
               path: /livez
@@ -577,8 +615,15 @@ spec:
             initialDelaySeconds: 1
             periodSeconds: 2
             timeoutSeconds: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml $as.proxy.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: "256Mi"
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
