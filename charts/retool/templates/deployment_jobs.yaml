@@ -186,11 +186,6 @@ spec:
           {{- end }}
           {{- end }}
           {{- if eq (include "retool.gitServer.enabled" .) "1" }}
-          {{- /*
-            Source-control sync for new-app-builder apps runs here and talks to
-            blob storage directly, so the jobs runner needs these vars even when
-            the git server is a separate deployment.
-          */}}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
           {{- include "retool.env" .Values.env | nindent 10 }}
