@@ -61,7 +61,9 @@ image:
 #
 # Override repository if every image has to come from one registry -- a private
 # mirror, an air-gapped install, or GCP Marketplace, which rejects any artifact
-# a consumer pulls from outside its own Artifact Registry.
+# a consumer pulls from outside its own Artifact Registry. Clear digest when you
+# do: copying an image gives it a new digest, so keeping this one pins you back
+# to the original registry and the pull fails.
 initImage:
   repository: busybox
   tag: '1.37.0'
