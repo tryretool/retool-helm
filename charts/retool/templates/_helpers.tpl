@@ -52,6 +52,26 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- end }}
 
 {{/*
+MCP Service env var for the main Retool backend. Explicit backend env settings
+take precedence over the chart-generated in-cluster Service URL.
+*/}}
+{{- define "retool.mcp.backendEnvVars" -}}
+{{- if .Values.mcp.enabled }}
+{{- $backendHasMcpServiceIngressDomain := hasKey (.Values.env | default dict) "MCP_SERVICE_INGRESS_DOMAIN" -}}
+{{- range .Values.environmentVariables }}
+{{- if eq .name "MCP_SERVICE_INGRESS_DOMAIN" }}
+{{- $backendHasMcpServiceIngressDomain = true }}
+{{- end }}
+{{- end }}
+{{- if not $backendHasMcpServiceIngressDomain }}
+{{- $mcpService := .Values.mcp.service | default dict }}
+- name: MCP_SERVICE_INGRESS_DOMAIN
+  value: {{ printf "http://%s:%v" (include "retool.mcp.name" .) ($mcpService.externalPort | default 4010) | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Render an MCP-related Ingress path. By default paths route to the MCP service.
 target: backendInternal routes to the backend API Service.
 */}}
@@ -405,6 +425,33 @@ Usage: (include "retool.workflows.enabled" .)
 {{- end -}}
 {{- if (eq (toString .Values.agents.enabled) "true") -}} {{/* workflows (backend) is required to use agents */}}
   {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Resolve whether the shared nsjail AppArmor profile installer (ConfigMap +
+DaemonSet, see apparmor_nsjail_configmap.yaml / apparmor_nsjail_daemonset.yaml)
+should render. That installer is consumed by two independent components that
+both switch their container.apparmor.security.beta.kubernetes.io annotation
+from "unconfined" to "localhost/retool-executor" when
+codeExecutor.appArmorProfileInstaller is set: the legacy code-executor (only
+rendered when workflows are enabled) and the RR js-executor (rendered
+whenever rr.jsExecutor is enabled, independent of workflows). The installer
+must render whenever either consumer needs it, so it is intentionally NOT
+gated on retool.workflows.enabled alone -- doing so would leave js-executor's
+wait-for-apparmor init container waiting forever on a DaemonSet that never
+gets created when workflows are disabled.
+Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
+Returns "1" when it should render, "" otherwise.
+*/}}
+{{- define "retool.appArmorNsjailInstaller.enabled" -}}
+{{- $output := "" -}}
+{{- if .Values.codeExecutor.appArmorProfileInstaller -}}
+  {{- $jsExecutorEnabled := eq (include "retool.rr.componentEnabled" (dict "root" . "component" "jsExecutor")) "1" -}}
+  {{- if or (include "retool.workflows.enabled" .) $jsExecutorEnabled -}}
+    {{- $output = "1" -}}
+  {{- end -}}
 {{- end -}}
 {{- $output -}}
 {{- end -}}

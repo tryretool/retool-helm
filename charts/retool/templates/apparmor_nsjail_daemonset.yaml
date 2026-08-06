@@ -1,0 +1,92 @@
+{{- if eq (include "retool.appArmorNsjailInstaller.enabled" .) "1" }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ template "retool.fullname" . }}-apparmor-nsjail
+  labels:
+    {{- include "retool.codeExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+    app.kubernetes.io/component: apparmor-installer
+spec:
+  selector:
+    matchLabels:
+      retoolService: {{ template "retool.fullname" . }}-apparmor-nsjail
+  template:
+    metadata:
+      annotations:
+        checksum/profiles: {{ include (print $.Template.BasePath "/apparmor_nsjail_configmap.yaml") . | sha256sum }}
+      labels:
+        retoolService: {{ template "retool.fullname" . }}-apparmor-nsjail
+        app.kubernetes.io/name: {{ template "retool.fullname" . }}-apparmor-nsjail
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "retool.labels" . | nindent 8 }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+    spec:
+      automountServiceAccountToken: false
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      hostPID: true
+      initContainers:
+        - name: install
+          image: {{ .Values.codeExecutor.appArmorInstallerImage | default "busybox:1.37" }}
+          securityContext:
+            privileged: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              rm -f /host-run/retool-executor.loaded
+              cp /profiles/usr.bin.nsjail /host-apparmor/usr.bin.nsjail
+              cp /profiles/retool-executor /host-apparmor/retool-executor
+              if ! nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
+                echo "ERROR: apparmor_parser not found on host but AppArmor profile installation was requested" >&2
+                exit 1
+              fi
+              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/usr.bin.nsjail
+              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-executor
+              touch /host-run/retool-executor.loaded
+              echo "AppArmor profiles loaded successfully"
+          volumeMounts:
+            - name: apparmor-profiles
+              mountPath: /profiles
+              readOnly: true
+            - name: host-apparmor
+              mountPath: /host-apparmor
+            - name: host-run
+              mountPath: /host-run
+      containers:
+        - name: pause
+          image: {{ .Values.codeExecutor.appArmorInstallerImage | default "busybox:1.37" }}
+          command: ["sleep", "infinity"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+      volumes:
+        - name: apparmor-profiles
+          configMap:
+            name: {{ template "retool.fullname" . }}-apparmor-nsjail
+        - name: host-apparmor
+          hostPath:
+            path: /etc/apparmor.d
+            type: DirectoryOrCreate
+        - name: host-run
+          hostPath:
+            path: /run/retool/apparmor
+            type: DirectoryOrCreate
+{{- end }}

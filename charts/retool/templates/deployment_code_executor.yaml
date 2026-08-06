@@ -27,7 +27,11 @@ spec:
       annotations:
 {{- if $useSecComp }}
         checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
+{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+        container.apparmor.security.beta.kubernetes.io/code-executor: localhost/retool-executor
+{{- else }}
         container.apparmor.security.beta.kubernetes.io/code-executor: unconfined
+{{- end }}
 {{- end }}
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
@@ -83,6 +87,35 @@ spec:
               mountPath: /seccomp-profile
             - name: host-seccomp
               mountPath: /host-seccomp
+{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+        - name: wait-for-apparmor
+          image: busybox:1.37.0@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until [ -f /host-run/retool-executor.loaded ]; do
+                echo "Waiting for AppArmor profile retool-executor to be loaded by DaemonSet..."
+                sleep 2
+              done
+              echo "AppArmor profile retool-executor loaded"
+          volumeMounts:
+            - name: host-run
+              mountPath: /host-run
+              readOnly: true
+{{- end }}
 {{- end }}
 {{- range $key, $value := .Values.initContainers }}
         - name: "{{ $key }}"
@@ -193,6 +226,12 @@ spec:
           hostPath:
             path: /var/lib/kubelet/seccomp
             type: DirectoryOrCreate
+{{- if .Values.codeExecutor.appArmorProfileInstaller }}
+        - name: host-run
+          hostPath:
+            path: /run/retool/apparmor
+            type: DirectoryOrCreate
+{{- end }}
 {{- end }}
 {{- if .Values.codeExecutor.volumes }}
 {{ toYaml .Values.codeExecutor.volumes | indent 8 }}

@@ -734,14 +734,14 @@ mcp:
   # Retool 4.0.7 and later support a simplified ingress setup: route all public
   # paths, including /mcp and /.well-known, to the main Retool Service on port
   # 3000. The main backend must also be able to relay /mcp to the in-cluster MCP
-  # Service. Set its internal URL through the top-level env block:
+  # Service. When mcp.enabled is true, the chart configures the backend with
+  # MCP_SERVICE_INGRESS_DOMAIN=http://<fullname>-mcp:<service.externalPort>.
+  # You can override it through the top-level env, environmentSecrets, or
+  # environmentVariables settings.
   #
-  #   env:
-  #     MCP_SERVICE_INGRESS_DOMAIN: http://<fullname>-mcp:4010
-  #
-  # With that backend setting, omit or disable the MCP-specific ingress or
-  # HTTPRoute rules below and keep only the normal "/" route to
-  # <fullname>:3000. Replace <fullname> with this chart release's full name.
+  # With that setting, omit or disable the MCP-specific ingress or HTTPRoute
+  # rules below and keep only the normal "/" route to <fullname>:3000. Replace
+  # <fullname> with this chart release's full name.
   #
   # Retool versions before 4.0.7 require the explicit MCP routes below,
   # rendered before the main Retool route. External ingress must preserve this
@@ -829,6 +829,17 @@ codeExecutor:
   # paths and is used verbatim.
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
+
+  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on every node.
+  # When enabled, the code-executor and js-executor annotations switch from
+  # "unconfined" to "localhost/retool-executor", which satisfies Ubuntu 24.04+'s
+  # kernel.apparmor_restrict_unprivileged_userns=1 restriction by providing an
+  # explicit userns rule. Requires useSeccompProfile: true for code-executor to
+  # take effect (js-executor always uses the seccomp/AppArmor path). The
+  # DaemonSet itself renders whenever this is true and either workflows is
+  # enabled (for code-executor) or rr.jsExecutor is enabled -- it is not tied
+  # to workflows alone, since js-executor doesn't require workflows to run.
+  appArmorProfileInstaller: false
 
 # === RR (Retool agent runtime) =============================================
 # Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
@@ -1036,6 +1047,12 @@ rr:
     # The seccomp node-installer DaemonSet copies the profile to this path
     # on every node automatically.
     seccompProfile: retool/gvisor-seccomp.json
+
+    # Deploy an AppArmor profile for agent-sandbox pods. When enabled, the
+    # node-installer DaemonSet loads a retool-agent-sandbox profile on every
+    # node, and sandbox Jobs use it instead of Unconfined. Required on
+    # Ubuntu 24.04+ hosts with kernel.apparmor_restrict_unprivileged_userns=1.
+    appArmorProfileInstaller: false
 
     # S3-compatible snapshot storage.
     # When s3Bucket is set, snapshots are persisted to S3 and survive pod restarts.
