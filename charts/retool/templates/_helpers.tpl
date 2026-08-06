@@ -1177,12 +1177,29 @@ Two classes of stale config are caught:
 
 {{/*
 Render the seccomp-install initContainer image reference.
+
+The pinned digest lives here, not in values.yaml, so that overrides actually
+take effect. Helm deep-merges values, so a default digest in values.yaml would
+survive any user override of initImage.repository/tag and keep pulling the
+original pinned image (a digest always wins over a tag in an image ref), or
+fail outright against a mirror that lacks that digest. Instead we only append
+the pinned digest when the repository and tag are still the chart defaults and
+the user hasn't supplied their own digest.
 Usage: (include "retool.initImage" .)
 */}}
 {{- define "retool.initImage" -}}
 {{- $i := .Values.initImage -}}
-{{- printf "%s:%s" $i.repository (toString $i.tag) -}}
-{{- if $i.digest }}@{{ $i.digest }}{{ end -}}
+{{- $defaultRepository := "busybox" -}}
+{{- $defaultTag := "1.37.0" -}}
+{{- $defaultDigest := "sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f" -}}
+{{- $repository := $i.repository -}}
+{{- $tag := toString $i.tag -}}
+{{- $digest := $i.digest | default "" -}}
+{{- if and (not $digest) (eq $repository $defaultRepository) (eq $tag $defaultTag) -}}
+{{- $digest = $defaultDigest -}}
+{{- end -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- if $digest }}@{{ $digest }}{{ end -}}
 {{- end -}}
 
 {{/*
