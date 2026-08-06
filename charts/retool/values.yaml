@@ -55,6 +55,18 @@ image:
   tag: ""
   pullPolicy: "IfNotPresent"
 
+# Small utility image for the initContainers that install the nsjail seccomp
+# profile onto the host, on the code executor and JS executor. Only used when
+# seccomp is in play.
+#
+# Override repository if every image has to come from one registry -- a private
+# mirror, an air-gapped install, or GCP Marketplace, which rejects any artifact
+# a consumer pulls from outside its own Artifact Registry.
+initImage:
+  repository: busybox
+  tag: '1.37.0'
+  digest: 'sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f'
+
 commandline:
   args: []
 

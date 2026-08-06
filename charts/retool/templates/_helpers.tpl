@@ -1129,6 +1129,16 @@ Two classes of stale config are caught:
 {{- end -}}
 
 {{/*
+Render the seccomp-install initContainer image reference.
+Usage: (include "retool.initImage" .)
+*/}}
+{{- define "retool.initImage" -}}
+{{- $i := .Values.initImage -}}
+{{- printf "%s:%s" $i.repository (toString $i.tag) -}}
+{{- if $i.digest }}@{{ $i.digest }}{{ end -}}
+{{- end -}}
+
+{{/*
 Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
