@@ -54,6 +54,22 @@ spec:
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
           {{- end }}
           {{- end }}
+          {{- if include "retool.gitServer.separateEnabled" $ }}
+          - path: /api/ai/rr/git/v2
+            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ template "retool.gitServer.name" $ }}
+                port:
+                  number: {{ include "retool.gitServer.port" $ | int }}
+              {{- else }}
+              serviceName: {{ template "retool.gitServer.name" $ }}
+              servicePort: {{ include "retool.gitServer.port" $ | int }}
+              {{- end }}
+          {{- end }}
           - path:
             {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
             pathType: {{ $pathType }}
@@ -94,6 +110,22 @@ spec:
           {{- range $mcpIngress.paths }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
           {{- end }}
+          {{- end }}
+          {{- if include "retool.gitServer.separateEnabled" $ }}
+          - path: /api/ai/rr/git/v2
+            {{- if (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ template "retool.gitServer.name" $ }}
+                port:
+                  number: {{ include "retool.gitServer.port" $ | int }}
+              {{- else }}
+              serviceName: {{ template "retool.gitServer.name" $ }}
+              servicePort: {{ include "retool.gitServer.port" $ | int }}
+              {{- end }}
           {{- end }}
           {{- range .paths }}
           - path: {{ .path }}
