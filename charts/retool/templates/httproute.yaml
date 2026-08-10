@@ -45,15 +45,6 @@ spec:
     {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "backendInternalPort" $backendInternalPort) | nindent 4 }}
     {{- end }}
     {{- end }}
-    {{- if include "retool.gitServer.separateEnabled" . }}
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /api/ai/rr/git/v2
-      backendRefs:
-        - name: {{ template "retool.gitServer.name" . }}
-          port: {{ include "retool.gitServer.port" . | int }}
-    {{- end }}
     {{- if .Values.httpRoute.rules }}
     {{- toYaml .Values.httpRoute.rules | nindent 4 }}
     {{- else }}
