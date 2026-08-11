@@ -273,9 +273,8 @@ spec:
             value: {{ template "retool.gitServer.name" . }}
           - name: RR_GIT_SERVER_PORT
             value: {{ include "retool.gitServer.port" . | quote }}
-          {{- else }}
-          {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
+          {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
