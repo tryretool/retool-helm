@@ -1,0 +1,15 @@
+# Exercises the per-workload code executor image overrides
+# (deployment_code_executor.yaml + retool.codeExecutor.image.tag).
+# Overlaid on top of test-install-values.yaml.
+codeExecutor:
+  image:
+    # A one-off / support build lives in a different repository than the backend
+    # and carries a tag the backend image does not have (SHI-448).
+    repository: tryretool/code-executor-one-offs
+    # Deliberately differs from the top-level image.tag so the rendered
+    # deployment proves the per-workload tag override wins over the backend tag.
+    tag: pr-3.334.6-fcf7211
+    # Deliberately differs from the global image.pullPolicy (IfNotPresent in the
+    # base values) so the rendered deployment proves the per-workload override is
+    # honored rather than the global value.
+    pullPolicy: Always

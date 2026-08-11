@@ -125,7 +125,7 @@ spec:
       containers:
       - name: code-executor
         image: "{{ .Values.codeExecutor.image.repository }}:{{ include "retool.codeExecutor.image.tag" . }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        imagePullPolicy: {{ .Values.codeExecutor.image.pullPolicy | default .Values.image.pullPolicy }}
         securityContext:
           {{- if .Values.codeExecutor.securityContext }}
 {{ toYaml .Values.codeExecutor.securityContext | indent 10 }}

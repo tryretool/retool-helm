@@ -781,11 +781,15 @@ mcp:
     labels: {}
 
 codeExecutor:
-  # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
-  # explicitly set other fields as needed
+  # Code executor normally tracks the top-level `image` parameters. Override the
+  # tag only when you need a one-off or patched build (e.g. a support build whose
+  # tag differs from the backend's); running a code executor version that does not
+  # match the backend is not generally supported.
 
   image:
     repository: tryretool/code-executor-service
+    # defaults to top level image.tag
+    tag: null
     pullPolicy: IfNotPresent
 
   replicaCount: 1

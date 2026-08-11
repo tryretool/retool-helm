@@ -1195,7 +1195,9 @@ Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
 {{- define "retool.codeExecutor.image.tag" -}}
-{{- if .Values.image.tag -}}
+{{- if .Values.codeExecutor.image.tag -}}
+  {{- .Values.codeExecutor.image.tag -}}
+{{- else if .Values.image.tag -}}
   {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
   {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
   {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $semver_version_regexp $.Values.image.tag ) ) ) }}
@@ -1205,7 +1207,7 @@ Usage: (template "retool.codeExecutor.image.tag" .)
     {{- "1.1.0" -}}
   {{- end -}}
 {{- else -}}
-  {{- fail "Please set a value for .Values.image.tag" }}
+  {{- fail "Please set a value for .Values.image.tag or .Values.codeExecutor.image.tag" }}
 {{- end -}}
 {{- end -}}
 
