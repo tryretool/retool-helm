@@ -1093,6 +1093,18 @@ rr:
       # Additional environment variables for sandbox containers.
       extraEnv: []
 
+      # Annotations applied to sandbox Job pods (the pods that run user code).
+      # Two do-not-disrupt annotations are applied by default so sandbox pods
+      # are protected from eviction on both Karpenter and cluster-autoscaler
+      # clusters (GKE, EKS, etc.) out of the box:
+      #   karpenter.sh/do-not-disrupt: "true"
+      #   cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      # Each is a no-op when the matching autoscaler isn't present. Entries
+      # below override a default of the same key and can add new annotations;
+      # to allow disruption on a specific autoscaler, override its key (e.g.
+      # set cluster-autoscaler.kubernetes.io/safe-to-evict: "true").
+      annotations: {}
+
     # Controller: tracks capacity, assigns sandbox pods, manages scaling
     controller:
       replicaCount: 1

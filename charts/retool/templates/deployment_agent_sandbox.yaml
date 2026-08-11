@@ -115,9 +115,7 @@ data:
         "ttlSecondsAfterFinished": {{ $as.controller.scaling.jobRetentionSeconds }},
         "template": {
           "metadata": {
-            "annotations": {
-              "karpenter.sh/do-not-disrupt": "true"
-            },
+            "annotations": {{- $sandboxAnnotations := dict "karpenter.sh/do-not-disrupt" "true" -}}{{- $_ := set $sandboxAnnotations "cluster-autoscaler.kubernetes.io/safe-to-evict" "false" -}}{{- range $k, $v := $as.sandbox.annotations }}{{- $_ := set $sandboxAnnotations $k $v }}{{- end }}{{ toJson $sandboxAnnotations }},
             "labels": {
               "retoolService": "{{ include "retool.agentSandbox.name" . }}",
               "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
