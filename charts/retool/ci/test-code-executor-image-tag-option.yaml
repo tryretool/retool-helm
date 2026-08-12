@@ -1,15 +1,20 @@
-# Exercises the per-workload code executor image overrides
-# (deployment_code_executor.yaml + retool.codeExecutor.image.tag).
-# Overlaid on top of test-install-values.yaml.
+# Code executor image, NO override: the tag must be inherited from the
+# top-level image.tag. Overlaid onto each base *values.yaml by
+# .github/kubeconform.sh.
+#
+# Pairs with test-code-executor-image-override-option.yaml, which sets the same
+# top-level tag but does override. Rendering both makes the difference explicit.
+#
+# codeExecutor.image.tag is set to null on purpose rather than omitted: null is
+# the chart default and must behave the same as absent, so an operator who
+# leaves the key in place (or copies it from values.yaml) still inherits instead
+# of rendering an empty tag.
+# The tag must stay above the chart's code-executor and workflows version gates
+# (>= 3.20.15 and >= 3.6.11), or the deployment is not rendered at all and the
+# test silently asserts nothing.
+image:
+  tag: 9.9.9-test
+
 codeExecutor:
   image:
-    # A one-off / support build lives in a different repository than the backend
-    # and carries a tag the backend image does not have (SHI-448).
-    repository: tryretool/code-executor-one-offs
-    # Deliberately differs from the top-level image.tag so the rendered
-    # deployment proves the per-workload tag override wins over the backend tag.
-    tag: pr-3.334.6-fcf7211
-    # Deliberately differs from the global image.pullPolicy (IfNotPresent in the
-    # base values) so the rendered deployment proves the per-workload override is
-    # honored rather than the global value.
-    pullPolicy: Always
+    tag: null
