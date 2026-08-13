@@ -1137,7 +1137,7 @@ rr:
           cpu: 250m
           memory: 256Mi
         limits:
-          cpu: 500m
+          cpu: '1'
           memory: 512Mi
       allowedDomains: ''
       # URL the proxy uses to reach the Retool backend for token exchange.
