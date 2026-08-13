@@ -15,7 +15,9 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
+  {{- if not ((.Values.rr.jsExecutor.autoscaling).enabled) }}
   replicas: {{ .Values.rr.jsExecutor.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
@@ -257,5 +259,47 @@ spec:
   selector:
     matchLabels:
   {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- if (.Values.rr.jsExecutor.autoscaling).enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ template "retool.jsExecutor.name" . }}
+  labels:
+    {{- include "retool.jsExecutor.selectorLabels" . | nindent 4 }}
+    {{- include "retool.jsExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ template "retool.jsExecutor.name" . }}
+  minReplicas: {{ .Values.rr.jsExecutor.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.rr.jsExecutor.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.rr.jsExecutor.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.rr.jsExecutor.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    {{- with .Values.rr.jsExecutor.autoscaling.metrics }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.rr.jsExecutor.autoscaling.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end }}
 {{- end }}
