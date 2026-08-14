@@ -868,8 +868,9 @@ rr:
     # set enabled: true to opt in. When enabled, replicaCount is ignored
     # and the HPA controls the replica count.
     #
-    # CPU and memory Utilization targets require a matching container
-    # request (resources.requests.cpu / resources.requests.memory). A
+    # CPU and memory Utilization targets (the shortcuts below, and any
+    # Resource / ContainerResource Utilization metric in autoscaling.metrics)
+    # require a matching container request (resources.requests.<name>). A
     # limits-only or partial resources override leaves those metrics
     # unavailable and the HPA will not scale on the affected resource.
     autoscaling:
@@ -879,6 +880,8 @@ rr:
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 70
       # Additional HPA metrics (Pods, Object, External, or extra Resource).
+      # Resource Utilization metrics here have the same request requirement
+      # as the CPU/memory shortcuts above.
       # metrics: []
       # Scaling behavior (stabilization windows and policies).
       # behavior: {}

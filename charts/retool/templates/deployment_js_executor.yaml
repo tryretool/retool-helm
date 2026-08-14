@@ -269,6 +269,21 @@ spec:
 {{- if and $hpa.targetMemoryUtilizationPercentage (not $requests.memory) }}
 {{- fail "rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage requires rr.jsExecutor.resources.requests.memory. Memory utilization is unavailable without a memory request, so the HPA cannot scale on memory. Set a memory request or unset targetMemoryUtilizationPercentage." }}
 {{- end }}
+{{- range $hpa.metrics }}
+{{- if eq (toString .type) "Resource" }}
+{{- $name := (.resource).name | default "" }}
+{{- $targetType := ((.resource).target).type | default "" }}
+{{- if and (eq $targetType "Utilization") $name (not (index $requests $name)) }}
+{{- fail (printf "rr.jsExecutor.autoscaling.metrics Resource Utilization target %q requires rr.jsExecutor.resources.requests.%s. Utilization is unavailable without that request, so the HPA cannot scale on it. Set the request or use an AverageValue target instead." $name $name) }}
+{{- end }}
+{{- else if eq (toString .type) "ContainerResource" }}
+{{- $name := (.containerResource).name | default "" }}
+{{- $targetType := ((.containerResource).target).type | default "" }}
+{{- if and (eq $targetType "Utilization") $name (not (index $requests $name)) }}
+{{- fail (printf "rr.jsExecutor.autoscaling.metrics ContainerResource Utilization target %q requires rr.jsExecutor.resources.requests.%s. Utilization is unavailable without that request, so the HPA cannot scale on it. Set the request or use an AverageValue target instead." $name $name) }}
+{{- end }}
+{{- end }}
+{{- end }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
