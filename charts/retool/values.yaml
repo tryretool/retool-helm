@@ -1145,6 +1145,28 @@ rr:
       backendUrl: ''
       backendDomainSuffixes: ''
       sandboxProxyTimeoutMs: '180000'  # 3 minutes
+      # Where the proxy fetches public npm packages. Leave url empty to use
+      # registry.npmjs.org. Set it to an internal mirror when sandboxes have no public
+      # npm egress — note the *proxy pod* dials it, not the sandboxes, so that is the
+      # only network path that has to reach the mirror.
+      #
+      # Requests are read-only regardless: the sandbox may GET/HEAD and nothing else.
+      npmRegistry:
+        url: ''
+        # bearer | none. `bearer` (the default) attaches a token and refuses to send
+        # the request at all when none is available, so a Secret that fails to mount
+        # can't silently downgrade to unauthenticated. Use `none` only for a mirror
+        # that genuinely allows anonymous reads.
+        authMode: bearer
+        # Credential for authMode: bearer. Inline, or from an existing Secret, or from
+        # a mounted file. Prefer the file when the token rotates — it is re-read on a
+        # TTL, so rotation needs no proxy restart. All three are unused by authMode: none.
+        authToken: ''
+        authTokenSecret:
+          name: ''
+          key: ''
+        authTokenFile: ''
+        authTokenTtlMs: ''
       service:
         # Set to LoadBalancer or NodePort to expose the proxy externally.
         type: ClusterIP
