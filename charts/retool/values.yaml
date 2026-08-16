@@ -1149,8 +1149,6 @@ rr:
       # registry.npmjs.org. Set it to an internal mirror when sandboxes have no public
       # npm egress — note the *proxy pod* dials it, not the sandboxes, so that is the
       # only network path that has to reach the mirror.
-      #
-      # Requests are read-only regardless: the sandbox may GET/HEAD and nothing else.
       npmRegistry:
         url: ''
         # bearer | none. `bearer` (the default) attaches a token and refuses to send
