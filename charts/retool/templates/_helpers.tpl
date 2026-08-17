@@ -783,6 +783,9 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if and $npm.authTokenSecret.name (not $npm.authTokenSecret.key) -}}
 {{- fail "agentSandbox.proxy.npmRegistry.authTokenSecret.name is set without .key, which would render an empty secretKeyRef and leave the proxy unable to start. Set .key to the entry holding the registry token." -}}
 {{- end -}}
+{{- if and $npm.authToken $npm.authTokenSecret.name -}}
+{{- fail "agentSandbox.proxy.npmRegistry sets both authToken and authTokenSecret. The inline value wins and the Secret is never read, so the proxy would use a credential you may not have intended. Set exactly one." -}}
+{{- end -}}
 {{- if and (eq $npm.authMode "bearer") (not (or $npm.authToken $npm.authTokenSecret.name $npm.authTokenFile)) -}}
 {{- fail "agentSandbox.proxy.npmRegistry.url is set with authMode \"bearer\" but no credential. The proxy fails closed, so every package install would 503. Supply authToken / authTokenSecret / authTokenFile, or set authMode: none for a registry that allows anonymous reads." -}}
 {{- end -}}
