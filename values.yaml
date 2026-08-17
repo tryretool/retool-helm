@@ -870,7 +870,9 @@ rr:
     #
     # CPU and memory Utilization targets (the shortcuts below, and any
     # Resource / ContainerResource Utilization metric in autoscaling.metrics)
-    # require a matching container request (resources.requests.<name>). A
+    # require a matching container request. Resource metrics use
+    # rr.jsExecutor.resources.requests.<name>; ContainerResource metrics use
+    # the named container (js-executor or an extraContainers entry). A
     # limits-only or partial resources override leaves those metrics
     # unavailable and the HPA will not scale on the affected resource.
     autoscaling:

@@ -278,9 +278,13 @@ spec:
 {{- end }}
 {{- else if eq (toString .type) "ContainerResource" }}
 {{- $name := (.containerResource).name | default "" }}
+{{- $containerName := (.containerResource).container | default "" }}
 {{- $targetType := ((.containerResource).target).type | default "" }}
-{{- if and (eq $targetType "Utilization") $name (not (index $requests $name)) }}
-{{- fail (printf "rr.jsExecutor.autoscaling.metrics ContainerResource Utilization target %q requires rr.jsExecutor.resources.requests.%s. Utilization is unavailable without that request, so the HPA cannot scale on it. Set the request or use an AverageValue target instead." $name $name) }}
+{{- if and (eq $targetType "Utilization") $name }}
+{{- $containerRequests := fromYaml (include "retool.jsExecutor.containerRequests" (dict "root" $ "container" $containerName)) }}
+{{- if not (index $containerRequests $name) }}
+{{- fail (printf "rr.jsExecutor.autoscaling.metrics ContainerResource Utilization target %q on container %q requires a matching request on that container. Utilization is unavailable without it, so the HPA cannot scale on it. Set resources.requests.%s on %q (rr.jsExecutor.resources for js-executor, or the extraContainers entry) or use an AverageValue target instead." $name $containerName $name $containerName) }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
