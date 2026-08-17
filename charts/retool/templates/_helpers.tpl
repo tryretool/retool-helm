@@ -775,6 +775,21 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if not (or $as.encryptionKey $ext) -}}
 {{- fail "agentSandbox.enabled requires an encryption key: the proxy derives the sandbox-iframe asset-token HMAC key from it and throws when serving a sandbox without it, and the backend must use the same value. Set agentSandbox.encryptionKey (64 hex chars, openssl rand -hex 32) or agentSandbox.externalSecret.name (with an encryption-key entry)." -}}
 {{- end -}}
+{{- $npm := $as.proxy.npmRegistry -}}
+{{- if not (has $npm.authMode (list "bearer" "none")) -}}
+{{- fail (printf "agentSandbox.proxy.npmRegistry.authMode must be \"bearer\" or \"none\" (got %q). The proxy rejects any other value at startup." $npm.authMode) -}}
+{{- end -}}
+{{- if $npm.url -}}
+{{- if and $npm.authTokenSecret.name (not $npm.authTokenSecret.key) -}}
+{{- fail "agentSandbox.proxy.npmRegistry.authTokenSecret.name is set without .key, which would render an empty secretKeyRef and leave the proxy unable to start. Set .key to the entry holding the registry token." -}}
+{{- end -}}
+{{- if and $npm.authToken $npm.authTokenSecret.name -}}
+{{- fail "agentSandbox.proxy.npmRegistry sets both authToken and authTokenSecret. The inline value wins and the Secret is never read, so the proxy would use a credential you may not have intended. Set exactly one." -}}
+{{- end -}}
+{{- if and (eq $npm.authMode "bearer") (not (or $npm.authToken $npm.authTokenSecret.name $npm.authTokenFile)) -}}
+{{- fail "agentSandbox.proxy.npmRegistry.url is set with authMode \"bearer\" but no credential. The proxy fails closed, so every package install would 503. Supply authToken / authTokenSecret / authTokenFile, or set authMode: none for a registry that allows anonymous reads." -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
