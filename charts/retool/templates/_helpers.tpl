@@ -256,50 +256,6 @@ telemetry.retool.com/service-name: js-executor
 {{- end }}
 
 {{/*
-Resource requests for a named container on the JS executor pod.
-js-executor uses rr.jsExecutor.resources.requests; any other name is looked
-up in extraContainers. Fails if the container is not part of the pod.
-Usage: include "retool.jsExecutor.containerRequests" (dict "root" $ "container" "js-executor")
-*/}}
-{{- define "retool.jsExecutor.containerRequests" -}}
-{{- $root := .root -}}
-{{- $name := .container | default "" -}}
-{{- if not $name -}}
-{{- fail "rr.jsExecutor.autoscaling.metrics ContainerResource metric requires containerResource.container." -}}
-{{- end -}}
-{{- if eq $name "js-executor" -}}
-{{- toYaml ((($root.Values.rr.jsExecutor).resources).requests | default dict) -}}
-{{- else -}}
-{{- $found := false -}}
-{{- $requests := dict -}}
-{{- $extra := $root.Values.extraContainers -}}
-{{- $containers := list -}}
-{{- if kindIs "string" $extra -}}
-{{- $rendered := tpl $extra $root -}}
-{{- if trim $rendered -}}
-{{- $doc := fromYaml (printf "items:%s" ($rendered | nindent 2)) -}}
-{{- if $doc.Error -}}
-{{- fail (printf "rr.jsExecutor.autoscaling could not parse extraContainers while validating a ContainerResource metric: %s" $doc.Error) -}}
-{{- end -}}
-{{- $containers = $doc.items | default list -}}
-{{- end -}}
-{{- else if kindIs "slice" $extra -}}
-{{- $containers = $extra -}}
-{{- end -}}
-{{- range $containers -}}
-{{- if eq (toString .name) $name -}}
-{{- $found = true -}}
-{{- $requests = ((.resources).requests | default dict) -}}
-{{- end -}}
-{{- end -}}
-{{- if not $found -}}
-{{- fail (printf "rr.jsExecutor.autoscaling.metrics ContainerResource metric targets container %q, which is not the js-executor container and was not found in extraContainers." $name) -}}
-{{- end -}}
-{{- toYaml $requests -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Selector labels for agent worker. Note changes here will require manual
 deployment recreation and incur downtime, so should be avoided.
 */}}
