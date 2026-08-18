@@ -790,7 +790,7 @@ codeExecutor:
     repository: tryretool/code-executor-service
     # defaults to top level image.tag
     tag: null
-    pullPolicy: IfNotPresent
+    # pull policy will use the value set in the top-level image.pullPolicy
 
   replicaCount: 1
 
