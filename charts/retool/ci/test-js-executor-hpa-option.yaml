@@ -1,8 +1,8 @@
 rr:
 
   # Exercises the JS executor HPA (opt-in via rr.jsExecutor.autoscaling).
-  # Overlaid on top of test-install-values.yaml. Covers CPU, memory, extra
-  # metrics, and scale behavior branches; replicaCount must be omitted from
+  # Overlaid on top of test-install-values.yaml. Covers CPU and memory
+  # Utilization plus scale behavior; replicaCount must be omitted from
   # the Deployment when the HPA is enabled.
   jsExecutor:
     enabled: true
@@ -15,15 +15,7 @@ rr:
       minReplicas: 2
       maxReplicas: 8
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
-      metrics:
-        - type: Pods
-          pods:
-            metric:
-              name: packets-per-second
-            target:
-              type: AverageValue
-              averageValue: 1k
+      targetMemoryUtilizationPercentage: 70
       behavior:
         scaleDown:
           stabilizationWindowSeconds: 300

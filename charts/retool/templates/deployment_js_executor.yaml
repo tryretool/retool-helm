@@ -269,16 +269,8 @@ spec:
 {{- if and $hpa.targetMemoryUtilizationPercentage (not $requests.memory) }}
 {{- fail "rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage requires rr.jsExecutor.resources.requests.memory. Memory utilization is unavailable without a memory request, so the HPA cannot scale on memory. Set a memory request or unset targetMemoryUtilizationPercentage." }}
 {{- end }}
-{{- range $hpa.metrics }}
-{{- if eq (toString .type) "Resource" }}
-{{- $name := (.resource).name | default "" }}
-{{- $targetType := ((.resource).target).type | default "" }}
-{{- if and (eq $targetType "Utilization") $name (not (index $requests $name)) }}
-{{- fail (printf "rr.jsExecutor.autoscaling.metrics Resource Utilization target %q requires rr.jsExecutor.resources.requests.%s. Utilization is unavailable without that request, so the HPA cannot scale on it. Set the request or use an AverageValue target instead." $name $name) }}
-{{- end }}
-{{- else if eq (toString .type) "ContainerResource" }}
-{{- fail "rr.jsExecutor.autoscaling.metrics does not support ContainerResource metrics. Use targetCPUUtilizationPercentage / targetMemoryUtilizationPercentage, or a Resource metric, to scale on the JS executor pod." }}
-{{- end }}
+{{- with $hpa.metrics }}
+{{- fail "rr.jsExecutor.autoscaling.metrics is not supported. The JS executor HPA scales only on CPU and memory via targetCPUUtilizationPercentage and targetMemoryUtilizationPercentage." }}
 {{- end }}
 ---
 apiVersion: autoscaling/v2
@@ -312,9 +304,6 @@ spec:
         target:
           type: Utilization
           averageUtilization: {{ .Values.rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage }}
-    {{- end }}
-    {{- with .Values.rr.jsExecutor.autoscaling.metrics }}
-    {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- with .Values.rr.jsExecutor.autoscaling.behavior }}
   behavior:
