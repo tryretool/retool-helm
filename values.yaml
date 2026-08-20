@@ -870,8 +870,8 @@ rr:
 
     replicaCount: 1
 
-    # 6m in-flight SLF + 15s drain buffer + 1s
-    terminationGracePeriodSeconds: 376
+    # 6m in-flight SLF + 30s drain buffer + 1s
+    terminationGracePeriodSeconds: 391
 
     seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
