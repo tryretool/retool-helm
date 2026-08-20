@@ -46,7 +46,7 @@ spec:
 {{ toYaml .Values.ui.labels | indent 8 }}
 {{- end }}
     spec:
-      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds | default 136 }}
+      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds | default 391 }}
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
