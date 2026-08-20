@@ -432,9 +432,8 @@ backend:
   labels: {}
 
   # Make backend pods wait the specified time before kubernetes will forcibly kill them when they need to be rescheduled
-  # By default this is a 2 minutes + 15 seconds + 1 second (136) grace period to allow outstanding queries to complete
-  # Change this to 10 minutes 15 seconds + 1 second (616) if you are using long-running queries with a 10 minute timeout
-  terminationGracePeriodSeconds: 136
+  # By default this is a 6 minutes + 30 seconds + 1 second (391) grace period to allow outstanding queries to complete
+  terminationGracePeriodSeconds: 391
 
 ui:
   # Annotations for ui pods
@@ -538,7 +537,7 @@ dbconnector:
   # kubernetes will forcibly kill them when they need to be rescheduled. Setting
   # this to a long duration will minimize disruption to any long-running
   # resource queries during updates, at the cost of making updates take longer.
-  # terminationGracePeriodSeconds: 960
+  terminationGracePeriodSeconds: 391
 
   # If necessary, specify the resources to provision the workflows-backend pod
   # separately from the main backend pods. If unspecified, uses the same
@@ -794,6 +793,9 @@ codeExecutor:
 
   replicaCount: 1
 
+  # 6m in-flight request + 30s backend-style preStop buffer + 1s
+  terminationGracePeriodSeconds: 391
+
   # Annotations for code executor pods
   annotations: {}
 
@@ -867,6 +869,9 @@ rr:
       pullPolicy: IfNotPresent
 
     replicaCount: 1
+
+    # 6m in-flight SLF + 15s drain buffer + 1s
+    terminationGracePeriodSeconds: 376
 
     seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
