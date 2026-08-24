@@ -870,6 +870,28 @@ rr:
 
     replicaCount: 1
 
+    # Horizontal Pod Autoscaler for the JS executor. Disabled by default;
+    # set enabled: true to opt in. When enabled, replicaCount is ignored
+    # and the HPA controls the replica count. Scales on CPU and memory
+    # Utilization only.
+    #
+    # Scaling requires a cluster metrics-server (or another metrics.k8s.io
+    # implementation). This chart does not install it. If kubectl top pod
+    # fails in the namespace, the HPA is created but does not scale.
+    #
+    # Each Utilization target requires a matching container request
+    # (rr.jsExecutor.resources.requests.cpu / .memory). A limits-only or
+    # partial resources override leaves those metrics unavailable and the
+    # HPA will not scale on the affected resource.
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+      # Scaling behavior (stabilization windows and policies).
+      # behavior: {}
+
     # 6m in-flight SLF + 30s drain buffer + 1s
     terminationGracePeriodSeconds: 391
 
@@ -896,6 +918,8 @@ rr:
     # Resources for the JS executor. Memory request and limit are kept equal:
     # JSE reads its memory limit and rejects requests at 80% of it, so the
     # request must reserve the full amount to avoid premature rejections.
+    # HPA Utilization metrics (see autoscaling above) also require these
+    # requests; do not drop them if autoscaling is enabled.
     resources:
       limits:
         cpu: '2'

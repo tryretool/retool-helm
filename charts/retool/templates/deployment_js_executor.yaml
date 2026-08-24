@@ -15,7 +15,9 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
+  {{- if not ((.Values.rr.jsExecutor.autoscaling).enabled) }}
   replicas: {{ .Values.rr.jsExecutor.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
@@ -258,5 +260,55 @@ spec:
   selector:
     matchLabels:
   {{- include "retool.jsExecutor.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- if (.Values.rr.jsExecutor.autoscaling).enabled }}
+{{- $hpa := .Values.rr.jsExecutor.autoscaling }}
+{{- $requests := ((.Values.rr.jsExecutor.resources).requests | default dict) }}
+{{- if and $hpa.targetCPUUtilizationPercentage (not $requests.cpu) }}
+{{- fail "rr.jsExecutor.autoscaling.targetCPUUtilizationPercentage requires rr.jsExecutor.resources.requests.cpu. CPU utilization is unavailable without a CPU request, so the HPA cannot scale on CPU. Set a CPU request or unset targetCPUUtilizationPercentage." }}
+{{- end }}
+{{- if and $hpa.targetMemoryUtilizationPercentage (not $requests.memory) }}
+{{- fail "rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage requires rr.jsExecutor.resources.requests.memory. Memory utilization is unavailable without a memory request, so the HPA cannot scale on memory. Set a memory request or unset targetMemoryUtilizationPercentage." }}
+{{- end }}
+{{- with $hpa.metrics }}
+{{- fail "rr.jsExecutor.autoscaling.metrics is not supported. The JS executor HPA scales only on CPU and memory via targetCPUUtilizationPercentage and targetMemoryUtilizationPercentage." }}
+{{- end }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ template "retool.jsExecutor.name" . }}
+  labels:
+    {{- include "retool.jsExecutor.selectorLabels" . | nindent 4 }}
+    {{- include "retool.jsExecutor.labels" . | nindent 4 }}
+    {{- include "retool.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ template "retool.jsExecutor.name" . }}
+  minReplicas: {{ .Values.rr.jsExecutor.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.rr.jsExecutor.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.rr.jsExecutor.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.rr.jsExecutor.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.rr.jsExecutor.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- with .Values.rr.jsExecutor.autoscaling.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end }}
 {{- end }}

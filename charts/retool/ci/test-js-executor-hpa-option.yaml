@@ -1,0 +1,31 @@
+rr:
+
+  # Exercises the JS executor HPA (opt-in via rr.jsExecutor.autoscaling).
+  # Overlaid on top of test-install-values.yaml. Covers CPU and memory
+  # Utilization plus scale behavior; replicaCount must be omitted from
+  # the Deployment when the HPA is enabled.
+  jsExecutor:
+    enabled: true
+    replicaCount: 3
+    image:
+      repository: tryretool/js-executor-service
+      tag: 3.123.4
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15

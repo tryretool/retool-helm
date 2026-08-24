@@ -60,3 +60,14 @@ FROM 169.254.169.254 and will FAIL. In that case set:
   networkPolicy.blockCloudMetadataEgress: false
 ***************************************************************************
 {{- end }}
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" . "component" "jsExecutor")) "1") ((.Values.rr.jsExecutor).autoscaling).enabled }}
+
+***************************************************************************
+NOTE: JS executor autoscaling is enabled (rr.jsExecutor.autoscaling). The HPA
+scales on CPU and memory Utilization and needs a cluster metrics-server (or
+another metrics.k8s.io implementation). This chart does not install it.
+
+If kubectl top pod fails in this namespace, the HPA is created but will not
+scale until metrics-server is enabled on the cluster.
+***************************************************************************
+{{- end }}
