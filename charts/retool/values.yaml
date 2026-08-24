@@ -324,6 +324,8 @@ preStopHook:
   enabled: true
 
 # To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
+# Applies only to the main backend. For workflow-backend, use workflows.backend.startupProbe.
+# For the agent-sandbox controller, use rr.agentSandbox.controller.startupProbe.
 startupProbe:
   enabled: false
   path: /api/checkHealth
@@ -474,6 +476,22 @@ workflows:
     #   requests:
     #     cpu: 2048m
     #     memory: 4096Mi
+
+    # Startup probe for the workflow-backend pod only. Independent of the
+    # top-level startupProbe, which applies only to the main backend.
+    # Enable this when workflow-backend takes longer to bind than the
+    # default liveness window (30s delay + 3x10s).
+    startupProbe:
+      enabled: false
+      path: /api/checkHealth
+      # Optional; see livenessProbe above. Set host: 127.0.0.1 on IPv6/dual-stack clusters.
+      # host: 127.0.0.1
+      # scheme: HTTP
+      initialDelaySeconds: 60
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
 
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
@@ -1149,6 +1167,21 @@ rr:
         limits:
           cpu: 500m
           memory: 512Mi
+      # Startup probe for the controller. The image entrypoint copies the JS
+      # bundle before launching node, which can exceed the hardcoded liveness
+      # window (10s delay + 5x10s) under the default CPU limit. Enable this so
+      # kubelet waits for /livez before applying liveness.
+      startupProbe:
+        enabled: false
+        path: /livez
+        # Optional; see livenessProbe above. Set host: 127.0.0.1 on IPv6/dual-stack clusters.
+        # host: 127.0.0.1
+        # scheme: HTTP
+        initialDelaySeconds: 0
+        timeoutSeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       scaling:
         prewarmPoolSize: 5
         maxTotalJobs: 50
