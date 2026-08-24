@@ -873,6 +873,10 @@ rr:
     # and the HPA controls the replica count. Scales on CPU and memory
     # Utilization only.
     #
+    # Scaling requires a cluster metrics-server (or another metrics.k8s.io
+    # implementation). This chart does not install it. If kubectl top pod
+    # fails in the namespace, the HPA is created but does not scale.
+    #
     # Each Utilization target requires a matching container request
     # (rr.jsExecutor.resources.requests.cpu / .memory). A limits-only or
     # partial resources override leaves those metrics unavailable and the
