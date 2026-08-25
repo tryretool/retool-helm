@@ -213,6 +213,7 @@ spec:
           failureThreshold: 10
           timeoutSeconds: 10
           periodSeconds: 20
+        {{- include "retool.startupProbe" (dict "probe" $gitServerValues.startupProbe "port" $gitServerPort) | nindent 8 }}
         resources:
 {{ toYaml ($gitServerValues.resources | default .Values.resources) | indent 10 }}
         volumeMounts:

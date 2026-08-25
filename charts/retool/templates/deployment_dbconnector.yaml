@@ -70,6 +70,7 @@ spec:
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold:  {{ .Values.livenessProbe.failureThreshold }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.dbconnector.startupProbe "port" .Values.dbconnector.port) | nindent 8 }}
         resources:
           {{- if .Values.dbconnector.resources }}
           {{- toYaml .Values.dbconnector.resources | nindent 10 }}

@@ -176,6 +176,7 @@ spec:
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.rr.jsExecutor.startupProbe "port" 3000) | nindent 8 }}
         resources:
 {{ toYaml .Values.rr.jsExecutor.resources | indent 10 }}
         volumeMounts:

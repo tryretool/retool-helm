@@ -323,17 +323,20 @@ readinessProbe:
 preStopHook:
   enabled: true
 
-# To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
+# Startup probe for the main backend. Other deployments have their own
+# <component>.startupProbe, also enabled by default. Set enabled: false to
+# disable a given deployment. Optional host/scheme: see livenessProbe.
 startupProbe:
-  enabled: false
+  enabled: true
   path: /api/checkHealth
   # Optional; see livenessProbe above. Set host: 127.0.0.1 on IPv6/dual-stack clusters.
   # host: 127.0.0.1
   # scheme: HTTP
-  initialDelaySeconds: 60
+  initialDelaySeconds: 0
   timeoutSeconds: 10
   periodSeconds: 10
   successThreshold: 1
+  failureThreshold: 30
 
 extraContainers: []
 
@@ -424,6 +427,16 @@ jobRunner:
   # Labels for job runner pods
   labels: {}
 
+  # Optional host/scheme: see top-level livenessProbe.
+  startupProbe:
+    enabled: true
+    path: /api/checkJobsRunnerHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 3
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 18
+
 backend:
   # Annotations for backend pods
   annotations: {}
@@ -458,6 +471,15 @@ workflows:
     # Override the connection pool size used by workflow workers when calling the dbconnector service
     postgresPoolMaxSize: 100
 
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
   backend:
     # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
@@ -474,6 +496,19 @@ workflows:
     #   requests:
     #     cpu: 2048m
     #     memory: 4096Mi
+
+    # Startup probe for the workflow-backend pod only. Independent of the
+    # top-level startupProbe (main backend). Optional host/scheme: see livenessProbe.
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      # host: 127.0.0.1
+      # scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
 
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
@@ -561,6 +596,15 @@ dbconnector:
   # Extra annotations specific to standalone dbconnector pods.
   annotations: {}
 
+  startupProbe:
+    enabled: true
+    path: /api/checkHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 30
+
 
 multiplayer:
   # Enable this to use Retool's experimental multiplayer editing feature.
@@ -586,6 +630,15 @@ multiplayer:
 
   # Labels for multiplayer pods
   labels: {}
+
+  startupProbe:
+    enabled: true
+    path: /api/checkHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 30
 
   # Paths to route to multiplayer pods; defaults to /api/multiplayer. Can specify both path and port.
   ingress:
@@ -640,6 +693,15 @@ mcp:
   annotations: {}
 
   labels: {}
+
+  startupProbe:
+    enabled: true
+    path: /healthcheck
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 18
 
   # Additional MCP environment variables, including valueFrom entries.
   # Use for settings not exposed under mcp.config.
@@ -802,6 +864,15 @@ codeExecutor:
   # Labels for code executor pods
   labels: {}
 
+  startupProbe:
+    enabled: true
+    path: /api/checkHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 30
+
   # Config for code executor. Node heap size limits can be overridden here
   config: {}
   # config: {
@@ -909,6 +980,15 @@ rr:
     # Labels for JS executor pods
     labels: {}
 
+    startupProbe:
+      enabled: true
+      path: /api/health
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
     volumes: {}
     volumeMounts: {}
 
@@ -945,6 +1025,15 @@ rr:
     # RR agent worker configuration
     worker:
       replicaCount: 1
+
+      startupProbe:
+        enabled: true
+        path: /api/checkHealth
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 30
 
       resources:
         limits:
@@ -1149,6 +1238,19 @@ rr:
         limits:
           cpu: 500m
           memory: 512Mi
+      # Startup probe for the controller. The image entrypoint copies the JS
+      # bundle before launching node, which can exceed the hardcoded liveness
+      # window (10s delay + 5x10s) under the default CPU limit.
+      startupProbe:
+        enabled: true
+        path: /livez
+        # host: 127.0.0.1
+        # scheme: HTTP
+        initialDelaySeconds: 0
+        timeoutSeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       scaling:
         prewarmPoolSize: 5
         maxTotalJobs: 50
@@ -1172,6 +1274,14 @@ rr:
         limits:
           cpu: '1'
           memory: 512Mi
+      startupProbe:
+        enabled: true
+        path: /livez
+        initialDelaySeconds: 0
+        timeoutSeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       allowedDomains: ''
       # URL the proxy uses to reach the Retool backend for token exchange.
       # Defaults to http://<fullname>:3000 (same-cluster backend service).
@@ -1324,6 +1434,14 @@ rr:
       # Annotations/labels applied to the git-server pod template.
       annotations: {}
       labels: {}
+      startupProbe:
+        enabled: true
+        tcpSocket: true
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       # Annotations/labels applied to the git-server Service (kept separate from
       # the pod ones above).
       service:
@@ -1391,6 +1509,15 @@ agents:
   worker:
     replicaCount: 1
 
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
     resources:
       limits:
         cpu: 2000m
@@ -1402,6 +1529,15 @@ agents:
   # Agent eval worker configuration
   evalWorker:
     replicaCount: 1
+
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
 
     resources:
       limits:

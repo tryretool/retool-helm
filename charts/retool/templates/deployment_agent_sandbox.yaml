@@ -400,6 +400,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
+          {{- include "retool.startupProbe" (dict "probe" $as.controller.startupProbe "port" "http") | nindent 10 }}
           readinessProbe:
             httpGet:
               path: /health
@@ -624,6 +625,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
+          {{- include "retool.startupProbe" (dict "probe" $as.proxy.startupProbe "port" "http") | nindent 10 }}
           readinessProbe:
             httpGet:
               path: /health

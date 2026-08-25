@@ -201,6 +201,7 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.codeExecutor.startupProbe "port" 3004) | nindent 8 }}
         resources:
 {{ toYaml .Values.codeExecutor.resources | indent 10 }}
         volumeMounts:
