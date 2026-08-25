@@ -303,25 +303,7 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
-{{- with .Values.workflows.backend.startupProbe }}
-{{- if .enabled }}
-        startupProbe:
-          httpGet:
-            path: {{ .path }}
-            port: {{ $.Values.service.internalPort }}
-            {{- with .host }}
-            host: {{ . | quote }}
-            {{- end }}
-            {{- with .scheme }}
-            scheme: {{ . }}
-            {{- end }}
-          initialDelaySeconds: {{ .initialDelaySeconds }}
-          timeoutSeconds: {{ .timeoutSeconds }}
-          successThreshold: {{ .successThreshold }}
-          periodSeconds: {{ .periodSeconds }}
-          failureThreshold: {{ .failureThreshold }}
-{{- end }}
-{{- end }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.workflows.backend.startupProbe "port" .Values.service.internalPort) | nindent 8 }}
         resources:
 {{- if .Values.workflows.backend.resources }}
 {{ toYaml .Values.workflows.backend.resources | indent 10 }}

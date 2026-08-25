@@ -248,6 +248,7 @@ spec:
           failureThreshold: 10
           timeoutSeconds: 10
           periodSeconds: 20
+        {{- include "retool.startupProbe" (dict "probe" .Values.mcp.startupProbe "port" $mcpInternalPort) | nindent 8 }}
         resources:
 {{ toYaml .Values.mcp.resources | indent 10 }}
         volumeMounts:

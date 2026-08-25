@@ -386,22 +386,7 @@ spec:
             exec:
               command: ["sleep", "30"]
 {{- end }}
-{{- if .Values.startupProbe.enabled }}
-        startupProbe:
-          httpGet:
-            path: {{ .Values.startupProbe.path }}
-            port: {{ .Values.service.internalPort }}
-            {{- with .Values.startupProbe.host }}
-            host: {{ . | quote }}
-            {{- end }}
-            {{- with .Values.startupProbe.scheme }}
-            scheme: {{ . }}
-            {{- end }}
-          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
-          successThreshold: {{ .Values.startupProbe.successThreshold }}
-          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-{{- end }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.startupProbe "port" .Values.service.internalPort) | nindent 8 }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         volumeMounts:

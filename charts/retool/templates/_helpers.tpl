@@ -322,6 +322,39 @@ Map values allow structured EnvVar fields such as valueFrom.
 {{- end }}
 {{- end }}
 
+{{/*
+Render a container startupProbe from a values block.
+Pass dict "probe" and "port" (name or number). Set probe.tcpSocket to use a
+TCP probe instead of httpGet (git-server). Empty when probe.enabled is false.
+*/}}
+{{- define "retool.startupProbe" -}}
+{{- $p := .probe | default dict -}}
+{{- if $p.enabled }}
+startupProbe:
+  {{- if $p.tcpSocket }}
+  tcpSocket:
+    port: {{ .port }}
+  {{- else }}
+  httpGet:
+    path: {{ $p.path }}
+    port: {{ .port }}
+    {{- with $p.host }}
+    host: {{ . | quote }}
+    {{- end }}
+    {{- with $p.scheme }}
+    scheme: {{ . }}
+    {{- end }}
+  {{- end }}
+  initialDelaySeconds: {{ $p.initialDelaySeconds }}
+  timeoutSeconds: {{ $p.timeoutSeconds }}
+  periodSeconds: {{ $p.periodSeconds }}
+  successThreshold: {{ $p.successThreshold }}
+  {{- with $p.failureThreshold }}
+  failureThreshold: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
 {{- define "retool.postgresql.fullname" -}}
 {{- $name := default "postgresql" .Values.postgresql.nameOverride -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}

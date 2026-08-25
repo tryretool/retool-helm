@@ -199,6 +199,7 @@ spec:
           failureThreshold: 10
           timeoutSeconds: 10
           periodSeconds: 20
+        {{- include "retool.startupProbe" (dict "probe" .Values.multiplayer.startupProbe "port" 3001) | nindent 8 }}
         volumeMounts:
         {{- range $configFile := (keys .Values.files) }}
         - name: {{ template "retool.name" $ }}
