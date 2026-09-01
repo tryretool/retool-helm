@@ -586,6 +586,36 @@ Set Temporal namespace
 {{- end -}}
 
 {{/*
+Returns "1" when a Temporal cluster is enabled for this deployment -- either
+via the bundled retool-temporal-services-helm subchart or an external Temporal
+cluster configured under .Values.workflows.temporal / .Values.temporal.
+Usage: (include "retool.temporal.enabled" .)
+*/}}
+{{- define "retool.temporal.enabled" -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled -}}1{{- end -}}
+{{- end -}}
+
+{{/*
+R² orchestration backend env var. R² sandbox workflows run on either Temporal
+(the code default) or pg-boss (a Postgres-backed durable job queue). When no
+Temporal cluster is enabled, fall back to pg-boss so self-hosted deployments
+without Temporal can still run R² tasks. Requires Retool >= 4.47.0.
+Usage: {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
+*/}}
+{{- define "retool.r2.orchestrationBackendEnv" -}}
+{{- if ne (include "retool.temporal.enabled" .) "1" -}}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+{{- $retool_version_supports_r2_postgres := ( and ( regexMatch $valid_retool_version_regexp .Values.image.tag ) ( semverCompare ">= 4.47.0-0" ( regexFind $semver_version_regexp .Values.image.tag ) ) ) }}
+{{- if $retool_version_supports_r2_postgres -}}
+- name: R2_ORCHESTRATION_BACKEND
+  value: "postgres"
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Set dbconnector service name
 */}}
 {{- define "retool.dbconnector.name" -}}
@@ -927,6 +957,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- $defaultSecretName := .Values.rr.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"
+{{ include "retool.r2.orchestrationBackendEnv" . }}
 - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
   value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
 {{- include "retool.agentSandbox.proxyEnvVars" . }}
