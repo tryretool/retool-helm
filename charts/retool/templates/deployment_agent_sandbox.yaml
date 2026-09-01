@@ -685,8 +685,6 @@ spec:
     - port: {{ $as.proxy.port }}
       targetPort: http
       protocol: TCP
-      # tcp-, not http-: this port carries forward-proxy requests and CONNECT
-      # tunnels, which service-mesh L7 handling rewrites and breaks.
       name: tcp-proxy
   selector:
     {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 4 }}
