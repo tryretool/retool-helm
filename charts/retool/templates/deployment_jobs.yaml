@@ -96,6 +96,7 @@ spec:
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
           - name: RR_AGENT_PUBSUB_BACKEND
             value: "postgres"
+          {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
           {{- end }}
 
           {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
