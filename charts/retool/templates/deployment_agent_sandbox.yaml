@@ -685,7 +685,7 @@ spec:
     - port: {{ $as.proxy.port }}
       targetPort: http
       protocol: TCP
-      name: http
+      name: tcp-proxy
   selector:
     {{- include "retool.agentSandbox.proxy.selectorLabels" . | nindent 4 }}
 ---
