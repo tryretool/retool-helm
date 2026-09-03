@@ -303,6 +303,7 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
 {{- end }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.workflows.backend.startupProbe "port" .Values.service.internalPort) | nindent 8 }}
         resources:
 {{- if .Values.workflows.backend.resources }}
 {{ toYaml .Values.workflows.backend.resources | indent 10 }}

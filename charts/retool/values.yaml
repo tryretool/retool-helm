@@ -341,17 +341,20 @@ readinessProbe:
 preStopHook:
   enabled: true
 
-# To avoid increasing livenessProbe initialDelaySeconds the good practice is to use a startupProbe.
+# Startup probe for the main backend. Other deployments have their own
+# <component>.startupProbe, also enabled by default. Set enabled: false to
+# disable a given deployment. Optional host/scheme: see livenessProbe.
 startupProbe:
-  enabled: false
+  enabled: true
   path: /api/checkHealth
   # Optional; see livenessProbe above. Set host: 127.0.0.1 on IPv6/dual-stack clusters.
   # host: 127.0.0.1
   # scheme: HTTP
-  initialDelaySeconds: 60
+  initialDelaySeconds: 0
   timeoutSeconds: 10
   periodSeconds: 10
   successThreshold: 1
+  failureThreshold: 30
 
 extraContainers: []
 
@@ -442,6 +445,16 @@ jobRunner:
   # Labels for job runner pods
   labels: {}
 
+  # Optional host/scheme: see top-level livenessProbe.
+  startupProbe:
+    enabled: true
+    path: /api/checkJobsRunnerHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 3
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 18
+
 backend:
   # Annotations for backend pods
   annotations: {}
@@ -450,9 +463,8 @@ backend:
   labels: {}
 
   # Make backend pods wait the specified time before kubernetes will forcibly kill them when they need to be rescheduled
-  # By default this is a 2 minutes + 15 seconds + 1 second (136) grace period to allow outstanding queries to complete
-  # Change this to 10 minutes 15 seconds + 1 second (616) if you are using long-running queries with a 10 minute timeout
-  terminationGracePeriodSeconds: 136
+  # By default this is a 6 minutes + 30 seconds + 1 second (391) grace period to allow outstanding queries to complete
+  terminationGracePeriodSeconds: 391
 
 ui:
   # Annotations for ui pods
@@ -477,6 +489,15 @@ workflows:
     # Override the connection pool size used by workflow workers when calling the dbconnector service
     postgresPoolMaxSize: 100
 
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
   backend:
     # A replicaCount of 1 will launch 6 pods -- 1 workflow backend, 1 workflow worker, and 4 pods that make up the executor temporal cluster
     # Scaling this number will increase the number of workflow backends, e.g. a replicaCount of 4
@@ -493,6 +514,19 @@ workflows:
     #   requests:
     #     cpu: 2048m
     #     memory: 4096Mi
+
+    # Startup probe for the workflow-backend pod only. Independent of the
+    # top-level startupProbe (main backend). Optional host/scheme: see livenessProbe.
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      # host: 127.0.0.1
+      # scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
 
   # Timeout for queries, in ms. This will set the timeout for workflows-related pods only
   # If this value is not set but config.dbConnectorTimeout is, we will set workflows pod timeouts
@@ -556,7 +590,7 @@ dbconnector:
   # kubernetes will forcibly kill them when they need to be rescheduled. Setting
   # this to a long duration will minimize disruption to any long-running
   # resource queries during updates, at the cost of making updates take longer.
-  # terminationGracePeriodSeconds: 960
+  terminationGracePeriodSeconds: 391
 
   # If necessary, specify the resources to provision the workflows-backend pod
   # separately from the main backend pods. If unspecified, uses the same
@@ -579,6 +613,15 @@ dbconnector:
 
   # Extra annotations specific to standalone dbconnector pods.
   annotations: {}
+
+  startupProbe:
+    enabled: true
+    path: /api/checkHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 30
 
 
 multiplayer:
@@ -605,6 +648,15 @@ multiplayer:
 
   # Labels for multiplayer pods
   labels: {}
+
+  startupProbe:
+    enabled: true
+    path: /api/checkHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 30
 
   # Paths to route to multiplayer pods; defaults to /api/multiplayer. Can specify both path and port.
   ingress:
@@ -659,6 +711,15 @@ mcp:
   annotations: {}
 
   labels: {}
+
+  startupProbe:
+    enabled: true
+    path: /healthcheck
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 18
 
   # Additional MCP environment variables, including valueFrom entries.
   # Use for settings not exposed under mcp.config.
@@ -799,20 +860,36 @@ mcp:
     labels: {}
 
 codeExecutor:
-  # as of Chart version 6.7.0, code-executor image version must align with the top-level `image` parameters
-  # explicitly set other fields as needed
+  # Code executor normally tracks the top-level `image` parameters. Override the
+  # tag only when you need a one-off or patched build (e.g. a support build whose
+  # tag differs from the backend's); running a code executor version that does not
+  # match the backend is not generally supported.
 
   image:
     repository: tryretool/code-executor-service
-    pullPolicy: IfNotPresent
+    # defaults to top level image.tag
+    tag: null
+    # pull policy will use the value set in the top-level image.pullPolicy
 
   replicaCount: 1
+
+  # 6m in-flight request + 30s backend-style preStop buffer + 1s
+  terminationGracePeriodSeconds: 391
 
   # Annotations for code executor pods
   annotations: {}
 
   # Labels for code executor pods
   labels: {}
+
+  startupProbe:
+    enabled: true
+    path: /api/checkHealth
+    initialDelaySeconds: 0
+    timeoutSeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 30
 
   # Config for code executor. Node heap size limits can be overridden here
   config: {}
@@ -882,6 +959,31 @@ rr:
 
     replicaCount: 1
 
+    # Horizontal Pod Autoscaler for the JS executor. Disabled by default;
+    # set enabled: true to opt in. When enabled, replicaCount is ignored
+    # and the HPA controls the replica count. Scales on CPU and memory
+    # Utilization only.
+    #
+    # Scaling requires a cluster metrics-server (or another metrics.k8s.io
+    # implementation). This chart does not install it. If kubectl top pod
+    # fails in the namespace, the HPA is created but does not scale.
+    #
+    # Each Utilization target requires a matching container request
+    # (rr.jsExecutor.resources.requests.cpu / .memory). A limits-only or
+    # partial resources override leaves those metrics unavailable and the
+    # HPA will not scale on the affected resource.
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+      # Scaling behavior (stabilization windows and policies).
+      # behavior: {}
+
+    # 6m in-flight SLF + 30s drain buffer + 1s
+    terminationGracePeriodSeconds: 391
+
     seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
     # JS-executor-specific environment; not inherited from the top-level
@@ -896,6 +998,15 @@ rr:
     # Labels for JS executor pods
     labels: {}
 
+    startupProbe:
+      enabled: true
+      path: /api/health
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
     volumes: {}
     volumeMounts: {}
 
@@ -905,6 +1016,8 @@ rr:
     # Resources for the JS executor. Memory request and limit are kept equal:
     # JSE reads its memory limit and rejects requests at 80% of it, so the
     # request must reserve the full amount to avoid premature rejections.
+    # HPA Utilization metrics (see autoscaling above) also require these
+    # requests; do not drop them if autoscaling is enabled.
     resources:
       limits:
         cpu: '2'
@@ -930,6 +1043,15 @@ rr:
     # RR agent worker configuration
     worker:
       replicaCount: 1
+
+      startupProbe:
+        enabled: true
+        path: /api/checkHealth
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 30
 
       resources:
         limits:
@@ -1111,6 +1233,18 @@ rr:
       # Additional environment variables for sandbox containers.
       extraEnv: []
 
+      # Annotations applied to sandbox Job pods (the pods that run user code).
+      # Two do-not-disrupt annotations are applied by default so sandbox pods
+      # are protected from eviction on both Karpenter and cluster-autoscaler
+      # clusters (GKE, EKS, etc.) out of the box:
+      #   karpenter.sh/do-not-disrupt: "true"
+      #   cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      # Each is a no-op when the matching autoscaler isn't present. Entries
+      # below override a default of the same key and can add new annotations;
+      # to allow disruption on a specific autoscaler, override its key (e.g.
+      # set cluster-autoscaler.kubernetes.io/safe-to-evict: "true").
+      annotations: {}
+
     # Controller: tracks capacity, assigns sandbox pods, manages scaling
     controller:
       replicaCount: 1
@@ -1122,6 +1256,19 @@ rr:
         limits:
           cpu: 500m
           memory: 512Mi
+      # Startup probe for the controller. The image entrypoint copies the JS
+      # bundle before launching node, which can exceed the hardcoded liveness
+      # window (10s delay + 5x10s) under the default CPU limit.
+      startupProbe:
+        enabled: true
+        path: /livez
+        # host: 127.0.0.1
+        # scheme: HTTP
+        initialDelaySeconds: 0
+        timeoutSeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       scaling:
         prewarmPoolSize: 5
         maxTotalJobs: 50
@@ -1143,14 +1290,42 @@ rr:
           cpu: 250m
           memory: 256Mi
         limits:
-          cpu: 500m
+          cpu: '1'
           memory: 512Mi
+      startupProbe:
+        enabled: true
+        path: /livez
+        initialDelaySeconds: 0
+        timeoutSeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       allowedDomains: ''
       # URL the proxy uses to reach the Retool backend for token exchange.
       # Defaults to http://<fullname>:3000 (same-cluster backend service).
       backendUrl: ''
       backendDomainSuffixes: ''
       sandboxProxyTimeoutMs: '180000'  # 3 minutes
+      # Where the proxy fetches public npm packages. Leave url empty to use
+      # registry.npmjs.org. Set it to an internal mirror when sandboxes have no public
+      # npm egress — note the *proxy pod* dials it, not the sandboxes, so that is the
+      # only network path that has to reach the mirror.
+      npmRegistry:
+        url: ''
+        # bearer | none. `bearer` (the default) attaches a token and refuses to send
+        # the request at all when none is available, so a Secret that fails to mount
+        # can't silently downgrade to unauthenticated. Use `none` only for a mirror
+        # that genuinely allows anonymous reads.
+        authMode: bearer
+        # Credential for authMode: bearer. Inline, or from an existing Secret, or from
+        # a mounted file. Prefer the file when the token rotates — it is re-read on a
+        # TTL, so rotation needs no proxy restart. All three are unused by authMode: none.
+        authToken: ''
+        authTokenSecret:
+          name: ''
+          key: ''
+        authTokenFile: ''
+        authTokenTtlMs: ''
       service:
         # Set to LoadBalancer or NodePort to expose the proxy externally.
         type: ClusterIP
@@ -1277,6 +1452,14 @@ rr:
       # Annotations/labels applied to the git-server pod template.
       annotations: {}
       labels: {}
+      startupProbe:
+        enabled: true
+        tcpSocket: true
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
       # Annotations/labels applied to the git-server Service (kept separate from
       # the pod ones above).
       service:
@@ -1344,6 +1527,15 @@ agents:
   worker:
     replicaCount: 1
 
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
     resources:
       limits:
         cpu: 2000m
@@ -1355,6 +1547,15 @@ agents:
   # Agent eval worker configuration
   evalWorker:
     replicaCount: 1
+
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
 
     resources:
       limits:

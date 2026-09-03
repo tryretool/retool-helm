@@ -322,6 +322,39 @@ Map values allow structured EnvVar fields such as valueFrom.
 {{- end }}
 {{- end }}
 
+{{/*
+Render a container startupProbe from a values block.
+Pass dict "probe" and "port" (name or number). Set probe.tcpSocket to use a
+TCP probe instead of httpGet (git-server). Empty when probe.enabled is false.
+*/}}
+{{- define "retool.startupProbe" -}}
+{{- $p := .probe | default dict -}}
+{{- if $p.enabled }}
+startupProbe:
+  {{- if $p.tcpSocket }}
+  tcpSocket:
+    port: {{ .port }}
+  {{- else }}
+  httpGet:
+    path: {{ $p.path }}
+    port: {{ .port }}
+    {{- with $p.host }}
+    host: {{ . | quote }}
+    {{- end }}
+    {{- with $p.scheme }}
+    scheme: {{ . }}
+    {{- end }}
+  {{- end }}
+  initialDelaySeconds: {{ $p.initialDelaySeconds }}
+  timeoutSeconds: {{ $p.timeoutSeconds }}
+  periodSeconds: {{ $p.periodSeconds }}
+  successThreshold: {{ $p.successThreshold }}
+  {{- with $p.failureThreshold }}
+  failureThreshold: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
 {{- define "retool.postgresql.fullname" -}}
 {{- $name := default "postgresql" .Values.postgresql.nameOverride -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
@@ -553,6 +586,36 @@ Set Temporal namespace
 {{- end -}}
 
 {{/*
+Returns "1" when a Temporal cluster is enabled for this deployment -- either
+via the bundled retool-temporal-services-helm subchart or an external Temporal
+cluster configured under .Values.workflows.temporal / .Values.temporal.
+Usage: (include "retool.temporal.enabled" .)
+*/}}
+{{- define "retool.temporal.enabled" -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled -}}1{{- end -}}
+{{- end -}}
+
+{{/*
+R² orchestration backend env var. R² sandbox workflows run on either Temporal
+(the code default) or pg-boss (a Postgres-backed durable job queue). When no
+Temporal cluster is enabled, fall back to pg-boss so self-hosted deployments
+without Temporal can still run R² tasks. Requires Retool >= 4.47.0.
+Usage: {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
+*/}}
+{{- define "retool.r2.orchestrationBackendEnv" -}}
+{{- if ne (include "retool.temporal.enabled" .) "1" -}}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+{{- $retool_version_supports_r2_postgres := ( and ( regexMatch $valid_retool_version_regexp .Values.image.tag ) ( semverCompare ">= 4.47.0-0" ( regexFind $semver_version_regexp .Values.image.tag ) ) ) }}
+{{- if $retool_version_supports_r2_postgres -}}
+- name: R2_ORCHESTRATION_BACKEND
+  value: "postgres"
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Set dbconnector service name
 */}}
 {{- define "retool.dbconnector.name" -}}
@@ -775,6 +838,21 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if not (or $as.encryptionKey $ext) -}}
 {{- fail "agentSandbox.enabled requires an encryption key: the proxy derives the sandbox-iframe asset-token HMAC key from it and throws when serving a sandbox without it, and the backend must use the same value. Set agentSandbox.encryptionKey (64 hex chars, openssl rand -hex 32) or agentSandbox.externalSecret.name (with an encryption-key entry)." -}}
 {{- end -}}
+{{- $npm := $as.proxy.npmRegistry -}}
+{{- if not (has $npm.authMode (list "bearer" "none")) -}}
+{{- fail (printf "agentSandbox.proxy.npmRegistry.authMode must be \"bearer\" or \"none\" (got %q). The proxy rejects any other value at startup." $npm.authMode) -}}
+{{- end -}}
+{{- if $npm.url -}}
+{{- if and $npm.authTokenSecret.name (not $npm.authTokenSecret.key) -}}
+{{- fail "agentSandbox.proxy.npmRegistry.authTokenSecret.name is set without .key, which would render an empty secretKeyRef and leave the proxy unable to start. Set .key to the entry holding the registry token." -}}
+{{- end -}}
+{{- if and $npm.authToken $npm.authTokenSecret.name -}}
+{{- fail "agentSandbox.proxy.npmRegistry sets both authToken and authTokenSecret. The inline value wins and the Secret is never read, so the proxy would use a credential you may not have intended. Set exactly one." -}}
+{{- end -}}
+{{- if and (eq $npm.authMode "bearer") (not (or $npm.authToken $npm.authTokenSecret.name $npm.authTokenFile)) -}}
+{{- fail "agentSandbox.proxy.npmRegistry.url is set with authMode \"bearer\" but no credential. The proxy fails closed, so every package install would 503. Supply authToken / authTokenSecret / authTokenFile, or set authMode: none for a registry that allows anonymous reads." -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -879,6 +957,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- $defaultSecretName := .Values.rr.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"
+{{ include "retool.r2.orchestrationBackendEnv" . }}
 - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
   value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
 {{- include "retool.agentSandbox.proxyEnvVars" . }}
@@ -1207,7 +1286,9 @@ Set code executor image tag
 Usage: (template "retool.codeExecutor.image.tag" .)
 */}}
 {{- define "retool.codeExecutor.image.tag" -}}
-{{- if .Values.image.tag -}}
+{{- if .Values.codeExecutor.image.tag -}}
+  {{- .Values.codeExecutor.image.tag -}}
+{{- else if .Values.image.tag -}}
   {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
   {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
   {{- $retool_version_with_ce := ( and ( regexMatch $valid_retool_version_regexp $.Values.image.tag ) ( semverCompare ">= 3.20.15-0" ( regexFind $semver_version_regexp $.Values.image.tag ) ) ) }}
@@ -1217,7 +1298,7 @@ Usage: (template "retool.codeExecutor.image.tag" .)
     {{- "1.1.0" -}}
   {{- end -}}
 {{- else -}}
-  {{- fail "Please set a value for .Values.image.tag" }}
+  {{- fail "Please set a value for .Values.image.tag or .Values.codeExecutor.image.tag" }}
 {{- end -}}
 {{- end -}}
 

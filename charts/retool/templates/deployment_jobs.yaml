@@ -96,6 +96,7 @@ spec:
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
           - name: RR_AGENT_PUBSUB_BACKEND
             value: "postgres"
+          {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
           {{- end }}
 
           {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
@@ -251,6 +252,7 @@ spec:
           initialDelaySeconds: 120
           periodSeconds: 30
           timeoutSeconds: 3
+        {{- include "retool.startupProbe" (dict "probe" .Values.jobRunner.startupProbe "port" 3003) | nindent 8 }}
         {{- end }}
         {{- end }}
         volumeMounts:

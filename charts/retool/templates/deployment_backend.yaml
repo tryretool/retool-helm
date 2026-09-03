@@ -46,7 +46,7 @@ spec:
 {{ toYaml .Values.ui.labels | indent 8 }}
 {{- end }}
     spec:
-      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds | default 136 }}
+      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds | default 391 }}
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
@@ -273,9 +273,8 @@ spec:
             value: {{ template "retool.gitServer.name" . }}
           - name: RR_GIT_SERVER_PORT
             value: {{ include "retool.gitServer.port" . | quote }}
-          {{- else }}
-          {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
+          {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
@@ -387,22 +386,7 @@ spec:
             exec:
               command: ["sleep", "30"]
 {{- end }}
-{{- if .Values.startupProbe.enabled }}
-        startupProbe:
-          httpGet:
-            path: {{ .Values.startupProbe.path }}
-            port: {{ .Values.service.internalPort }}
-            {{- with .Values.startupProbe.host }}
-            host: {{ . | quote }}
-            {{- end }}
-            {{- with .Values.startupProbe.scheme }}
-            scheme: {{ . }}
-            {{- end }}
-          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
-          successThreshold: {{ .Values.startupProbe.successThreshold }}
-          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-{{- end }}
+        {{- include "retool.startupProbe" (dict "probe" .Values.startupProbe "port" .Values.service.internalPort) | nindent 8 }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         volumeMounts:

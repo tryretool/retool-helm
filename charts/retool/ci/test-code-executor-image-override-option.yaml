@@ -1,0 +1,17 @@
+# Code executor image WITH an override: both fields must be used verbatim and
+# must not inherit from the top-level image.*. Overlaid onto each base
+# *values.yaml by .github/kubeconform.sh.
+#
+# The repository and tag below are deliberately unlike the top-level image.*, so
+# a regression that inherits the backend values, or that falls back to the
+# chart's built-in default tag, changes the rendered image and fails the test.
+# The tag must stay above the chart's code-executor and workflows version gates
+# (>= 3.20.15 and >= 3.6.11), or the deployment is not rendered at all and the
+# test silently asserts nothing.
+image:
+  tag: 9.9.9-test
+
+codeExecutor:
+  image:
+    repository: example/code-executor-service
+    tag: 8.8.8-test-override

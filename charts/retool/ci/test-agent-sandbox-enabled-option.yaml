@@ -54,6 +54,14 @@ rr:
     # replicaCount > 1 renders the controller PodDisruptionBudget.
     controller:
       replicaCount: 2
+      startupProbe:
+        enabled: true
+        path: /livez
+        initialDelaySeconds: 0
+        timeoutSeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
 
     proxy:
       replicaCount: 2

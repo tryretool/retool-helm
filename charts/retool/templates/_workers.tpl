@@ -384,6 +384,7 @@ spec:
           successThreshold: {{ $.Values.readinessProbe.successThreshold }}
           periodSeconds: {{ $.Values.readinessProbe.periodSeconds }}
 {{- end }}
+        {{- include "retool.startupProbe" (dict "probe" ($workerValues.startupProbe | default dict) "port" $healthcheckPort) | nindent 8 }}
         resources:
 {{ toYaml ($workerValues.resources | default $parentValues.resources | default $.Values.resources) | indent 10 }}
         volumeMounts:

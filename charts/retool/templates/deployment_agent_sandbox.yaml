@@ -115,9 +115,7 @@ data:
         "ttlSecondsAfterFinished": {{ $as.controller.scaling.jobRetentionSeconds }},
         "template": {
           "metadata": {
-            "annotations": {
-              "karpenter.sh/do-not-disrupt": "true"
-            },
+            "annotations": {{- $sandboxAnnotations := dict "karpenter.sh/do-not-disrupt" "true" -}}{{- $_ := set $sandboxAnnotations "cluster-autoscaler.kubernetes.io/safe-to-evict" "false" -}}{{- range $k, $v := $as.sandbox.annotations }}{{- $_ := set $sandboxAnnotations $k $v }}{{- end }}{{ toJson $sandboxAnnotations }},
             "labels": {
               "retoolService": "{{ include "retool.agentSandbox.name" . }}",
               "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
@@ -402,6 +400,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
+          {{- include "retool.startupProbe" (dict "probe" $as.controller.startupProbe "port" "http") | nindent 10 }}
           readinessProbe:
             httpGet:
               path: /health
@@ -584,6 +583,30 @@ spec:
             - name: SANDBOX_PROXY_TIMEOUT_MS
               value: {{ $as.proxy.sandboxProxyTimeoutMs | quote }}
             {{- end }}
+            {{- if $as.proxy.npmRegistry.url }}
+            - name: NPM_PUBLIC_REGISTRY_URL
+              value: {{ $as.proxy.npmRegistry.url | quote }}
+            - name: NPM_PUBLIC_REGISTRY_AUTH_MODE
+              value: {{ $as.proxy.npmRegistry.authMode | quote }}
+            {{- if $as.proxy.npmRegistry.authToken }}
+            - name: NPM_PUBLIC_REGISTRY_AUTH_TOKEN
+              value: {{ $as.proxy.npmRegistry.authToken | quote }}
+            {{- else if $as.proxy.npmRegistry.authTokenSecret.name }}
+            - name: NPM_PUBLIC_REGISTRY_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $as.proxy.npmRegistry.authTokenSecret.name }}
+                  key: {{ $as.proxy.npmRegistry.authTokenSecret.key }}
+            {{- end }}
+            {{- if $as.proxy.npmRegistry.authTokenFile }}
+            - name: NPM_PUBLIC_REGISTRY_AUTH_TOKEN_FILE
+              value: {{ $as.proxy.npmRegistry.authTokenFile | quote }}
+            {{- end }}
+            {{- if $as.proxy.npmRegistry.authTokenTtlMs }}
+            - name: NPM_PUBLIC_REGISTRY_AUTH_TOKEN_TTL_MS
+              value: {{ $as.proxy.npmRegistry.authTokenTtlMs | quote }}
+            {{- end }}
+            {{- end }}
           lifecycle:
             preStop:
               exec:
@@ -602,6 +625,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
+          {{- include "retool.startupProbe" (dict "probe" $as.proxy.startupProbe "port" "http") | nindent 10 }}
           readinessProbe:
             httpGet:
               path: /health
