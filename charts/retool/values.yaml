@@ -55,6 +55,24 @@ image:
   tag: ""
   pullPolicy: "IfNotPresent"
 
+# Small utility image for the initContainers that install the nsjail seccomp
+# profile onto the host, on the code executor and JS executor. Only used when
+# seccomp is in play.
+#
+# Override repository if every image has to come from one registry -- a private
+# mirror, an air-gapped install, or GCP Marketplace, which rejects any artifact
+# a consumer pulls from outside its own Artifact Registry.
+#
+# The upstream busybox image is pinned to a known-good digest internally, but
+# only while repository and tag are left at their defaults below. Overriding
+# either drops that pin automatically (a copied image gets a new digest, so the
+# original would pin you back to the source registry and fail the pull). Set
+# digest here to pin your own mirrored image by digest.
+initImage:
+  repository: busybox
+  tag: '1.37.0'
+  digest: ''
+
 commandline:
   args: []
 
