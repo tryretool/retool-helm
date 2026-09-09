@@ -65,6 +65,15 @@ spec:
       ports:
         - port: {{ $as.proxy.port }}
           protocol: TCP
+    {{- if .Values.telemetry.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.telemetry.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: 9125
+          protocol: UDP
+    {{- end }}
     {{- with $as.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -124,6 +133,15 @@ spec:
           protocol: TCP
         - port: 6443
           protocol: TCP
+    {{- if .Values.telemetry.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.telemetry.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: 9125
+          protocol: UDP
+    {{- end }}
 ---
 {{- /*
 =======================================================================
@@ -212,5 +230,14 @@ spec:
               {{- range $as.networkPolicy.blockedRanges6 }}
               - {{ . }}
               {{- end }}
+    {{- end }}
+    {{- if .Values.telemetry.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.telemetry.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: 9125
+          protocol: UDP
     {{- end }}
 {{- end }}

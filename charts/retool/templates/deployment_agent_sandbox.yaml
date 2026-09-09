@@ -107,7 +107,8 @@ data:
       "metadata": {
         "labels": {
           "retoolService": "{{ include "retool.agentSandbox.name" . }}",
-          "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
+          "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}",
+          "telemetry.retool.com/service-name": "agent-sandbox"
         }
       },
       "spec": {
@@ -118,7 +119,8 @@ data:
             "annotations": {{- $sandboxAnnotations := dict "karpenter.sh/do-not-disrupt" "true" -}}{{- $_ := set $sandboxAnnotations "cluster-autoscaler.kubernetes.io/safe-to-evict" "false" -}}{{- range $k, $v := $as.sandbox.annotations }}{{- $_ := set $sandboxAnnotations $k $v }}{{- end }}{{ toJson $sandboxAnnotations }},
             "labels": {
               "retoolService": "{{ include "retool.agentSandbox.name" . }}",
-              "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
+              "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}",
+              "telemetry.retool.com/service-name": "agent-sandbox"
             }
           },
           "spec": {
@@ -198,6 +200,11 @@ data:
                   ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
                   ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   ,{"name": "SANDBOX_READY_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxReadyTimeoutMs }}"}
+                  {{- if .Values.telemetry.enabled }}
+                  ,{"name": "STATSD_HOST", "value": "{{ include "retool.telemetry.fullname" . }}.{{ .Release.Namespace }}"}
+                  ,{"name": "STATSD_PORT", "value": "9125"}
+                  ,{"name": "NODE_NAME", "valueFrom": {"fieldRef": {"fieldPath": "spec.nodeName"}}}
+                  {{- end }}
                   {{- if $as.jwtPublicKey }}
                   ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": {{ $as.jwtPublicKey | toJson }}}
                   {{- else if $as.externalSecret.name }}
@@ -327,6 +334,7 @@ spec:
               value: "controller"
             - name: CONTROLLER_PORT
               value: {{ $as.controller.port | quote }}
+            {{- include "retool.telemetry.includeEnvVars" . | nindent 12 }}
             - name: STATE_BACKEND
               value: "postgres"
             {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
@@ -534,6 +542,7 @@ spec:
               value: "proxy"
             - name: PROXY_PORT
               value: {{ $as.proxy.port | quote }}
+            {{- include "retool.telemetry.includeEnvVars" . | nindent 12 }}
             - name: STATE_BACKEND
               value: "postgres"
             {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
