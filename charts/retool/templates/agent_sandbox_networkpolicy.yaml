@@ -124,6 +124,9 @@ spec:
           protocol: TCP
         - port: 6443
           protocol: TCP
+    {{- with $as.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 ---
 {{- /*
 =======================================================================

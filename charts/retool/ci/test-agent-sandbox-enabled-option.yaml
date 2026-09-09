@@ -87,6 +87,19 @@ rr:
     # Restrict sandbox/controller/proxy traffic → renders the NetworkPolicies.
     networkPolicy:
       enabled: true
+      # Controller Postgres egress: built-in egress is only DNS, sandbox pods,
+      # and 0.0.0.0/0:443/6443, so 5432 needs an explicit rule.
+      extraEgress:
+        - to:
+            - ipBlock:
+                cidr: 10.20.0.0/16
+          ports:
+            - port: 5432
+              protocol: TCP
+      # The proxy dials the same Postgres; private ranges are blocked by
+      # default, so list the DB CIDR here.
+      backendAllowlist:
+        - 10.20.0.0/16
 
 # Exercise the proxy PodDisruptionBudget branch.
 podDisruptionBudget:

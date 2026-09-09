@@ -1145,6 +1145,11 @@ rr:
       # If options 1-3 are ALL unset, the default (inherit config.postgresql)
       # applies -- see the note at the top of this block.
 
+      # With rr.agentSandbox.networkPolicy.enabled, reaching this database
+      # needs networkPolicy.extraEgress (controller) and, for private-range
+      # hosts, networkPolicy.backendAllowlist (proxy). See the networkPolicy
+      # block below.
+
       # -- Optional tuning (defaults shown) --
       schema: 'agent_executor'
       poolMax: 10
@@ -1390,9 +1395,23 @@ rr:
         podSelector:
           matchLabels:
             k8s-app: kube-dns
+      # Raw egress rules appended to the sandbox AND controller
+      # NetworkPolicies. The controller needs one for its Postgres state
+      # backend (built-in egress is only DNS, sandbox pods, 0.0.0.0/0:443/6443,
+      # so port 5432 is unreachable). Use a CIDR for off-cluster DBs, or a
+      # podSelector for in-cluster ones (ipBlock matches pod IPs, not Service
+      # ClusterIPs). Example:
+      #   - to:
+      #       - ipBlock:
+      #           cidr: 10.20.0.0/16
+      #     ports:
+      #       - port: 5432
+      #         protocol: TCP
       extraEgress: []
       # CIDRs allowed in proxy egress even if they fall within blockedRanges
-      # (e.g. private backend endpoint).
+      # (e.g. private backend endpoint). The proxy's Postgres state backend
+      # needs this for private-range DBs, which blockedRanges (private ranges
+      # by default) would otherwise block.
       backendAllowlist: []
       # Override sandbox ingress source selector (defaults to retool backend pods).
       ingressFrom: []
