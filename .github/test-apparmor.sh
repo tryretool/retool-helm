@@ -164,11 +164,11 @@ else
   fail "retool-executor profile NOT found in kernel"
 fi
 
-# nsjail profile uses flags=(unconfined), so it appears as "(unconfined)" in the kernel
-if echo "$PROFILES" | grep -q "/usr/bin/nsjail"; then
-  pass "usr.bin.nsjail profile loaded"
+# nsjail child profile loaded via px transition from retool-executor
+if echo "$PROFILES" | grep -q "retool-executor//nsjail"; then
+  pass "retool-executor//nsjail child profile loaded"
 else
-  fail "usr.bin.nsjail profile NOT found in kernel"
+  fail "retool-executor//nsjail child profile NOT found in kernel"
 fi
 
 if echo "$PROFILES" | grep -q "retool-agent-sandbox (enforce)"; then
@@ -205,10 +205,13 @@ else
   fail "test-executor pod profile is '$CURRENT', expected 'retool-executor (enforce)'"
 fi
 
+# Under the px transition design, the parent profile denies mount/userns.
+# Only /usr/bin/nsjail (which transitions to retool-executor//nsjail) gets them.
+# Verify that a regular binary CANNOT use these operations.
 if kubectl exec test-executor -n "$NAMESPACE" -- unshare --user --mount --pid --fork echo "OK" 2>/dev/null; then
-  pass "unshare --user --mount --pid --fork succeeds under retool-executor"
+  fail "unshare --user --mount should be DENIED under retool-executor (only nsjail gets these via px transition)"
 else
-  fail "unshare --user --mount --pid --fork FAILED under retool-executor"
+  pass "unshare --user --mount correctly denied under retool-executor (restricted to nsjail)"
 fi
 
 # ---------------------------------------------------------------------------
