@@ -1,0 +1,23 @@
+name: Ensure seccomp profiles match generator output
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "charts/retool/files/*seccomp*.json"
+      - "charts/retool/seccomp/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/retool/files/*seccomp*.json"
+      - "charts/retool/seccomp/**"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Verify seccomp profiles are up to date
+        run: charts/retool/seccomp/generate.sh --check
