@@ -1,5 +1,4 @@
 {
-  "comment": "Docker default seccomp profile extended with syscalls required by gVisor runsc (systrap platform, rootless mode). Use with: docker run --security-opt seccomp=gvisor-seccomp.json",
   "defaultAction": "SCMP_ACT_ERRNO",
   "defaultErrnoRet": 38,
   "archMap": [
@@ -12,29 +11,21 @@
     },
     {
       "architecture": "SCMP_ARCH_AARCH64",
-      "subArchitectures": []
+      "subArchitectures": [
+        "SCMP_ARCH_ARM"
+      ]
     }
   ],
   "syscalls": [
     {
-      "comment": "Docker default allowlist (61eaf32614c7, x86_64 + aarch64)",
       "names": [
-        "_llseek",
-        "_newselect",
         "accept",
         "accept4",
         "access",
-        "acct",
         "adjtimex",
         "alarm",
-        "arch_prctl",
-        "arm_fadvise64_64",
-        "arm_sync_file_range",
         "bind",
-        "bpf",
-        "breakpoint",
         "brk",
-        "cacheflush",
         "cachestat",
         "capget",
         "capset",
@@ -42,7 +33,6 @@
         "chmod",
         "chown",
         "chown32",
-        "chroot",
         "clock_adjtime",
         "clock_adjtime64",
         "clock_getres",
@@ -51,14 +41,11 @@
         "clock_gettime64",
         "clock_nanosleep",
         "clock_nanosleep_time64",
-        "clock_settime",
-        "clock_settime64",
         "close",
         "close_range",
         "connect",
         "copy_file_range",
         "creat",
-        "delete_module",
         "dup",
         "dup2",
         "dup3",
@@ -81,7 +68,6 @@
         "fadvise64",
         "fadvise64_64",
         "fallocate",
-        "fanotify_init",
         "fanotify_mark",
         "fchdir",
         "fchmod",
@@ -94,16 +80,11 @@
         "fcntl64",
         "fdatasync",
         "fgetxattr",
-        "finit_module",
         "flistxattr",
         "flock",
         "fork",
         "fremovexattr",
-        "fsconfig",
         "fsetxattr",
-        "fsmount",
-        "fsopen",
-        "fspick",
         "fstat",
         "fstat64",
         "fstatat64",
@@ -119,9 +100,6 @@
         "futex_waitv",
         "futex_wake",
         "futimesat",
-        "get_mempolicy",
-        "get_robust_list",
-        "get_thread_area",
         "getcpu",
         "getcwd",
         "getdents",
@@ -147,38 +125,33 @@
         "getresuid",
         "getresuid32",
         "getrlimit",
+        "get_robust_list",
         "getrusage",
         "getsid",
         "getsockname",
         "getsockopt",
+        "get_thread_area",
         "gettid",
         "gettimeofday",
         "getuid",
         "getuid32",
         "getxattr",
         "getxattrat",
-        "init_module",
         "inotify_add_watch",
         "inotify_init",
         "inotify_init1",
         "inotify_rm_watch",
         "io_cancel",
+        "ioctl",
         "io_destroy",
         "io_getevents",
         "io_pgetevents",
         "io_pgetevents_time64",
-        "io_setup",
-        "io_submit",
-        "io_uring_enter",
-        "io_uring_register",
-        "io_uring_setup",
-        "ioctl",
-        "ioperm",
-        "iopl",
         "ioprio_get",
         "ioprio_set",
+        "io_setup",
+        "io_submit",
         "ipc",
-        "kcmp",
         "kill",
         "landlock_add_rule",
         "landlock_create_ruleset",
@@ -193,18 +166,14 @@
         "listxattr",
         "listxattrat",
         "llistxattr",
-        "lookup_dcookie",
+        "_llseek",
         "lremovexattr",
         "lseek",
         "lsetxattr",
-        "lsm_get_self_attr",
-        "lsm_list_modules",
-        "lsm_set_self_attr",
         "lstat",
         "lstat64",
         "madvise",
         "map_shadow_stack",
-        "mbind",
         "membarrier",
         "memfd_create",
         "memfd_secret",
@@ -218,9 +187,6 @@
         "mlockall",
         "mmap",
         "mmap2",
-        "modify_ldt",
-        "mount_setattr",
-        "move_mount",
         "mprotect",
         "mq_getsetattr",
         "mq_notify",
@@ -243,15 +209,11 @@
         "name_to_handle_at",
         "nanosleep",
         "newfstatat",
+        "_newselect",
         "open",
-        "open_by_handle_at",
-        "open_tree",
         "openat",
         "openat2",
         "pause",
-        "perf_event_open",
-        "personality",
-        "pidfd_getfd",
         "pidfd_open",
         "pidfd_send_signal",
         "pipe",
@@ -267,23 +229,17 @@
         "preadv",
         "preadv2",
         "prlimit64",
-        "process_madvise",
         "process_mrelease",
-        "process_vm_readv",
-        "process_vm_writev",
         "pselect6",
         "pselect6_time64",
         "pwrite64",
         "pwritev",
         "pwritev2",
-        "quotactl",
-        "quotactl_fd",
         "read",
         "readahead",
         "readlink",
         "readlinkat",
         "readv",
-        "reboot",
         "recv",
         "recvfrom",
         "recvmmsg",
@@ -308,11 +264,11 @@
         "rt_sigtimedwait",
         "rt_sigtimedwait_time64",
         "rt_tgsigqueueinfo",
-        "sched_get_priority_max",
-        "sched_get_priority_min",
         "sched_getaffinity",
         "sched_getattr",
         "sched_getparam",
+        "sched_get_priority_max",
+        "sched_get_priority_min",
         "sched_getscheduler",
         "sched_rr_get_interval",
         "sched_rr_get_interval_time64",
@@ -334,13 +290,6 @@
         "sendmmsg",
         "sendmsg",
         "sendto",
-        "set_mempolicy",
-        "set_mempolicy_home_node",
-        "set_robust_list",
-        "set_thread_area",
-        "set_tid_address",
-        "set_tls",
-        "setdomainname",
         "setfsgid",
         "setfsgid32",
         "setfsuid",
@@ -361,9 +310,11 @@
         "setreuid",
         "setreuid32",
         "setrlimit",
+        "set_robust_list",
         "setsid",
         "setsockopt",
-        "settimeofday",
+        "set_thread_area",
+        "set_tid_address",
         "setuid",
         "setuid32",
         "setxattr",
@@ -378,7 +329,6 @@
         "signalfd4",
         "sigprocmask",
         "sigreturn",
-        "socket",
         "socketcall",
         "socketpair",
         "splice",
@@ -388,15 +338,12 @@
         "statfs64",
         "statmount",
         "statx",
-        "stime",
         "symlink",
         "symlinkat",
         "sync",
         "sync_file_range",
-        "sync_file_range2",
         "syncfs",
         "sysinfo",
-        "syslog",
         "tee",
         "tgkill",
         "time",
@@ -418,7 +365,6 @@
         "truncate64",
         "ugetrlimit",
         "umask",
-        "umount",
         "uname",
         "unlink",
         "unlinkat",
@@ -428,7 +374,6 @@
         "utimensat_time64",
         "utimes",
         "vfork",
-        "vhangup",
         "vmsplice",
         "wait4",
         "waitid",
@@ -439,43 +384,499 @@
       "action": "SCMP_ACT_ALLOW"
     },
     {
-      "comment": "gVisor + pasta: namespace creation and entry (clone/unshare with CLONE_NEW* flags, setns to join namespaces)",
+      "names": [
+        "process_vm_readv",
+        "process_vm_writev",
+        "ptrace"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "minKernel": "4.8"
+      }
+    },
+    {
+      "names": [
+        "socket"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 38,
+          "op": "SCMP_CMP_LT"
+        }
+      ]
+    },
+    {
+      "names": [
+        "socket"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 39,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": [
+        "socket"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 40,
+          "op": "SCMP_CMP_GT"
+        }
+      ]
+    },
+    {
+      "names": [
+        "personality"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 0,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": [
+        "personality"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 8,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": [
+        "personality"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 131072,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": [
+        "personality"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 131080,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": [
+        "personality"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 4294967295,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    },
+    {
+      "names": [
+        "sync_file_range2",
+        "swapcontext"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "arches": [
+          "ppc64le"
+        ]
+      }
+    },
+    {
+      "names": [
+        "arm_fadvise64_64",
+        "arm_sync_file_range",
+        "sync_file_range2",
+        "breakpoint",
+        "cacheflush",
+        "set_tls"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "arches": [
+          "arm",
+          "arm64"
+        ]
+      }
+    },
+    {
+      "names": [
+        "arch_prctl"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "arches": [
+          "amd64",
+          "x32"
+        ]
+      }
+    },
+    {
+      "names": [
+        "modify_ldt"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "arches": [
+          "amd64",
+          "x32",
+          "x86"
+        ]
+      }
+    },
+    {
+      "names": [
+        "s390_pci_mmio_read",
+        "s390_pci_mmio_write",
+        "s390_runtime_instr"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "arches": [
+          "s390",
+          "s390x"
+        ]
+      }
+    },
+    {
+      "names": [
+        "riscv_flush_icache"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "arches": [
+          "riscv64"
+        ]
+      }
+    },
+    {
+      "names": [
+        "open_by_handle_at"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_DAC_READ_SEARCH"
+        ]
+      }
+    },
+    {
       "names": [
         "clone",
         "clone3",
-        "unshare",
-        "setns"
+        "setns",
+        "unshare"
       ],
-      "action": "SCMP_ACT_ALLOW"
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "gVisor + pasta: namespace creation and entry (CLONE_NEW* flags, setns to join)"
     },
     {
-      "comment": "pasta: set hostname inside namespace (cosmetic, avoids warning)",
       "names": [
         "sethostname"
       ],
-      "action": "SCMP_ACT_ALLOW"
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "pasta: set hostname inside namespace"
     },
     {
-      "comment": "gVisor: sandbox filesystem setup (tmpfs, proc, bind mounts)",
       "names": [
         "mount",
         "umount2"
       ],
-      "action": "SCMP_ACT_ALLOW"
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "gVisor: sandbox filesystem setup (tmpfs, proc, bind mounts)"
     },
     {
-      "comment": "gVisor: filesystem root isolation for sentry and gofer",
       "names": [
         "pivot_root"
       ],
-      "action": "SCMP_ACT_ALLOW"
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "gVisor: filesystem root isolation for sentry and gofer"
     },
     {
-      "comment": "gVisor systrap platform: workload executor thread initialization",
       "names": [
         "ptrace"
       ],
-      "action": "SCMP_ACT_ALLOW"
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "gVisor systrap platform: workload executor thread init"
+    },
+    {
+      "names": [
+        "io_uring_enter",
+        "io_uring_register",
+        "io_uring_setup"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "gVisor: async I/O for gofer and application workloads"
+    },
+    {
+      "names": [
+        "bpf",
+        "clone",
+        "clone3",
+        "fanotify_init",
+        "fsconfig",
+        "fsmount",
+        "fsopen",
+        "fspick",
+        "lookup_dcookie",
+        "lsm_get_self_attr",
+        "lsm_list_modules",
+        "lsm_set_self_attr",
+        "mount",
+        "mount_setattr",
+        "move_mount",
+        "open_tree",
+        "perf_event_open",
+        "quotactl",
+        "quotactl_fd",
+        "setdomainname",
+        "sethostname",
+        "setns",
+        "syslog",
+        "umount",
+        "umount2",
+        "unshare"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_ADMIN"
+        ]
+      }
+    },
+    {
+      "names": [
+        "clone"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 0,
+          "value": 2114060288,
+          "op": "SCMP_CMP_MASKED_EQ"
+        }
+      ],
+      "excludes": {
+        "caps": [
+          "CAP_SYS_ADMIN"
+        ],
+        "arches": [
+          "s390",
+          "s390x"
+        ]
+      }
+    },
+    {
+      "names": [
+        "clone"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "index": 1,
+          "value": 2114060288,
+          "op": "SCMP_CMP_MASKED_EQ"
+        }
+      ],
+      "comment": "s390 parameter ordering for clone is different",
+      "includes": {
+        "arches": [
+          "s390",
+          "s390x"
+        ]
+      },
+      "excludes": {
+        "caps": [
+          "CAP_SYS_ADMIN"
+        ]
+      }
+    },
+    {
+      "names": [
+        "clone3"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 38,
+      "excludes": {
+        "caps": [
+          "CAP_SYS_ADMIN"
+        ]
+      }
+    },
+    {
+      "names": [
+        "reboot"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_BOOT"
+        ]
+      }
+    },
+    {
+      "names": [
+        "chroot"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_CHROOT"
+        ]
+      }
+    },
+    {
+      "names": [
+        "delete_module",
+        "init_module",
+        "finit_module"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_MODULE"
+        ]
+      }
+    },
+    {
+      "names": [
+        "acct"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_PACCT"
+        ]
+      }
+    },
+    {
+      "names": [
+        "kcmp",
+        "pidfd_getfd",
+        "process_madvise",
+        "process_vm_readv",
+        "process_vm_writev",
+        "ptrace"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_PTRACE"
+        ]
+      }
+    },
+    {
+      "names": [
+        "iopl",
+        "ioperm"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_RAWIO"
+        ]
+      }
+    },
+    {
+      "names": [
+        "settimeofday",
+        "stime",
+        "clock_settime",
+        "clock_settime64"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_TIME"
+        ]
+      }
+    },
+    {
+      "names": [
+        "vhangup"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_TTY_CONFIG"
+        ]
+      }
+    },
+    {
+      "names": [
+        "get_mempolicy",
+        "mbind",
+        "set_mempolicy",
+        "set_mempolicy_home_node"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYS_NICE"
+        ]
+      }
+    },
+    {
+      "names": [
+        "syslog"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_SYSLOG"
+        ]
+      }
+    },
+    {
+      "names": [
+        "bpf"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_BPF"
+        ]
+      }
+    },
+    {
+      "names": [
+        "perf_event_open"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "includes": {
+        "caps": [
+          "CAP_PERFMON"
+        ]
+      }
     }
-  ]
+  ],
+  "comment": "Docker default seccomp profile + gVisor/pasta additions. defaultErrnoRet changed to ENOSYS (38) so gVisor can distinguish blocked syscalls from unimplemented ones. archMap narrowed to x86_64 + aarch64 (gVisor supported platforms)."
 }

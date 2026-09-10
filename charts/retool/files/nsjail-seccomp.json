@@ -640,7 +640,7 @@
         "umount2"
       ],
       "action": "SCMP_ACT_ALLOW",
-      "comment": "Retool specific syscalls to enable nsjail sandboxing"
+      "comment": "nsjail sandboxing: unprivileged user-namespace creation, mount/pivot_root for jail filesystem, sethostname for UTS namespace"
     },
     {
       "names": [
