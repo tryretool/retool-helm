@@ -18,6 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
       - name: Verify seccomp profiles are up to date
         run: charts/retool/seccomp/generate.sh --check

@@ -23,7 +23,7 @@ UPSTREAM_REPO="moby/profiles"
 UPSTREAM_COMMIT="61eaf32614c7c71b60bd8927d3e6a4ffc8ff1f31"
 UPSTREAM_URL="https://raw.githubusercontent.com/${UPSTREAM_REPO}/${UPSTREAM_COMMIT}/seccomp/default.json"
 
-CACHE_FILE="${SCRIPT_DIR}/.docker-default-seccomp.json"
+CACHE_FILE="${SCRIPT_DIR}/.docker-default-seccomp-${UPSTREAM_COMMIT}.json"
 
 # ---------------------------------------------------------------------------
 # helpers
