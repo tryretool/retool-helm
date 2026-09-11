@@ -2,6 +2,7 @@
 {{- $as := .Values.rr.agentSandbox -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
 {{- $tolerations := $as.tolerations | default .Values.tolerations -}}
+{{- $appArmorProfile := $as.appArmorProfile | default "retool-agent-sandbox" -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -85,15 +86,15 @@ spec:
             - -c
             - |
               set -e
-              rm -f /host-run/retool-agent-sandbox.loaded
-              cp /apparmor-profiles/retool-agent-sandbox /host-apparmor/retool-agent-sandbox
+              rm -f /host-run/{{ $appArmorProfile }}.loaded
+              cp /apparmor-profiles/{{ $appArmorProfile }} /host-apparmor/{{ $appArmorProfile }}
               if ! nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
                 echo "ERROR: apparmor_parser not found on host but AppArmor profile installation was requested" >&2
                 exit 1
               fi
-              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-agent-sandbox
-              touch /host-run/retool-agent-sandbox.loaded
-              echo "AppArmor profile retool-agent-sandbox loaded successfully"
+              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/{{ $appArmorProfile }}
+              touch /host-run/{{ $appArmorProfile }}.loaded
+              echo "AppArmor profile {{ $appArmorProfile }} loaded successfully"
           volumeMounts:
             - name: apparmor-profiles
               mountPath: /apparmor-profiles

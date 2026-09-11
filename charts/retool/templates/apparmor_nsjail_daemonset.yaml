@@ -1,4 +1,5 @@
 {{- if eq (include "retool.appArmorNsjailInstaller.enabled" .) "1" }}
+{{- $profileName := .Values.codeExecutor.appArmorProfile | default "retool-executor" -}}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -42,14 +43,14 @@ spec:
             - -c
             - |
               set -e
-              rm -f /host-run/retool-executor.loaded
-              cp /profiles/retool-executor /host-apparmor/retool-executor
+              rm -f /host-run/{{ $profileName }}.loaded
+              cp /profiles/{{ $profileName }} /host-apparmor/{{ $profileName }}
               if ! nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
                 echo "ERROR: apparmor_parser not found on host but AppArmor profile installation was requested" >&2
                 exit 1
               fi
-              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-executor
-              touch /host-run/retool-executor.loaded
+              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/{{ $profileName }}
+              touch /host-run/{{ $profileName }}.loaded
               echo "AppArmor profiles loaded successfully"
           volumeMounts:
             - name: apparmor-profiles

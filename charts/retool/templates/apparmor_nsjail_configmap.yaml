@@ -1,4 +1,5 @@
 {{- if eq (include "retool.appArmorNsjailInstaller.enabled" .) "1" }}
+{{- $profileName := .Values.codeExecutor.appArmorProfile | default "retool-executor" -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,20 +9,20 @@ metadata:
     {{- include "retool.labels" . | nindent 4 }}
     app.kubernetes.io/component: apparmor-installer
 data:
-  retool-executor: |
+  {{ $profileName }}: |
     #include <tunables/global>
 
-    profile retool-executor flags=(attach_disconnected,mediate_deleted) {
+    profile {{ $profileName }} flags=(attach_disconnected,mediate_deleted) {
       #include <abstractions/base>
 
       network,
       capability,
       file,
 
-      signal (send,receive) peer=retool-executor,
+      signal (send,receive) peer={{ $profileName }},
       signal (receive) peer=unconfined,
 
-      ptrace (trace,read,tracedby,readby) peer=retool-executor,
+      ptrace (trace,read,tracedby,readby) peer={{ $profileName }},
 
       deny @{PROC}/* w,
       deny @{PROC}/sys/[^k]*/** wklx,
@@ -41,10 +42,10 @@ data:
       # Only nsjail gets mount/pivot_root/userns — mandatory profile
       # transition on exec. The container's own processes (Node.js, etc.)
       # cannot call these syscalls directly.
-      /usr/bin/nsjail px -> retool-executor//nsjail,
+      /usr/bin/nsjail px -> {{ $profileName }}//nsjail,
     }
 
-    profile retool-executor//nsjail flags=(attach_disconnected,mediate_deleted) {
+    profile {{ $profileName }}//nsjail flags=(attach_disconnected,mediate_deleted) {
       #include <abstractions/base>
 
       network,
@@ -55,11 +56,11 @@ data:
       pivot_root,
       userns,
 
-      signal (send,receive) peer=retool-executor//nsjail,
-      signal (send,receive) peer=retool-executor,
+      signal (send,receive) peer={{ $profileName }}//nsjail,
+      signal (send,receive) peer={{ $profileName }},
       signal (receive) peer=unconfined,
 
-      ptrace (trace,read,tracedby,readby) peer=retool-executor//nsjail,
+      ptrace (trace,read,tracedby,readby) peer={{ $profileName }}//nsjail,
 
       deny @{PROC}/* w,
       deny @{PROC}/sys/[^k]*/** wklx,
