@@ -27,9 +27,7 @@ spec:
       annotations:
         checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
 {{- if .Values.codeExecutor.appArmorProfileInstaller }}
-        container.apparmor.security.beta.kubernetes.io/js-executor: localhost/retool-executor
-{{- else }}
-        container.apparmor.security.beta.kubernetes.io/js-executor: unconfined
+        container.apparmor.security.beta.kubernetes.io/js-executor: localhost/{{ .Values.codeExecutor.appArmorProfile | default "retool-executor" }}
 {{- end }}
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
