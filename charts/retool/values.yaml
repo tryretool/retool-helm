@@ -936,6 +936,10 @@ codeExecutor:
   # to workflows alone, since js-executor doesn't require workflows to run.
   appArmorProfileInstaller: false
 
+  # Name of the AppArmor profile loaded by the DaemonSet and referenced in pod
+  # annotations. Override to avoid collisions on multi-tenant clusters.
+  appArmorProfile: retool-executor
+
 # === RR (Retool agent runtime) =============================================
 # Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
 # components nested below — jsExecutor, agent, and agentSandbox — with a
@@ -1193,6 +1197,11 @@ rr:
     # node, and sandbox Jobs use it instead of Unconfined. Required on
     # Ubuntu 24.04+ hosts with kernel.apparmor_restrict_unprivileged_userns=1.
     appArmorProfileInstaller: false
+
+    # Name of the AppArmor profile loaded by the DaemonSet and referenced in
+    # sandbox pod security contexts. Override to avoid collisions on
+    # multi-tenant clusters.
+    appArmorProfile: retool-agent-sandbox
 
     # S3-compatible snapshot storage.
     # When s3Bucket is set, snapshots are persisted to S3 and survive pod restarts.
