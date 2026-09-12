@@ -1763,7 +1763,7 @@ telemetry:
   # identification when `telemetry.sendToRetool.enabled = true`, and can also
   # optionally be sent to a user-managed destination via
   # `telemetry.customVectorConfig`.
-  enabled: false
+  enabled: true
 
   sendToRetool:
     # Only relevant when `telemetry.enabled = true`. When enabled, telemetry
