@@ -89,7 +89,7 @@ JSON
 }
 
 # ---------------------------------------------------------------------------
-# gVisor: Docker default + header tweaks + 12 syscalls for gVisor/pasta
+# gVisor: Docker default + header tweaks + 19 syscalls for gVisor/pasta
 # ---------------------------------------------------------------------------
 generate_gvisor() {
   local dest="$1"
@@ -113,6 +113,11 @@ generate_gvisor() {
     "names": ["mount", "umount2"],
     "action": "SCMP_ACT_ALLOW",
     "comment": "gVisor: sandbox filesystem setup (tmpfs, proc, bind mounts)"
+  },
+  {
+    "names": ["fsconfig", "fsmount", "fsopen", "fspick", "mount_setattr", "move_mount", "open_tree"],
+    "action": "SCMP_ACT_ALLOW",
+    "comment": "gVisor: new mount API (kernel 5.2+) for overlay root filesystem setup"
   },
   {
     "names": ["pivot_root"],

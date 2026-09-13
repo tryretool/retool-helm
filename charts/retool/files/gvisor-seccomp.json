@@ -616,6 +616,19 @@
     },
     {
       "names": [
+        "fsconfig",
+        "fsmount",
+        "fsopen",
+        "fspick",
+        "mount_setattr",
+        "move_mount",
+        "open_tree"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "gVisor: new mount API (kernel 5.2+) for overlay root filesystem setup"
+    },
+    {
+      "names": [
         "pivot_root"
       ],
       "action": "SCMP_ACT_ALLOW",
