@@ -124,6 +124,10 @@ spec:
           protocol: TCP
         - port: 6443
           protocol: TCP
+    {{- if $as.networkPolicy.postgresPort }}
+    {{- /* Postgres state store: see the postgresEgressRules helper. */}}
+    {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
+    {{- end }}
 ---
 {{- /*
 =======================================================================
@@ -196,6 +200,10 @@ spec:
         - ipBlock:
             cidr: {{ . }}
         {{- end }}
+    {{- end }}
+    {{- if $as.networkPolicy.postgresPort }}
+    {{- /* Postgres state store: see the postgresEgressRules helper. */}}
+    {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
     {{- end }}
     - to:
         - ipBlock:

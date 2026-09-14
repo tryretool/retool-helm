@@ -71,3 +71,15 @@ If kubectl top pod fails in this namespace, the HPA is created but will not
 scale until metrics-server is enabled on the cluster.
 ***************************************************************************
 {{- end }}
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1") .Values.rr.agentSandbox.networkPolicy.enabled (eq (include "retool.agentSandbox.postgresEgressMissing" .) "1") }}
+
+***************************************************************************
+WARNING: the agent-sandbox NetworkPolicy is enabled but the controller and
+proxy have no allowed egress to their Postgres state store; they will fail
+to connect on egress-enforcing CNIs (Cilium, Calico, AWS VPC CNI).
+
+Fix: set rr.agentSandbox.networkPolicy.postgresAllowlist to the Postgres
+destination(s) (CIDR strings or podSelector/namespaceSelector maps), or
+postgresAllowAny: true for urlSecretName DSNs Helm cannot inspect.
+***************************************************************************
+{{- end }}
