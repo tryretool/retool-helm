@@ -629,10 +629,11 @@
     },
     {
       "names": [
+        "chroot",
         "pivot_root"
       ],
       "action": "SCMP_ACT_ALLOW",
-      "comment": "gVisor: filesystem root isolation for sentry and gofer"
+      "comment": "gVisor: filesystem root isolation (chroot + pivot_root for sentry and gofer)"
     },
     {
       "names": [
