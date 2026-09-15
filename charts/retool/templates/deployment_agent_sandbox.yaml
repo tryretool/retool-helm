@@ -4,6 +4,7 @@
 {{- $defaultSecretName := $as.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 {{- $nodeSelector := $as.nodeSelector | default .Values.nodeSelector -}}
 {{- $tolerations := $as.tolerations | default .Values.tolerations -}}
+{{- $appArmorProfile := $as.appArmorProfile | default "retool-agent-sandbox" -}}
 {{- /*
 =======================================================================
   Secret (skipped when externalSecret.name is set)
@@ -136,7 +137,7 @@ data:
               {
                 "name": "wait-for-apparmor",
                 "image": "{{ $as.initImage.repository }}:{{ $as.initImage.tag }}{{- if $as.initImage.digest }}@{{ $as.initImage.digest }}{{- end }}",
-                "command": ["/bin/sh", "-c", "until [ -f /host-run/retool-agent-sandbox.loaded ]; do echo 'Waiting for AppArmor profile retool-agent-sandbox to be loaded by DaemonSet...'; sleep 2; done; echo 'AppArmor profile retool-agent-sandbox loaded'"],
+                "command": ["/bin/sh", "-c", "until [ -f /host-run/{{ $appArmorProfile }}.loaded ]; do echo 'Waiting for AppArmor profile {{ $appArmorProfile }} to be loaded by DaemonSet...'; sleep 2; done; echo 'AppArmor profile {{ $appArmorProfile }} loaded'"],
                 "securityContext": {
                   "allowPrivilegeEscalation": false,
                   "readOnlyRootFilesystem": true,
@@ -183,7 +184,7 @@ data:
                   "capabilities": {"drop": ["ALL"]},
                   "seccompProfile": {"type": "Localhost", "localhostProfile": "{{ $as.seccompProfile }}"},
                   {{- if $as.appArmorProfileInstaller }}
-                  "appArmorProfile": {"type": "Localhost", "localhostProfile": "retool-agent-sandbox"}
+                  "appArmorProfile": {"type": "Localhost", "localhostProfile": "{{ $appArmorProfile }}"}
                   {{- else }}
                   "appArmorProfile": {"type": "Unconfined"}
                   {{- end }}

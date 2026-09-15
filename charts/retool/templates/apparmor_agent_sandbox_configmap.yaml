@@ -1,5 +1,6 @@
 {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
 {{- if .Values.rr.agentSandbox.appArmorProfileInstaller }}
+{{- $profileName := .Values.rr.agentSandbox.appArmorProfile | default "retool-agent-sandbox" -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,10 +10,10 @@ metadata:
     {{- include "retool.labels" . | nindent 4 }}
     app.kubernetes.io/component: apparmor-installer
 data:
-  retool-agent-sandbox: |
+  {{ $profileName }}: |
     #include <tunables/global>
 
-    profile retool-agent-sandbox flags=(attach_disconnected,mediate_deleted) {
+    profile {{ $profileName }} flags=(attach_disconnected,mediate_deleted) {
       #include <abstractions/base>
 
       network,
@@ -23,10 +24,10 @@ data:
       pivot_root,
       userns,
 
-      signal (send,receive) peer=retool-agent-sandbox,
+      signal (send,receive) peer={{ $profileName }},
       signal (receive) peer=unconfined,
 
-      ptrace (trace,read,tracedby,readby) peer=retool-agent-sandbox,
+      ptrace (trace,read,tracedby,readby) peer={{ $profileName }},
 
       deny @{PROC}/* w,
       deny @{PROC}/sys/[^k]*/** wklx,

@@ -27,9 +27,7 @@ spec:
       annotations:
         checksum/seccomp: {{ .Files.Get "files/nsjail-seccomp.json" | sha256sum }}
 {{- if .Values.codeExecutor.appArmorProfileInstaller }}
-        container.apparmor.security.beta.kubernetes.io/js-executor: localhost/retool-executor
-{{- else }}
-        container.apparmor.security.beta.kubernetes.io/js-executor: unconfined
+        container.apparmor.security.beta.kubernetes.io/js-executor: localhost/{{ .Values.codeExecutor.appArmorProfile | default "retool-executor" }}
 {{- end }}
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
@@ -100,11 +98,11 @@ spec:
             - /bin/sh
             - -c
             - |
-              until [ -f /host-run/retool-executor.loaded ]; do
-                echo "Waiting for AppArmor profile retool-executor to be loaded by DaemonSet..."
+              until [ -f /host-run/{{ .Values.codeExecutor.appArmorProfile | default "retool-executor" }}.loaded ]; do
+                echo "Waiting for AppArmor profile {{ .Values.codeExecutor.appArmorProfile | default "retool-executor" }} to be loaded by DaemonSet..."
                 sleep 2
               done
-              echo "AppArmor profile retool-executor loaded"
+              echo "AppArmor profile {{ .Values.codeExecutor.appArmorProfile | default "retool-executor" }} loaded"
           volumeMounts:
             - name: host-run
               mountPath: /host-run
