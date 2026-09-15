@@ -89,7 +89,7 @@ JSON
 }
 
 # ---------------------------------------------------------------------------
-# gVisor: Docker default + header tweaks + 19 syscalls for gVisor/pasta
+# gVisor: Docker default + header tweaks + 20 syscalls for gVisor/pasta
 # ---------------------------------------------------------------------------
 generate_gvisor() {
   local dest="$1"
@@ -120,9 +120,9 @@ generate_gvisor() {
     "comment": "gVisor: new mount API (kernel 5.2+) for overlay root filesystem setup"
   },
   {
-    "names": ["pivot_root"],
+    "names": ["chroot", "pivot_root"],
     "action": "SCMP_ACT_ALLOW",
-    "comment": "gVisor: filesystem root isolation for sentry and gofer"
+    "comment": "gVisor: filesystem root isolation (chroot + pivot_root for sentry and gofer)"
   },
   {
     "names": ["ptrace"],
