@@ -1394,6 +1394,18 @@ rr:
       # CIDRs allowed in proxy egress even if they fall within blockedRanges
       # (e.g. private backend endpoint).
       backendAllowlist: []
+      # Egress port for DSN-configured Postgres (postgres.url /
+      # urlSecretName), whose port Helm cannot read; null disables the
+      # Postgres rules. The fields path uses postgres.port and the
+      # inherit path uses the backend's Postgres port automatically.
+      postgresPort: 5432
+      # Postgres destinations allowed on postgresPort: CIDR strings or
+      # podSelector/namespaceSelector maps. The inherited in-cluster subchart
+      # is allowed automatically; REQUIRED for an external host.
+      postgresAllowlist: []
+      # Escape hatch: allow Postgres to ANY destination (for urlSecretName
+      # DSNs). Reopens blockedRanges on that port.
+      postgresAllowAny: false
       # Override sandbox ingress source selector (defaults to retool backend pods).
       ingressFrom: []
 

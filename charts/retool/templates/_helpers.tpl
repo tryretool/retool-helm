@@ -948,6 +948,98 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 {{- end -}}
 
 {{/*
+Effective port for the agent-sandbox Postgres egress rules, mirroring
+postgresUrlEnv's precedence so the policy always matches the port the
+pods dial: postgres.port for the fields path (postgres.host set), the
+inherited backend port on the inherit path, and networkPolicy.postgresPort
+for DSNs (postgres.url / urlSecretName) whose port Helm cannot read.
+Usage: {{ include "retool.agentSandbox.postgresEgressPort" . }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressPort" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- if $as.postgres.url -}}
+{{- $as.networkPolicy.postgresPort -}}
+{{- else if $as.postgres.host -}}
+{{- $as.postgres.port | default 5432 -}}
+{{- else if $as.postgres.urlSecretName -}}
+{{- $as.networkPolicy.postgresPort -}}
+{{- else -}}
+{{- include "retool.postgresql.port" . | trimAll "\"" | default "5432" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Postgres egress rules shared by the agent-sandbox controller and proxy
+NetworkPolicies. Rules add together, so a blanket any-address rule would
+defeat blockedRanges on the Postgres port. Selection order:
+  - postgresAllowAny -> any destination (escape hatch for urlSecretName DSNs)
+  - inherited in-cluster subchart (postgres.url/host/urlSecretName unset,
+    postgresql.enabled) -> automatic podSelector rule
+  - postgresAllowlist -> CIDR strings or podSelector/namespaceSelector maps
+Usage: {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressRules" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $pg := $as.postgres -}}
+{{- $port := include "retool.agentSandbox.postgresEgressPort" . -}}
+{{- if $as.networkPolicy.postgresPort }}
+{{- if $as.networkPolicy.postgresAllowAny }}
+- to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+- to:
+    - ipBlock:
+        cidr: ::/0
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- else }}
+{{- if and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled }}
+- to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgresql
+          app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- end }}
+{{- if $as.networkPolicy.postgresAllowlist }}
+{{- $peers := list -}}
+{{- range $as.networkPolicy.postgresAllowlist }}
+{{- if kindIs "string" . }}
+{{- $peers = append $peers (dict "ipBlock" (dict "cidr" .)) }}
+{{- else }}
+{{- $peers = append $peers . }}
+{{- end }}
+{{- end }}
+- to:
+{{- toYaml $peers | nindent 4 }}
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Returns 1 when the agent-sandbox NetworkPolicy is on but the controller/proxy
+have no allowed egress to Postgres (external/secret DSN, empty allowlist,
+no escape hatch). Renders a NOTES.txt warning.
+Usage: {{- if eq (include "retool.agentSandbox.postgresEgressMissing" .) "1" }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressMissing" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $pg := $as.postgres -}}
+{{- if and $as.networkPolicy.enabled $as.networkPolicy.postgresPort (not $as.networkPolicy.postgresAllowAny) (not $as.networkPolicy.postgresAllowlist) (not (and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled)) -}}
+1{{- end -}}
+{{- end -}}
+
+{{/*
 Agent sandbox env vars for the Retool backend, workflow backend, and workers.
 Outputs env entries that tell the backend how to reach the agent sandbox services.
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
