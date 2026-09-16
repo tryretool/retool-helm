@@ -553,6 +553,10 @@ spec:
             - name: BACKEND_DOMAIN_SUFFIXES
               value: {{ $as.proxy.backendDomainSuffixes | quote }}
             {{- end }}
+            {{- if $as.frontendWildcardDomain }}
+            - name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
+              value: {{ $as.frontendWildcardDomain | quote }}
+            {{- end }}
             {{- if $as.encryptionKey }}
             - name: AGENT_SANDBOX_ENCRYPTION_KEY
               value: {{ $as.encryptionKey | quote }}

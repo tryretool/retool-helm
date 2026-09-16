@@ -164,11 +164,19 @@ spec:
         - port: {{ $as.proxy.port }}
           protocol: TCP
     {{- if ($as.proxy.ingress).enabled }}
-    {{- if $as.proxy.ingress.networkPolicy }}
+    {{- $ingressNp := ($as.proxy.ingress.networkPolicy | default dict) }}
+    {{- if or $ingressNp.namespaceSelector $ingressNp.podSelector }}
+    {{- /* Whoever fronts the proxy ingress, usually an ingress controller in
+           another namespace. Both selectors are ANDed into a single peer. */}}
+    {{- $peer := dict }}
+    {{- with $ingressNp.namespaceSelector }}
+    {{- $peer = set $peer "namespaceSelector" (dict "matchLabels" .) }}
+    {{- end }}
+    {{- with $ingressNp.podSelector }}
+    {{- $peer = set $peer "podSelector" (dict "matchLabels" .) }}
+    {{- end }}
     - from:
-        - podSelector:
-            matchLabels:
-              {{- toYaml $as.proxy.ingress.networkPolicy.podSelector | nindent 14 }}
+        {{- toYaml (list $peer) | nindent 8 }}
       ports:
         - port: {{ $as.proxy.port }}
           protocol: TCP

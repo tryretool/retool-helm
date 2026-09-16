@@ -1340,11 +1340,21 @@ rr:
         # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
         # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
         host: ''
-        # e.g. sandbox.yourdomain.com
+        # e.g. sandbox.yourdomain.com, or a wildcard such as
+        # '*.sandboxes.yourdomain.com' when frontendWildcardDomain is set below
         tls: []
         # - secretName: sandbox-tls
         #   hosts:
         #     - sandbox.yourdomain.com
+        # Peers allowed to reach the proxy when the agent-sandbox NetworkPolicy is
+        # on (networkPolicy.enabled below) -- typically your ingress controller.
+        # Both keys take a bare label map, are optional, and are ANDed within a
+        # single rule; with neither set the controller is blocked by the policy.
+        networkPolicy: {}
+        #   namespaceSelector:
+        #     kubernetes.io/metadata.name: ingress-nginx
+        #   podSelector:
+        #     app.kubernetes.io/name: ingress-nginx
 
     # Backend integration: these tell server-side Retool callers how to reach agent executor.
     # controllerUrl defaults to the internal controller service URL when empty.
@@ -1362,6 +1372,13 @@ rr:
     frontendWsProxyDomain: ''
     # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
     proxyDomain: ''
+    # Serve editor sandboxes at sandbox-<id>.<frontendWildcardDomain>, each on its
+    # own origin, instead of the shared /sandbox/<id>/ path on your Retool base URL
+    # (e.g. sandboxes.apps.retool.customer.com). Requires a
+    # *.<frontendWildcardDomain> DNS record and wildcard certificate, and
+    # proxy.ingress.host above set to that same wildcard so every sandbox host
+    # reaches the proxy.
+    frontendWildcardDomain: ''
 
     # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
     # Strongly recommended for production to isolate sandbox egress.
