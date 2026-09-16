@@ -1138,14 +1138,65 @@ http://{{ template "retool.gitServer.name" . }}:{{ include "retool.gitServer.por
 {{- end -}}
 
 {{/*
-Blob-storage + git repack env vars shared by the in-process git server (main
-backend) and the standalone git server deployment. git_server stores all
-objects/packs in blob storage; the same RR_DEFAULT_* vars are also used by
-snapshots. Emits nothing when no blobStorage provider is configured (in which
-case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
-directly via environmentVariables / environmentSecrets).
+Set app serving layer deployment/service name. Unlike the git server this name is
+used in BOTH modes: in-process (the service selects the backend pods) and split
+out (it selects the app-serving-layer pods).
 */}}
-{{- define "retool.gitServer.commonEnv" -}}
+{{- define "retool.appServingLayer.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "app-serving-layer") }}
+{{- end -}}
+
+{{/*
+Set RR app serving layer enabled. Honors the shared RR master switch (rr.enabled)
+unless rr.appServingLayer.enabled is set explicitly true|false.
+Usage: (include "retool.appServingLayer.enabled" .)
+*/}}
+{{- define "retool.appServingLayer.enabled" -}}
+{{- include "retool.rr.componentEnabled" (dict "root" . "component" "appServingLayer") -}}
+{{- end -}}
+
+{{/*
+Returns "1" when the app serving layer should run as its own deployment
+(rr.appServingLayer.enabled AND rr.appServingLayer.separate.enabled), empty otherwise.
+*/}}
+{{- define "retool.appServingLayer.separateEnabled" -}}
+{{- if and (eq (include "retool.appServingLayer.enabled" .) "1") (.Values.rr.appServingLayer.separate | default dict).enabled -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Port the app serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and that
+its service exposes.
+*/}}
+{{- define "retool.appServingLayer.port" -}}
+{{- .Values.rr.appServingLayer.port | default 3010 -}}
+{{- end -}}
+
+{{/*
+Public DNS suffix published apps are served under. The backend builds published-app
+URLs as <org-subdomain>--<app-identifier>.<RR_APP_DOMAIN> and picks __Host- cookie
+names off it, and the serving layer parses the request host against it, so both
+workloads need the same value. Emits nothing when unset -- published apps then have
+no reachable URL (flagged in NOTES.txt).
+*/}}
+{{- define "retool.appServingLayer.appDomainEnv" -}}
+{{- with .Values.rr.appServingLayer.appDomain }}
+- name: RR_APP_DOMAIN
+  value: {{ . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Blob-storage env vars for every workload that reads or writes RR object storage:
+the git server (in-process on the main backend, or standalone), which stores all
+objects/packs there, and the app serving layer, which reads published app bundles
+back out of it. The same RR_DEFAULT_* vars are also used by snapshots. Emits
+nothing when no blobStorage provider is configured (in which case the user is
+expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_* directly via
+environmentVariables / environmentSecrets).
+*/}}
+{{- define "retool.rr.blobStorageEnv" -}}
 {{- $bs := .Values.rr.blobStorage | default dict }}
 {{- if $bs.s3 }}
 - name: RR_BLOB_STORAGE_PROVIDER
@@ -1208,6 +1259,14 @@ directly via environmentVariables / environmentSecrets).
   value: {{ $bs.azure.accountUrl | quote }}
 {{- end }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Blob-storage + git repack env vars shared by the in-process git server (main
+backend) and the standalone git server deployment.
+*/}}
+{{- define "retool.gitServer.commonEnv" -}}
+{{- include "retool.rr.blobStorageEnv" . }}
 {{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
   value: {{ .Values.rr.gitServer.repackThreshold | quote }}

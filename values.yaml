@@ -1478,6 +1478,91 @@ rr:
         annotations: {}
         labels: {}
 
+  appServingLayer:
+    # Serves published RR apps on their own hostnames
+    # (<org-subdomain>--<app-identifier>.<appDomain>) via the backend's
+    # RR_APP_SERVING_LAYER service. Runs in-process on the main backend pod and is
+    # exposed as its own Service so your ingress can route the apps wildcard host
+    # to it.
+    #
+    # Tri-state, like jsExecutor/agent/agentSandbox/gitServer: leave null to
+    # INHERIT the rr.enabled master switch; set true|false to override explicitly.
+    enabled: null
+
+    # Public DNS suffix that published apps are served under (RR_APP_DOMAIN), e.g.
+    # apps.retool.customer.com serves apps at
+    # <org-subdomain>--<app>.apps.retool.customer.com. Published apps have no
+    # reachable URL until this is set. You own the *.<appDomain> DNS record, its
+    # TLS certificate, and the ingress rule below -- the chart automates none of
+    # those.
+    appDomain: ''
+
+    # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and that
+    # its service exposes. Distinct from the git server's port so that both can run
+    # in-process on the backend pod.
+    port: 3010
+
+    # Annotations/labels applied to the app-serving-layer Service.
+    service:
+      annotations: {}
+      labels: {}
+
+    # Routing the apps wildcard host to the service, e.g.:
+    #
+    # ingress:
+    #   hosts:
+    #     - host: retool.customer.com
+    #       paths:
+    #         - path: /
+    #     - host: "*.apps.retool.customer.com"
+    #       extraPaths:
+    #         - path: /
+    #           pathType: Prefix
+    #           backend:
+    #             service:
+    #               name: <release>-app-serving-layer
+    #               port:
+    #                 number: 3010
+    #   tls:
+    #     - secretName: retool-tls
+    #       hosts: [retool.customer.com]
+    #     - secretName: retool-apps-wildcard-tls
+    #       hosts: ["*.apps.retool.customer.com"]
+    #
+    # extraPaths is only read under ingress.hosts[], not under ingress.hostName.
+    # The multiplayer and MCP ingress paths (when enabled) are injected into every
+    # hosts[] entry including the apps wildcard, which is harmless -- an app
+    # request never matches them.
+
+    # Optionally split the serving layer out of the main backend into its own
+    # deployment (mirrors how the workload is split in Retool Cloud). Requires the
+    # serving layer to be enabled (rr.appServingLayer.enabled: true, or inherited
+    # from rr.enabled). When enabled:
+    #   - a dedicated <fullname>-app-serving-layer Deployment runs
+    #     SERVICE_TYPE=RR_APP_SERVING_LAYER (truncated to fit Kubernetes'
+    #     63-character DNS label limit when needed)
+    #   - the main backend drops RR_APP_SERVING_LAYER from its SERVICE_TYPE
+    #   - the service above selects these pods instead of the backend pods, so the
+    #     ingress rule stays the same
+    separate:
+      enabled: false
+      replicaCount: 1
+      # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+      resources: {}
+      # Falls back to top-level `affinity` if unset.
+      affinity: {}
+      # Annotations/labels applied to the app-serving-layer pod template.
+      annotations: {}
+      labels: {}
+      startupProbe:
+        enabled: true
+        tcpSocket: true
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
+
   # Shared blob-storage config used by git_server (and other features that
   # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
   # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on

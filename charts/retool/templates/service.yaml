@@ -82,3 +82,40 @@ spec:
     {{ $key }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
+{{- if and (eq (include "retool.appServingLayer.enabled" .) "1") (not (include "retool.appServingLayer.separateEnabled" .)) }}
+{{- /*
+  The serving layer runs in-process on the main backend, so this service points at
+  the backend pods on the serving-layer port. When it is split out, the equivalent
+  service is rendered next to its deployment instead (same name, so the ingress rule
+  routing the apps wildcard host works in both modes).
+*/}}
+{{- $appServingLayerService := .Values.rr.appServingLayer.service | default dict }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  {{- range $key, $value := $appServingLayerService.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  name: {{ template "retool.appServingLayer.name" . }}
+  {{- with $appServingLayerService.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http-server
+      port: {{ include "retool.appServingLayer.port" . }}
+      targetPort: {{ include "retool.appServingLayer.port" . }}
+      protocol: TCP
+  selector:
+{{- include "retool.selectorLabels" . | nindent 4 }}
+{{- range $key, $value := .Values.service.selector }}
+    {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}

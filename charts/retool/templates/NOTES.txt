@@ -83,3 +83,24 @@ destination(s) (CIDR strings or podSelector/namespaceSelector maps), or
 postgresAllowAny: true for urlSecretName DSNs Helm cannot inspect.
 ***************************************************************************
 {{- end }}
+{{- if eq (include "retool.appServingLayer.enabled" .) "1" }}
+{{- if .Values.rr.appServingLayer.appDomain }}
+
+***************************************************************************
+NOTE: the RR app serving layer is enabled. Published apps are served at
+<org-subdomain>--<app-identifier>.{{ .Values.rr.appServingLayer.appDomain }}, which the chart
+does not route for you. Point a *.{{ .Values.rr.appServingLayer.appDomain }} DNS record and
+wildcard certificate at your ingress, and route that host to
+{{ include "retool.appServingLayer.name" . }}:{{ include "retool.appServingLayer.port" . }}
+(see the ingress.hosts[] + extraPaths example in the rr.appServingLayer comments
+in values.yaml).
+***************************************************************************
+{{- else }}
+
+***************************************************************************
+WARNING: the RR app serving layer is enabled but rr.appServingLayer.appDomain is
+empty, so RR_APP_DOMAIN is unset and published apps have no reachable URL. Set it
+to the DNS suffix you serve apps under (e.g. apps.retool.example.com).
+***************************************************************************
+{{- end }}
+{{- end }}

@@ -109,6 +109,13 @@ spec:
           {{- if and (eq (include "retool.gitServer.enabled" .) "1") (not (include "retool.gitServer.separateEnabled" .)) }}
             {{- $serviceType = append $serviceType "RR_GIT_SERVER" }}
           {{- end }}
+          {{- /*
+            Same for the app serving layer: it runs in-process on the main backend
+            unless split out (rr.appServingLayer.separate.enabled).
+          */}}
+          {{- if and (eq (include "retool.appServingLayer.enabled" .) "1") (not (include "retool.appServingLayer.separateEnabled" .)) }}
+            {{- $serviceType = append $serviceType "RR_APP_SERVING_LAYER" }}
+          {{- end }}
           - name: SERVICE_TYPE
             value: {{ join "," $serviceType }}
           {{ if and (  not $.Values.dbconnector.enabled  ) ( and ( include "retool_version_with_java_dbconnector_opt_out" . ) ( not $.Values.dbconnector.java.enabled ) ) }}
@@ -276,6 +283,21 @@ spec:
           {{- end }}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
+          {{- if eq (include "retool.appServingLayer.enabled" .) "1" }}
+          {{- include "retool.appServingLayer.appDomainEnv" . | nindent 10 }}
+          {{- if not (include "retool.appServingLayer.separateEnabled" .) }}
+          - name: RR_APP_SERVING_LAYER_SERVER_PORT
+            value: {{ include "retool.appServingLayer.port" . | quote }}
+          {{- /*
+            The in-process serving layer reads published app bundles from blob
+            storage. The git-server block above already emits that env when the git
+            server is enabled, which is the usual case.
+          */}}
+          {{- if ne (include "retool.gitServer.enabled" .) "1" }}
+          {{- include "retool.rr.blobStorageEnv" . | nindent 10 }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
@@ -348,6 +370,11 @@ spec:
         - containerPort: {{ .Values.service.internalPort }}
           name: http-server
           protocol: TCP
+        {{- if and (eq (include "retool.appServingLayer.enabled" .) "1") (not (include "retool.appServingLayer.separateEnabled" .)) }}
+        - containerPort: {{ include "retool.appServingLayer.port" . }}
+          name: rr-apps
+          protocol: TCP
+        {{- end }}
 {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:

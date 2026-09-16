@@ -1,0 +1,36 @@
+# App serving layer split out of the main backend into its own deployment:
+# the backend drops RR_APP_SERVING_LAYER from SERVICE_TYPE and the
+# app-serving-layer Service selects the new pods instead. Modeled on
+# test-rr-git-server-separate-option.yaml.
+podDisruptionBudget:
+  minAvailable: 1
+
+rr:
+  appServingLayer:
+    enabled: true
+    appDomain: apps.retool.example.com
+    port: 3011
+    service:
+      annotations:
+        test-service-annotation: "true"
+      labels:
+        test-service-label: "true"
+    separate:
+      enabled: true
+      replicaCount: 2
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      annotations:
+        test-pod-annotation: "true"
+      labels:
+        test-pod-label: "true"
+
+  blobStorage:
+    s3:
+      bucket: test-rr-bucket
+      region: us-east-1
+      accessKeyId: AKIATEST
+      secretAccessKeySecretName: rr-blob-storage
+      secretAccessKeySecretKey: secret-access-key
