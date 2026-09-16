@@ -1,0 +1,44 @@
+# App serving layer in its default in-process mode: the main backend picks up
+# RR_APP_SERVING_LAYER in its SERVICE_TYPE and the app-serving-layer Service
+# selects the backend pods. Enables the component directly rather than via
+# rr.enabled so the fixture does not have to satisfy the rest of the RR stack.
+#
+# Also exercises routing the apps wildcard host through ingress.hosts[] +
+# extraPaths, which is how a customer exposes the serving layer.
+rr:
+  appServingLayer:
+    enabled: true
+    appDomain: apps.retool.example.com
+    service:
+      annotations:
+        test-service-annotation: "true"
+      labels:
+        test-service-label: "true"
+
+  blobStorage:
+    s3:
+      bucket: test-rr-bucket
+      region: us-east-1
+
+ingress:
+  enabled: true
+  hosts:
+    - host: retool.example.com
+      paths:
+        - path: /
+    - host: "*.apps.retool.example.com"
+      extraPaths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: retool-app-serving-layer
+              port:
+                number: 3010
+  tls:
+    - secretName: retool-tls
+      hosts:
+        - retool.example.com
+    - secretName: retool-apps-wildcard-tls
+      hosts:
+        - "*.apps.retool.example.com"
