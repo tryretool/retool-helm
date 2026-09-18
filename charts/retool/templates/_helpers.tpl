@@ -477,6 +477,7 @@ wait-for-apparmor init container waiting forever on a DaemonSet that never
 gets created when workflows are disabled.
 Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
 Returns "1" when it should render, "" otherwise.
+Accepts true / "ubuntu" / "cos" as enabled values.
 */}}
 {{- define "retool.appArmorNsjailInstaller.enabled" -}}
 {{- $output := "" -}}
@@ -487,6 +488,19 @@ Returns "1" when it should render, "" otherwise.
   {{- end -}}
 {{- end -}}
 {{- $output -}}
+{{- end -}}
+
+{{/*
+Whether an AppArmor profile should include the "userns" rule.
+Ubuntu 24.04+ kernels compile CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS and
+enforce kernel.apparmor_restrict_unprivileged_userns=1, so the profile must
+explicitly grant userns. GKE COS kernels lack this feature and their
+apparmor_parser rejects the keyword entirely.
+Returns "1" on true / "ubuntu"; "" on "cos" or anything else.
+Usage: (include "retool.appArmor.includeUserns" $val)
+*/}}
+{{- define "retool.appArmor.includeUserns" -}}
+{{- if and . (ne (lower (toString .)) "cos") -}}1{{- end -}}
 {{- end -}}
 
 {{/*

@@ -21,7 +21,9 @@ data:
       umount,
       mount,
       pivot_root,
+{{- if eq (include "retool.appArmor.includeUserns" .Values.rr.agentSandbox.appArmorProfileInstaller) "1" }}
       userns,
+{{- end }}
 
       signal (send,receive) peer=retool-agent-sandbox,
       signal (receive) peer=unconfined,
