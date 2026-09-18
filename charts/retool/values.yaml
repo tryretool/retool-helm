@@ -936,11 +936,8 @@ codeExecutor:
   # Accepted values:
   #   false    - disabled (default)
   #   true     - alias for "ubuntu"
-  #   "ubuntu" - profile includes the "userns" rule, required on Ubuntu 24.04+
-  #              hosts with kernel.apparmor_restrict_unprivileged_userns=1
-  #   "cos"    - profile omits "userns" (GKE Container-Optimized OS kernels
-  #              lack CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS and their
-  #              apparmor_parser rejects the keyword)
+  #   "ubuntu" - for Ubuntu/Debian nodes
+  #   "cos"    - for GKE Container-Optimized OS nodes
   appArmorProfileInstaller: false
 
 # === RR (Retool agent runtime) =============================================
