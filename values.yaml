@@ -927,13 +927,20 @@ codeExecutor:
 
   # Deploy a DaemonSet that loads AppArmor profiles for nsjail on every node.
   # When enabled, the code-executor and js-executor annotations switch from
-  # "unconfined" to "localhost/retool-executor", which satisfies Ubuntu 24.04+'s
-  # kernel.apparmor_restrict_unprivileged_userns=1 restriction by providing an
-  # explicit userns rule. Requires useSeccompProfile: true for code-executor to
-  # take effect (js-executor always uses the seccomp/AppArmor path). The
-  # DaemonSet itself renders whenever this is true and either workflows is
-  # enabled (for code-executor) or rr.jsExecutor is enabled -- it is not tied
-  # to workflows alone, since js-executor doesn't require workflows to run.
+  # "unconfined" to "localhost/retool-executor". Requires useSeccompProfile:
+  # true for code-executor to take effect (js-executor always uses the
+  # seccomp/AppArmor path). The DaemonSet itself renders whenever this is
+  # truthy and either workflows is enabled (for code-executor) or
+  # rr.jsExecutor is enabled.
+  #
+  # Accepted values:
+  #   false    - disabled (default)
+  #   true     - alias for "ubuntu"
+  #   "ubuntu" - profile includes the "userns" rule, required on Ubuntu 24.04+
+  #              hosts with kernel.apparmor_restrict_unprivileged_userns=1
+  #   "cos"    - profile omits "userns" (GKE Container-Optimized OS kernels
+  #              lack CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS and their
+  #              apparmor_parser rejects the keyword)
   appArmorProfileInstaller: false
 
 # === RR (Retool agent runtime) =============================================
@@ -1190,8 +1197,8 @@ rr:
 
     # Deploy an AppArmor profile for agent-sandbox pods. When enabled, the
     # node-installer DaemonSet loads a retool-agent-sandbox profile on every
-    # node, and sandbox Jobs use it instead of Unconfined. Required on
-    # Ubuntu 24.04+ hosts with kernel.apparmor_restrict_unprivileged_userns=1.
+    # node, and sandbox Jobs use it instead of Unconfined.
+    # Accepts: false | true | "ubuntu" | "cos" (see codeExecutor.appArmorProfileInstaller).
     appArmorProfileInstaller: false
 
     # S3-compatible snapshot storage.

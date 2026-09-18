@@ -53,7 +53,9 @@ data:
       umount,
       mount,
       pivot_root,
+{{- if eq (include "retool.appArmor.includeUserns" .Values.codeExecutor.appArmorProfileInstaller) "1" }}
       userns,
+{{- end }}
 
       signal (send,receive) peer=retool-executor//nsjail,
       signal (send,receive) peer=retool-executor,
