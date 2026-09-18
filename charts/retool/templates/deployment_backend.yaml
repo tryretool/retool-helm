@@ -402,6 +402,10 @@ spec:
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
 {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 {{- with .Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}
@@ -409,10 +413,6 @@ spec:
         - name: {{ .name }}
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
-{{- end }}
-{{- if .Values.securityContext.extraContainerSecurityContext }}
-        securityContext:
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
 {{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:

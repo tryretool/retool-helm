@@ -396,10 +396,10 @@ spec:
 {{- if $.Values.extraVolumeMounts }}
 {{ toYaml $.Values.extraVolumeMounts | indent 8 }}
 {{- end }}
-{{- if $.Values.securityContext.extraContainerSecurityContext }}
         securityContext:
-{{ toYaml $.Values.securityContext.extraContainerSecurityContext | indent 10 }}
-{{- end }}
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 {{- with $.Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}

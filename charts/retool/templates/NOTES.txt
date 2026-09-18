@@ -71,6 +71,18 @@ If kubectl top pod fails in this namespace, the HPA is created but will not
 scale until metrics-server is enabled on the cluster.
 ***************************************************************************
 {{- end }}
+{{- if (.Values.securityContext).extraContainerSecurityContext }}
+
+***************************************************************************
+WARNING: securityContext.extraContainerSecurityContext is set but is no
+longer applied. Container security contexts are now set by the chart: every
+container drops all Linux capabilities and disallows privilege escalation,
+and the few needing more declare exactly what they add.
+
+Remove it from your values. If you relied on a field the chart does not set,
+open an issue.
+***************************************************************************
+{{- end }}
 {{- if and (eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1") .Values.rr.agentSandbox.networkPolicy.enabled (eq (include "retool.agentSandbox.postgresEgressMissing" .) "1") }}
 
 ***************************************************************************
