@@ -249,6 +249,42 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# COS mode: verify profiles render without userns keyword
+# ---------------------------------------------------------------------------
+echo "=== COS mode: verifying profiles omit userns ==="
+
+COS_NSJAIL_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set codeExecutor.appArmorProfileInstaller=cos \
+  "${NSJAIL_TEMPLATES[@]}")
+
+if echo "$COS_NSJAIL_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "COS nsjail profile should NOT contain 'userns' rule"
+else
+  pass "COS nsjail profile correctly omits 'userns'"
+fi
+
+COS_SANDBOX_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set rr.agentSandbox.appArmorProfileInstaller=cos \
+  "${SANDBOX_TEMPLATES[@]}")
+
+if echo "$COS_SANDBOX_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "COS agent-sandbox profile should NOT contain 'userns' rule"
+else
+  pass "COS agent-sandbox profile correctly omits 'userns'"
+fi
+
+# Also verify case-insensitive handling (COS, Cos)
+COS_UPPER_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set codeExecutor.appArmorProfileInstaller=COS \
+  "${NSJAIL_TEMPLATES[@]}")
+
+if echo "$COS_UPPER_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "Uppercase 'COS' should also omit 'userns' rule"
+else
+  pass "Uppercase 'COS' correctly omits 'userns'"
+fi
+
+# ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
 echo "=== Cleanup ==="

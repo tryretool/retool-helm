@@ -500,7 +500,7 @@ Returns "1" on true / "ubuntu"; "" on "cos" or anything else.
 Usage: (include "retool.appArmor.includeUserns" $val)
 */}}
 {{- define "retool.appArmor.includeUserns" -}}
-{{- if and . (ne (toString .) "cos") -}}1{{- end -}}
+{{- if and . (ne (lower (toString .)) "cos") -}}1{{- end -}}
 {{- end -}}
 
 {{/*
