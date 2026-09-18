@@ -19,6 +19,7 @@ data:
       file,
 
       signal (send,receive) peer=retool-executor,
+      signal (send) peer=retool-executor//nsjail,
       signal (receive) peer=unconfined,
 
       ptrace (trace,read,tracedby,readby) peer=retool-executor,
