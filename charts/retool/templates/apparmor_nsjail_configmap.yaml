@@ -42,8 +42,8 @@ data:
       # Only nsjail gets mount/pivot_root/userns — mandatory profile
       # transition on exec. The container's own processes (Node.js, etc.)
       # cannot call these syscalls directly.
-      /usr/bin/nsjail px -> retool-executor//nsjail,
-      /usr/local/bin/nsjail px -> retool-executor//nsjail,
+      /usr/bin/nsjail px -> retool-executor//nsjail,       # code-executor
+      /usr/local/bin/nsjail px -> retool-executor//nsjail, # js-executor
     }
 
     profile retool-executor//nsjail flags=(attach_disconnected,mediate_deleted) {
