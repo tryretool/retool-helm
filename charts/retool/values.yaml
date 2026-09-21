@@ -706,6 +706,8 @@ mcp:
   # Set to true to deploy the MCP server.
   enabled: false
 
+  # MCP currently supports exactly one replica. Other values fail chart
+  # rendering. This field is retained for compatibility with existing values.
   replicaCount: 1
 
   annotations: {}
