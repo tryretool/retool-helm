@@ -164,11 +164,11 @@ else
   fail "retool-executor profile NOT found in kernel"
 fi
 
-# nsjail profile uses flags=(unconfined), so it appears as "(unconfined)" in the kernel
-if echo "$PROFILES" | grep -q "/usr/bin/nsjail"; then
-  pass "usr.bin.nsjail profile loaded"
+# nsjail child profile loaded via px transition from retool-executor
+if echo "$PROFILES" | grep -q "retool-executor//nsjail"; then
+  pass "retool-executor//nsjail child profile loaded"
 else
-  fail "usr.bin.nsjail profile NOT found in kernel"
+  fail "retool-executor//nsjail child profile NOT found in kernel"
 fi
 
 if echo "$PROFILES" | grep -q "retool-agent-sandbox (enforce)"; then
@@ -205,10 +205,13 @@ else
   fail "test-executor pod profile is '$CURRENT', expected 'retool-executor (enforce)'"
 fi
 
+# Under the px transition design, the parent profile denies mount/userns.
+# Only /usr/bin/nsjail (which transitions to retool-executor//nsjail) gets them.
+# Verify that a regular binary CANNOT use these operations.
 if kubectl exec test-executor -n "$NAMESPACE" -- unshare --user --mount --pid --fork echo "OK" 2>/dev/null; then
-  pass "unshare --user --mount --pid --fork succeeds under retool-executor"
+  fail "unshare --user --mount should be DENIED under retool-executor (only nsjail gets these via px transition)"
 else
-  fail "unshare --user --mount --pid --fork FAILED under retool-executor"
+  pass "unshare --user --mount correctly denied under retool-executor (restricted to nsjail)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -243,6 +246,42 @@ if kubectl exec test-sandbox -n "$NAMESPACE" -- unshare --user --mount --pid --f
   pass "unshare --user --mount --pid --fork succeeds under retool-agent-sandbox"
 else
   fail "unshare --user --mount --pid --fork FAILED under retool-agent-sandbox"
+fi
+
+# ---------------------------------------------------------------------------
+# COS mode: verify profiles render without userns keyword
+# ---------------------------------------------------------------------------
+echo "=== COS mode: verifying profiles omit userns ==="
+
+COS_NSJAIL_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set codeExecutor.appArmorProfileInstaller=cos \
+  "${NSJAIL_TEMPLATES[@]}")
+
+if echo "$COS_NSJAIL_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "COS nsjail profile should NOT contain 'userns' rule"
+else
+  pass "COS nsjail profile correctly omits 'userns'"
+fi
+
+COS_SANDBOX_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set rr.agentSandbox.appArmorProfileInstaller=cos \
+  "${SANDBOX_TEMPLATES[@]}")
+
+if echo "$COS_SANDBOX_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "COS agent-sandbox profile should NOT contain 'userns' rule"
+else
+  pass "COS agent-sandbox profile correctly omits 'userns'"
+fi
+
+# Also verify case-insensitive handling (COS, Cos)
+COS_UPPER_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set codeExecutor.appArmorProfileInstaller=COS \
+  "${NSJAIL_TEMPLATES[@]}")
+
+if echo "$COS_UPPER_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "Uppercase 'COS' should also omit 'userns' rule"
+else
+  pass "Uppercase 'COS' correctly omits 'userns'"
 fi
 
 # ---------------------------------------------------------------------------
