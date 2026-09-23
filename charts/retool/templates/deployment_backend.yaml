@@ -172,6 +172,7 @@ spec:
           {{- end }}
           {{- include "retool.mcp.backendEnvVars" . | nindent 10 }}
           {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
+          {{- include "retool.retoolosSlack.backendEnvVars" . | nindent 10 }}
           {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"

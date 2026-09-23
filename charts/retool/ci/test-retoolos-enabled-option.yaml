@@ -1,0 +1,20 @@
+retoolos:
+  # RetoolOS runs its interactive, Job, messaging, and search workers in one
+  # backend-image process while isolating their work on separate Temporal queues.
+  enabled: true
+  slack:
+    mode: socket
+    secretName: retoolos-slack
+  worker:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+  labels:
+    test-pod-label: "true"
+  annotations:
+    test-pod-annotation: "true"

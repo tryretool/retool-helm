@@ -13,6 +13,8 @@ keeps its workers under .Values.rr); omitted means the key is top-level.
 - parent: agent
   type: rrAgent
   nested: rr
+- parent: retoolos
+  type: retoolos
 - parent: workflows
   type: workflow
 {{- end -}}
@@ -53,16 +55,25 @@ keeps its workers under .Values.rr); omitted means the key is top-level.
 {{- $healthcheckPort := 3005 -}}
 {{- $serviceType := "WORKFLOW_TEMPORAL_WORKER" -}}
 {{- $taskqueue := "" -}}
+{{- $containerName := printf "%s-worker" $workerType -}}
 {{- if eq $workerType "agentEval" -}}
   {{- $healthcheckPort = 3012 -}}
   {{- $serviceType = "AGENT_EVAL_TEMPORAL_WORKER" -}}
   {{- $taskqueue = "agent-eval" -}}
+  {{- $containerName = "agent-eval-worker" -}}
 {{- else if eq $workerType "rrAgent" -}}
   {{- $healthcheckPort = 3016 -}}
   {{- $serviceType = "R2_AGENT_TEMPORAL_WORKER" -}}
   {{- $taskqueue = "r2-agent" -}}
+  {{- $containerName = "r2-agent-worker" -}}
 {{- else if eq $workerType "agent" -}}
   {{- $taskqueue = "agent" -}}
+{{- else if eq $workerType "retoolos" -}}
+  {{- $healthcheckPort = 3014 -}}
+  {{- $serviceType = "RETOOLOS_TEMPORAL_WORKER" -}}
+  {{- /* RetoolOS task queue names are defined in application code because this process polls
+        several queues. Leave the single-queue WORKER_TEMPORAL_TASKQUEUE override unset. */ -}}
+  {{- $containerName = "retoolos-temporal-worker" -}}
 {{- end -}}
 
 {{/* yaml starts here */}}
@@ -125,7 +136,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else if eq $workerType "rrAgent" }}r2-agent-worker{{ else }}{{ $workerType }}-worker{{ end }}
+      - name: {{ $containerName }}
         image: "{{ $.Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" $.Values.image.tag }}"
         imagePullPolicy: {{ $.Values.image.pullPolicy }}
         args:
@@ -327,6 +338,13 @@ spec:
           {{- end }}
           {{- with $parentValues.config.environmentVariables }}
 {{ toYaml . | indent 10 }}
+          {{- end }}
+          {{- if and (eq $workerType "retoolos") (eq ($.Values.retoolos.slack.mode | default "disabled") "socket") }}
+          - name: RETOOLOS_SLACK_APP_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.retoolos.slack.secretName | quote }}
+                key: app-token
           {{- end }}
         {{- if $.Values.externalSecrets.enabled }}
         envFrom:
