@@ -1146,6 +1146,23 @@ Set app serving layer deployment/service name (only used when rr.appServingLayer
 {{- end -}}
 
 {{/*
+Selector labels for the app serving layer. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.appServingLayer.selectorLabels" -}}
+retoolService: {{ include "retool.appServingLayer.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for the app serving layer.
+*/}}
+{{- define "retool.appServingLayer.labels" -}}
+app.kubernetes.io/name: {{ include "retool.appServingLayer.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: rr-app-serving-layer
+{{- end }}
+
+{{/*
 Port the app serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and exposes
 via its service. Matches the backend default. Note rr.gitServer.separate.port defaults
 to the same number; the two run in separate pods, so they do not collide.
