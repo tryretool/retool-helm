@@ -1482,6 +1482,52 @@ rr:
         annotations: {}
         labels: {}
 
+  # Serves published React Retool apps out of a dedicated
+  # <fullname>-app-serving-layer Deployment + Service running
+  # SERVICE_TYPE=RR_APP_SERVING_LAYER (mirrors how the workload is split in
+  # Retool Cloud). Requires the git server to be enabled: the serving layer
+  # reads published app assets from the same blob storage git_server writes to.
+  #
+  # Unlike the other rr components this does NOT inherit the rr.enabled master
+  # switch. It only works alongside wildcard DNS for `domain` and a certificate
+  # covering it, neither of which the chart can provide, so it must be opted
+  # into explicitly.
+  #
+  # Routing the apps domain to the service is left to your ingress. With the
+  # bundled ingress, add a wildcard host with an extraPaths entry pointing at
+  # <fullname>-app-serving-layer on `port` below; do not give that host a
+  # regular `paths` entry, or it will also route to the main backend.
+  appServingLayer:
+    enabled: false
+    # Domain published apps are served under, e.g. apps.retool.example.com.
+    # Rendered as RR_APP_DOMAIN onto both this deployment and the main backend.
+    # Required when enabled.
+    domain: ~
+    replicaCount: 1
+    # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and
+    # that its service exposes.
+    port: 3010
+    # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+    resources: {}
+    # Falls back to top-level `affinity` if unset.
+    affinity: {}
+    # Annotations/labels applied to the serving-layer pod template.
+    annotations: {}
+    labels: {}
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 18
+    # Annotations/labels applied to the serving-layer Service (kept separate
+    # from the pod ones above).
+    service:
+      annotations: {}
+      labels: {}
+
   # Shared blob-storage config used by git_server (and other features that
   # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
   # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
