@@ -558,6 +558,19 @@ Usage: (include "retool.gitServer.enabled" .)
 {{- include "retool.rr.componentEnabled" (dict "root" . "component" "gitServer") -}}
 {{- end -}}
 
+{{/*
+Set RR app serving layer enabled. Unlike the other rr components this does NOT
+inherit rr.enabled: the serving layer needs an apps domain, wildcard DNS and a
+matching certificate that only the operator can supply, so it must be opted
+into explicitly (rr.appServingLayer.enabled: true). Same reasoning as mcp.
+Usage: (include "retool.appServingLayer.enabled" .)
+*/}}
+{{- define "retool.appServingLayer.enabled" -}}
+{{- if (.Values.rr.appServingLayer | default dict).enabled -}}
+1
+{{- end -}}
+{{- end -}}
+
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
@@ -1123,6 +1136,32 @@ Set git server deployment/service name (only used when rr.gitServer.separate is 
 */}}
 {{- define "retool.gitServer.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "git-server") }}
+{{- end -}}
+
+{{/*
+Set app serving layer deployment/service name (only used when rr.appServingLayer is enabled)
+*/}}
+{{- define "retool.appServingLayer.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "app-serving-layer") }}
+{{- end -}}
+
+{{/*
+Port the app serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and exposes
+via its service. Matches the backend default. Note rr.gitServer.separate.port defaults
+to the same number; the two run in separate pods, so they do not collide.
+*/}}
+{{- define "retool.appServingLayer.port" -}}
+{{- (.Values.rr.appServingLayer | default dict).port | default 3010 -}}
+{{- end -}}
+
+{{/*
+Domain published R2 apps are served under (RR_APP_DOMAIN), e.g. apps.retool.example.com.
+Read by the serving layer to resolve a request hostname to an app, and by the main
+backend to build published-app URLs, so it is rendered onto both.
+*/}}
+{{- define "retool.appServingLayer.domain" -}}
+{{- $asl := .Values.rr.appServingLayer | default dict -}}
+{{- required "Please set a value for .Values.rr.appServingLayer.domain when the app serving layer is enabled" $asl.domain -}}
 {{- end -}}
 
 {{/*

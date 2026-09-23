@@ -170,6 +170,11 @@ spec:
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}
+          {{- if include "retool.appServingLayer.enabled" . }}
+          {{- /* The backend builds published-app URLs from this; the serving layer resolves hostnames with it. */}}
+          - name: RR_APP_DOMAIN
+            value: {{ include "retool.appServingLayer.domain" . | quote }}
+          {{- end }}
           {{- include "retool.mcp.backendEnvVars" . | nindent 10 }}
           {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
           {{- if ($temporalConfig).sslEnabled }}
