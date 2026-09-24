@@ -70,6 +70,21 @@ jobs:
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (lint)
         run: ct lint --config .github/ct.yaml
+      - name: Verify MCP horizontal scaling is rejected
+        run: |
+          set -euo pipefail
+          if output=$(helm template mcp-scaling-test charts/retool \
+            --values charts/retool/ci/test-install-values.yaml \
+            --values charts/retool/ci/test-mcp-enabled-option.yaml \
+            --set mcp.replicaCount=2 2>&1); then
+            echo "Expected MCP horizontal scaling to be rejected, but rendering succeeded"
+            exit 1
+          fi
+          if ! grep -Fq "mcp.replicaCount must be 1: the MCP server does not currently support horizontal scaling" <<< "$output"; then
+            echo "MCP rendering failed without the expected validation message"
+            echo "$output"
+            exit 1
+          fi
 
   # We don't use helm-docs yet, can set this up later
   #

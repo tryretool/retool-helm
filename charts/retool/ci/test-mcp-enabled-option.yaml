@@ -1,6 +1,6 @@
 mcp:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     mcpServiceExternalUrl: https://example.retool.com
     oauthMainDomain: example.retool.com
