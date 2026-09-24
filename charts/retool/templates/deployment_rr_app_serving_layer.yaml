@@ -126,6 +126,15 @@ spec:
             value: {{ template "retool.postgresql.user" . }}
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" . }}
+          {{- /* Published-app backend functions run on the js executor and call back through the workflow backend. */}}
+          {{- if include "retool.workflows.enabled" . }}
+          - name: WORKFLOW_BACKEND_HOST
+            value: http://{{ include "retool.workflowBackend.name" . }}
+          {{- end }}
+          {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
+          - name: JS_EXECUTOR_INGRESS_DOMAIN
+            value: http://{{ template "retool.jsExecutor.name" . }}
+          {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
