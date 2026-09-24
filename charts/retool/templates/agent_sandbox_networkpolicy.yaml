@@ -46,18 +46,7 @@ spec:
         - port: {{ $as.sandbox.port }}
           protocol: TCP
   egress:
-    {{- if $as.networkPolicy.dnsSelector }}
-    - to:
-        - namespaceSelector:
-            {{- toYaml $as.networkPolicy.dnsSelector.namespaceSelector | nindent 12 }}
-          podSelector:
-            {{- toYaml $as.networkPolicy.dnsSelector.podSelector | nindent 12 }}
-      ports:
-        - port: 53
-          protocol: UDP
-        - port: 53
-          protocol: TCP
-    {{- end }}
+    {{- include "retool.agentSandbox.dnsEgressRules" . | nindent 4 }}
     - to:
         - podSelector:
             matchLabels:
@@ -90,25 +79,12 @@ spec:
     - Egress
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              {{- include "retool.selectorLabels" . | nindent 14 }}
+        {{- include "retool.agentSandbox.callerPeers" . | nindent 8 }}
       ports:
         - port: {{ $as.controller.port }}
           protocol: TCP
   egress:
-    {{- if $as.networkPolicy.dnsSelector }}
-    - to:
-        - namespaceSelector:
-            {{- toYaml $as.networkPolicy.dnsSelector.namespaceSelector | nindent 12 }}
-          podSelector:
-            {{- toYaml $as.networkPolicy.dnsSelector.podSelector | nindent 12 }}
-      ports:
-        - port: 53
-          protocol: UDP
-        - port: 53
-          protocol: TCP
-    {{- end }}
+    {{- include "retool.agentSandbox.dnsEgressRules" . | nindent 4 }}
     - to:
         - podSelector:
             matchLabels:
@@ -127,6 +103,9 @@ spec:
     {{- if $as.networkPolicy.postgresPort }}
     {{- /* Postgres state store: see the postgresEgressRules helper. */}}
     {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
+    {{- end }}
+    {{- with $as.networkPolicy.controllerExtraEgress }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 ---
 {{- /*
@@ -157,9 +136,7 @@ spec:
         - port: {{ $as.proxy.port }}
           protocol: TCP
     - from:
-        - podSelector:
-            matchLabels:
-              {{- include "retool.selectorLabels" . | nindent 14 }}
+        {{- include "retool.agentSandbox.callerPeers" . | nindent 8 }}
       ports:
         - port: {{ $as.proxy.port }}
           protocol: TCP
@@ -175,18 +152,7 @@ spec:
     {{- end }}
     {{- end }}
   egress:
-    {{- if $as.networkPolicy.dnsSelector }}
-    - to:
-        - namespaceSelector:
-            {{- toYaml $as.networkPolicy.dnsSelector.namespaceSelector | nindent 12 }}
-          podSelector:
-            {{- toYaml $as.networkPolicy.dnsSelector.podSelector | nindent 12 }}
-      ports:
-        - port: 53
-          protocol: UDP
-        - port: 53
-          protocol: TCP
-    {{- end }}
+    {{- include "retool.agentSandbox.dnsEgressRules" . | nindent 4 }}
     - to:
         - podSelector:
             matchLabels:
@@ -194,6 +160,19 @@ spec:
       ports:
         - port: {{ $as.sandbox.port }}
           protocol: TCP
+    {{- if not $as.proxy.backendUrl }}
+    {{- /*
+      Default BACKEND_URL is the in-cluster backend Service. Pod IPs usually
+      fall inside blockedRanges, so allow the backend pods explicitly.
+    */}}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "retool.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.service.internalPort }}
+          protocol: TCP
+    {{- end }}
     {{- if $as.networkPolicy.backendAllowlist }}
     - to:
         {{- range $as.networkPolicy.backendAllowlist }}
@@ -204,6 +183,9 @@ spec:
     {{- if $as.networkPolicy.postgresPort }}
     {{- /* Postgres state store: see the postgresEgressRules helper. */}}
     {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
+    {{- end }}
+    {{- with $as.networkPolicy.proxyExtraEgress }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
     - to:
         - ipBlock:

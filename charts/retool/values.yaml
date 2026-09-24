@@ -1386,7 +1386,8 @@ rr:
         - fe80::/10          # IPv6 link-local
         - '::1/128'         # IPv6 loopback
       # Restrict DNS egress to pods matching this selector (typically kube-dns/coredns).
-      # Set to empty to allow DNS to any destination (not recommended).
+      # Set dnsSelector and dnsCidrs both empty to allow DNS to any destination
+      # (not recommended).
       dnsSelector:
         namespaceSelector:
           matchLabels:
@@ -1394,9 +1395,26 @@ rr:
         podSelector:
           matchLabels:
             k8s-app: kube-dns
+      # Additional DNS resolver CIDRs allowed on port 53 (UDP/TCP), alongside
+      # dnsSelector. REQUIRED with NodeLocal DNSCache (common on GKE), which
+      # answers on each node at the kube-dns ClusterIP, so dnsSelector never
+      # matches and every lookup is dropped. Add that ClusterIP as a /32:
+      #   kubectl -n kube-system get svc kube-dns -o jsonpath='{.spec.clusterIP}'
+      # e.g. dnsCidrs: [10.0.0.10/32]
+      dnsCidrs: []
+      # Extra egress rules for sandbox pods (appended verbatim).
       extraEgress: []
+      # Extra egress rules for the controller and proxy (appended verbatim).
+      controllerExtraEgress: []
+      proxyExtraEgress: []
+      # Extra ingress peers (podSelector/namespaceSelector/ipBlock maps) allowed
+      # to reach the controller and proxy. The backend, workflow backend,
+      # jobs-runner, and Temporal worker pods are always allowed; use this for
+      # callers with custom labels.
+      extraIngressFrom: []
       # CIDRs allowed in proxy egress even if they fall within blockedRanges
-      # (e.g. private backend endpoint).
+      # (e.g. private backend endpoint). The in-cluster backend pods are
+      # allowed automatically unless proxy.backendUrl is set.
       backendAllowlist: []
       # Egress port for DSN-configured Postgres (postgres.url /
       # urlSecretName), whose port Helm cannot read; null disables the
@@ -1410,7 +1428,8 @@ rr:
       # Escape hatch: allow Postgres to ANY destination (for urlSecretName
       # DSNs). Reopens blockedRanges on that port.
       postgresAllowAny: false
-      # Override sandbox ingress source selector (defaults to retool backend pods).
+      # Override the sandbox-pod ingress source selector (defaults to the retool
+      # backend pods). Controller and proxy ingress use extraIngressFrom instead.
       ingressFrom: []
 
     # Node placement overrides (falls back to global nodeSelector/tolerations if empty)
