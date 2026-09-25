@@ -1366,6 +1366,13 @@ rr:
     frontendWsProxyDomain: ''
     # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
     proxyDomain: ''
+    # Optional. Serves each editor sandbox on its own origin at
+    # sandbox-<id>.<frontendWildcardDomain> (e.g. sandboxes.apps.retool.example.com)
+    # instead of the shared /sandbox/<id>/ path on the Retool host. Needed for
+    # camera, mic, and storage in the editor preview. Requires a *.<frontendWildcardDomain>
+    # DNS record, a certificate for it, and a route to the proxy Service on proxy.port.
+    # Set it only after that route works; setting it moves every org's editor.
+    frontendWildcardDomain: ''
 
     # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
     # Strongly recommended for production to isolate sandbox egress.
