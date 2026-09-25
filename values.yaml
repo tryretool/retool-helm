@@ -1596,8 +1596,7 @@ retoolos:
   # Annotations for RetoolOS worker pods
   annotations: {}
 
-  # One customer-owned Slack app serves all RetoolOS agents. See
-  # docs/retoolos-slack.md for the matching Slack app setup.
+  # One customer-owned Slack app serves all RetoolOS agents.
   slack:
     # disabled, http (Slack webhooks), or socket (outbound Socket Mode connection).
     mode: disabled
