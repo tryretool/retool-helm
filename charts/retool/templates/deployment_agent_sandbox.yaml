@@ -584,6 +584,10 @@ spec:
             - name: SANDBOX_PROXY_TIMEOUT_MS
               value: {{ $as.proxy.sandboxProxyTimeoutMs | quote }}
             {{- end }}
+            {{- if $as.frontendWildcardDomain }}
+            - name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
+              value: {{ $as.frontendWildcardDomain | quote }}
+            {{- end }}
             {{- if $as.proxy.npmRegistry.url }}
             - name: NPM_PUBLIC_REGISTRY_URL
               value: {{ $as.proxy.npmRegistry.url | quote }}

@@ -1084,6 +1084,10 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
   value: {{ .Values.rr.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
+{{- if .Values.rr.agentSandbox.frontendWildcardDomain }}
+- name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
+  value: {{ .Values.rr.agentSandbox.frontendWildcardDomain | quote }}
+{{- end }}
 {{- if .Values.rr.agentSandbox.jwtPrivateKey }}
 - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
   value: {{ .Values.rr.agentSandbox.jwtPrivateKey | quote }}
