@@ -290,6 +290,23 @@ telemetry.retool.com/service-name: agent-eval-worker
 {{- end }}
 
 {{/*
+Selector labels for RetoolOS worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.retoolosWorker.selectorLabels" -}}
+retoolService: {{ include "retool.retoolosWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for RetoolOS worker.
+*/}}
+{{- define "retool.retoolosWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.retoolosWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: retoolos-temporal-worker
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "retool.serviceAccountName" -}}
@@ -516,6 +533,55 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 
 {{/*
+Set RetoolOS worker enabled
+Usage: (include "retool.retoolos.enabled" .)
+*/}}
+{{- define "retool.retoolos.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.retoolos.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Slack OAuth runs on the backend in both modes, so it needs the app credentials.
+Only Socket Mode also needs an app token on the RetoolOS worker (rendered in
+_workers.tpl). This mode controls the chart's env wiring, not the Slack app's
+settings or credentials supplied through the generic env options.
+*/}}
+{{- define "retool.retoolosSlack.backendEnvVars" -}}
+{{- $slack := .Values.retoolos.slack -}}
+{{- $mode := $slack.mode | default "disabled" -}}
+{{- if not (has $mode (list "disabled" "http" "socket")) -}}
+{{- fail "retoolos.slack.mode must be disabled, http, or socket" -}}
+{{- end -}}
+{{- if ne $mode "disabled" -}}
+{{- if ne (include "retool.retoolos.enabled" .) "1" -}}
+{{- fail "retoolos.enabled must be true when retoolos.slack.mode is http or socket" -}}
+{{- end -}}
+{{- if not $slack.secretName -}}
+{{- fail "retoolos.slack.secretName is required when Slack is enabled" -}}
+{{- end -}}
+- name: RETOOLOS_SLACK_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ $slack.secretName | quote }}
+      key: client-id
+- name: RETOOLOS_SLACK_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ $slack.secretName | quote }}
+      key: client-secret
+- name: RETOOLOS_SLACK_SIGNING_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ $slack.secretName | quote }}
+      key: signing-secret
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resolve whether an RR component (agent, jsExecutor, agentSandbox) is
 enabled. Components are nested under .Values.rr (each ships as a default block
 with `enabled: null`). The component's own `enabled` wins when explicitly set to
@@ -683,6 +749,13 @@ Set agent eval worker service name
 */}}
 {{- define "retool.agentEvalWorker.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "agent-eval-worker") }}
+{{- end -}}
+
+{{/*
+Set RetoolOS worker service name
+*/}}
+{{- define "retool.retoolosWorker.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "retoolos-temporal-worker") }}
 {{- end -}}
 
 {{/*

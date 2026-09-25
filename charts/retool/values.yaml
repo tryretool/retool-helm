@@ -1584,6 +1584,52 @@ agents:
   # Annotations for agent worker pods
   annotations: {}
 
+retoolos:
+  # Enable the RetoolOS worker. A single worker pod runs the agent loop,
+  # messaging ingress and egress, search indexing and refresh, and pg-boss
+  # Jobs workers. Those workloads use separate Temporal task queues within the process.
+  enabled: false
+
+  # Labels for RetoolOS worker pods
+  labels: {}
+
+  # Annotations for RetoolOS worker pods
+  annotations: {}
+
+  # One customer-owned Slack app serves all RetoolOS agents.
+  slack:
+    # disabled, http (Slack webhooks), or socket (outbound Socket Mode connection).
+    mode: disabled
+    # Existing Kubernetes Secret in this release's namespace. It must contain
+    # client-id, client-secret, and signing-secret; socket also needs app-token.
+    secretName: ""
+
+  # RetoolOS worker configuration
+  config: {}
+  # Search enablement is deployment-wide. Set RETOOLOS_SEARCH_ENABLED under the
+  # top-level env block so the backend, jobs runner, and this worker all receive it.
+
+  worker:
+    # RetoolOS intentionally combines its workloads in one pod by default.
+    replicaCount: 1
+
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
 # SHARED TEMPORAL CONFIGURATION
 # This configuration is shared between all workers.
 # In order to use workers, temporal must be configured.
