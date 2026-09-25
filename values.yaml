@@ -1025,10 +1025,10 @@ rr:
     resources:
       limits:
         cpu: '2'
-        memory: 6Gi
+        memory: 2Gi
       requests:
         cpu: '2'
-        memory: 6Gi
+        memory: 2Gi
 
   # RR Agent: server-side agent loop worker (independent from agents above).
   agent:
