@@ -1054,6 +1054,69 @@ Usage: {{- if eq (include "retool.agentSandbox.postgresEgressMissing" .) "1" }}
 {{- end -}}
 
 {{/*
+DNS egress rule shared by the agent-sandbox, controller, and proxy
+NetworkPolicies. Destinations are the dnsSelector pods plus any dnsCidrs.
+dnsCidrs covers resolvers that are not kube-dns pods, e.g. NodeLocal DNSCache
+(common on GKE), which answers on the node at the kube-dns ClusterIP and so
+never matches dnsSelector. With neither set, DNS is allowed to any destination.
+Usage: {{- include "retool.agentSandbox.dnsEgressRules" . | nindent 4 }}
+*/}}
+{{- define "retool.agentSandbox.dnsEgressRules" -}}
+{{- $np := .Values.rr.agentSandbox.networkPolicy -}}
+{{- $peers := list -}}
+{{- with $np.dnsSelector }}
+{{- $peer := dict -}}
+{{- with .namespaceSelector }}{{- $_ := set $peer "namespaceSelector" . -}}{{- end }}
+{{- with .podSelector }}{{- $_ := set $peer "podSelector" . -}}{{- end }}
+{{- if $peer }}{{- $peers = append $peers $peer -}}{{- end }}
+{{- end }}
+{{- range $np.dnsCidrs }}
+{{- $peers = append $peers (dict "ipBlock" (dict "cidr" .)) -}}
+{{- end }}
+{{- if $peers -}}
+- to:
+{{- toYaml $peers | nindent 4 }}
+  ports:
+{{- else -}}
+- ports:
+{{- end }}
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+{{- end -}}
+
+{{/*
+Ingress peers for the agent-sandbox controller and proxy: every Retool
+workload that renders retool.agentSandbox.backendEnvVars (backend, workflow
+backend, jobs-runner, Temporal workers), plus networkPolicy.extraIngressFrom.
+Agent workflows run their /assign and proxy calls from the workers, not the
+backend. Selectors for components that are not deployed match no pods, so
+all are listed unconditionally. Sandbox pods are deliberately excluded.
+Usage: {{- include "retool.agentSandbox.callerPeers" . | nindent 8 }}
+*/}}
+{{- define "retool.agentSandbox.callerPeers" -}}
+- podSelector:
+    matchLabels:
+      {{- include "retool.selectorLabels" . | nindent 6 }}
+- podSelector:
+    matchLabels:
+      {{- include "retool.workflowBackend.selectorLabels" . | nindent 6 }}
+- podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- range list "workflowWorker" "agentWorker" "agentEvalWorker" "rrAgentWorker" }}
+- podSelector:
+    matchLabels:
+      {{- include (printf "retool.%s.selectorLabels" .) $ | nindent 6 }}
+{{- end }}
+{{- with .Values.rr.agentSandbox.networkPolicy.extraIngressFrom }}
+{{ toYaml . }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Agent sandbox env vars for the Retool backend, workflow backend, and workers.
 Outputs env entries that tell the backend how to reach the agent sandbox services.
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
