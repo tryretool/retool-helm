@@ -1613,10 +1613,12 @@ retool-temporal-services-helm:
   # Enable to spin up a new Temporal Cluster alongside Retool
   enabled: false
   server:
-    # Defines image to be used for temporal server
+    # Official Temporal server does not create schemas or the `workflows`
+    # namespace. New installs must do that first: https://docs.temporal.io/self-hosted-guide
+    autosetup: false
     image:
-      repository: tryretool/one-offs
-      tag: retool-temporal-1.1.5
+      repository: temporalio/server
+      tag: "1.18.5"
       pullPolicy: IfNotPresent
     # this configures grpc_health_probe (https://github.com/grpc-ecosystem/grpc-health-probe)
     # for healthchecks instead of native k8s.
