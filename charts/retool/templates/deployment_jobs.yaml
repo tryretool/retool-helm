@@ -187,6 +187,7 @@ spec:
           {{- if eq (include "retool.gitServer.enabled" .) "1" }}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- end }}
+          {{- include "retool.retoolos.searchEnvVars" . | nindent 10 }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}

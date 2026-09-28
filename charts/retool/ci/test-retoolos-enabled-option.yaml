@@ -2,9 +2,6 @@ retoolos:
   # RetoolOS runs its interactive, Job, messaging, and search workers in one
   # backend-image process while isolating their work on separate Temporal queues.
   enabled: true
-  slack:
-    mode: socket
-    secretName: retoolos-slack
   worker:
     replicaCount: 2
     resources:
@@ -18,3 +15,17 @@ retoolos:
     test-pod-label: "true"
   annotations:
     test-pod-annotation: "true"
+
+# Exercise the separate Jobs Runner path; one combined backend process receives
+# the same search setting without this override.
+jobRunner:
+  enabled: true
+
+# RetoolOS reuses the existing RR object store when no RETOOLOS_S3_* override is
+# supplied. This endpoint makes the S3-compatible R2 case explicit.
+rr:
+  blobStorage:
+    s3:
+      bucket: shared-r2-bucket
+      region: auto
+      endpoint: https://example.r2.cloudflarestorage.com

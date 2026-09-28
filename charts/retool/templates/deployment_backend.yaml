@@ -172,7 +172,8 @@ spec:
           {{- end }}
           {{- include "retool.mcp.backendEnvVars" . | nindent 10 }}
           {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
-          {{- include "retool.retoolosSlack.backendEnvVars" . | nindent 10 }}
+          {{- include "retool.retoolos.searchEnvVars" . | nindent 10 }}
+          {{- include "retool.retoolosSlack.envVars" . | nindent 10 }}
           {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"
@@ -276,6 +277,8 @@ spec:
             value: {{ include "retool.gitServer.port" . | quote }}
           {{- end }}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
+          {{- else if eq (include "retool.retoolos.enabled" .) "1" }}
+          {{- include "retool.blobStorage.envVars" . | nindent 10 }}
           {{- end }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}

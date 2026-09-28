@@ -251,6 +251,8 @@ spec:
             worker is a blob-storage client, not the git server itself.
           */}}
           {{- include "retool.gitServer.commonEnv" $ | nindent 10 }}
+          {{- else if eq $workerType "retoolos" }}
+          {{- include "retool.blobStorage.envVars" $ | nindent 10 }}
           {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
@@ -325,6 +327,10 @@ spec:
                 {{- end }}
           {{- end }}
           {{- end }}
+          {{- if eq $workerType "retoolos" }}
+          {{- include "retool.retoolos.searchEnvVars" $ | nindent 10 }}
+          {{- include "retool.retoolosSlack.envVars" $ | nindent 10 }}
+          {{- end }}
           {{- include "retool.env" $.Values.env | nindent 10 }}
           {{- range $.Values.environmentSecrets }}
           - name: {{ .name }}
@@ -338,13 +344,6 @@ spec:
           {{- end }}
           {{- with $parentValues.config.environmentVariables }}
 {{ toYaml . | indent 10 }}
-          {{- end }}
-          {{- if and (eq $workerType "retoolos") (eq ($.Values.retoolos.slack.mode | default "disabled") "socket") }}
-          - name: RETOOLOS_SLACK_APP_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: {{ $.Values.retoolos.slack.secretName | quote }}
-                key: app-token
           {{- end }}
         {{- if $.Values.externalSecrets.enabled }}
         envFrom:

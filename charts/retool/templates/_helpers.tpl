@@ -340,6 +340,29 @@ Map values allow structured EnvVar fields such as valueFrom.
 {{- end }}
 
 {{/*
+Return "1" when a top-level env setting already owns a variable.
+
+Chart-derived defaults use this helper to avoid emitting a duplicate EnvVar.
+For example, `env.RETOOLOS_SEARCH_ENABLED: false` must override the chart's
+RetoolOS default. Values supplied through envFrom cannot be inspected while the
+chart renders; use env, environmentVariables, or environmentSecrets to override
+a chart-derived default.
+
+Usage: include "retool.envVarIsExplicit" (dict "root" . "name" "MY_VAR")
+*/}}
+{{- define "retool.envVarIsExplicit" -}}
+{{- $name := .name -}}
+{{- $found := hasKey (.root.Values.env | default dict) $name -}}
+{{- range .root.Values.environmentVariables -}}
+{{- if eq .name $name -}}{{- $found = true -}}{{- end -}}
+{{- end -}}
+{{- range .root.Values.environmentSecrets -}}
+{{- if eq .name $name -}}{{- $found = true -}}{{- end -}}
+{{- end -}}
+{{- if $found -}}1{{- end -}}
+{{- end -}}
+
+{{/*
 Render a container startupProbe from a values block.
 Pass dict "probe" and "port" (name or number). Set probe.tcpSocket to use a
 TCP probe instead of httpGet (git-server). Empty when probe.enabled is false.
@@ -545,39 +568,82 @@ Usage: (include "retool.retoolos.enabled" .)
 {{- end -}}
 
 {{/*
-Slack OAuth runs on the backend in both modes, so it needs the app credentials.
-Only Socket Mode also needs an app token on the RetoolOS worker (rendered in
-_workers.tpl). This mode controls the chart's env wiring, not the Slack app's
-settings or credentials supplied through the generic env options.
+Enable RetoolOS search with the RetoolOS worker unless the operator explicitly
+sets a value. The same value is rendered on every process that participates in
+search: the backend, Jobs Runner, and RetoolOS worker.
 */}}
-{{- define "retool.retoolosSlack.backendEnvVars" -}}
+{{- define "retool.retoolos.searchEnvVars" -}}
+{{- if and (eq (include "retool.retoolos.enabled" .) "1") (ne (include "retool.envVarIsExplicit" (dict "root" . "name" "RETOOLOS_SEARCH_ENABLED")) "1") -}}
+- name: RETOOLOS_SEARCH_ENABLED
+  value: "true"
+{{- end -}}
+{{- end -}}
+
+{{/*
+Render Slack configuration for the backend and RetoolOS worker. Customers choose
+where the Slack app credentials come from:
+
+  - retoolos.slack.secretName: read one deployment-managed app from a Kubernetes Secret.
+  - RETOOLOS_SLACK_* env vars: use the chart's generic env settings.
+  - neither: let an organization admin configure the app in Retool, where its
+    credentials are stored encrypted in Postgres.
+
+You can either provide a secretName OR the explicit RETOOLOS_SLACK_* env vars but not both.
+*/}}
+{{- define "retool.retoolosSlack.envVars" -}}
+{{- if eq (include "retool.retoolos.enabled" .) "1" -}}
 {{- $slack := .Values.retoolos.slack -}}
-{{- $mode := $slack.mode | default "disabled" -}}
-{{- if not (has $mode (list "disabled" "http" "socket")) -}}
-{{- fail "retoolos.slack.mode must be disabled, http, or socket" -}}
+{{- $mode := $slack.mode | default "socket" -}}
+{{- if not (has $mode (list "http" "socket")) -}}
+{{- fail "retoolos.slack.mode must be http or socket" -}}
 {{- end -}}
-{{- if ne $mode "disabled" -}}
-{{- if ne (include "retool.retoolos.enabled" .) "1" -}}
-{{- fail "retoolos.enabled must be true when retoolos.slack.mode is http or socket" -}}
+
+{{- $slackEnvNames := list
+  "RETOOLOS_SLACK_INGRESS_MODE"
+  "RETOOLOS_SLACK_CLIENT_ID"
+  "RETOOLOS_SLACK_CLIENT_SECRET"
+  "RETOOLOS_SLACK_SIGNING_SECRET"
+  "RETOOLOS_SLACK_APP_TOKEN"
+-}}
+{{- $hasExplicitSlackEnv := false -}}
+{{- range $name := $slackEnvNames -}}
+{{- if eq (include "retool.envVarIsExplicit" (dict "root" $ "name" $name)) "1" -}}
+{{- $hasExplicitSlackEnv = true -}}
 {{- end -}}
-{{- if not $slack.secretName -}}
-{{- fail "retoolos.slack.secretName is required when Slack is enabled" -}}
 {{- end -}}
+{{- if and $slack.secretName $hasExplicitSlackEnv -}}
+{{- fail "retoolos.slack.secretName cannot be combined with RETOOLOS_SLACK_* env settings; configure Slack through one source" -}}
+{{- end -}}
+
+{{- $ingressModeIsExplicit := eq (include "retool.envVarIsExplicit" (dict "root" . "name" "RETOOLOS_SLACK_INGRESS_MODE")) "1" -}}
+{{- if not $ingressModeIsExplicit -}}
+- name: RETOOLOS_SLACK_INGRESS_MODE
+  value: {{ $mode | quote }}
+{{ end -}}
+{{- with $slack.secretName -}}
 - name: RETOOLOS_SLACK_CLIENT_ID
   valueFrom:
     secretKeyRef:
-      name: {{ $slack.secretName | quote }}
+      name: {{ . | quote }}
       key: client-id
 - name: RETOOLOS_SLACK_CLIENT_SECRET
   valueFrom:
     secretKeyRef:
-      name: {{ $slack.secretName | quote }}
+      name: {{ . | quote }}
       key: client-secret
 - name: RETOOLOS_SLACK_SIGNING_SECRET
   valueFrom:
     secretKeyRef:
-      name: {{ $slack.secretName | quote }}
+      name: {{ . | quote }}
       key: signing-secret
+{{- if eq $mode "socket" }}
+- name: RETOOLOS_SLACK_APP_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: app-token
+{{- end }}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -1225,14 +1291,15 @@ http://{{ template "retool.gitServer.name" . }}:{{ include "retool.gitServer.por
 {{- end -}}
 
 {{/*
-Blob-storage + git repack env vars shared by the in-process git server (main
-backend) and the standalone git server deployment. git_server stores all
-objects/packs in blob storage; the same RR_DEFAULT_* vars are also used by
-snapshots. Emits nothing when no blobStorage provider is configured (in which
-case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
-directly via environmentVariables / environmentSecrets).
+Render the canonical RR blob-storage configuration. RetoolOS can safely share
+the store used by Git and snapshots because it puts its objects under the
+`retoolos/` prefix.
+
+Emits nothing when no rr.blobStorage provider is configured. In that case,
+operators can still supply RR_BLOB_STORAGE_PROVIDER and RR_DEFAULT_* directly
+through the generic environment settings.
 */}}
-{{- define "retool.gitServer.commonEnv" -}}
+{{- define "retool.blobStorage.envVars" -}}
 {{- $bs := .Values.rr.blobStorage | default dict }}
 {{- if $bs.s3 }}
 - name: RR_BLOB_STORAGE_PROVIDER
@@ -1295,6 +1362,15 @@ directly via environmentVariables / environmentSecrets).
   value: {{ $bs.azure.accountUrl | quote }}
 {{- end }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Blob-storage and repack settings shared by the in-process and standalone git
+servers. Keep blob storage in its own helper because RetoolOS also consumes it
+when git server is disabled.
+*/}}
+{{- define "retool.gitServer.commonEnv" -}}
+{{- include "retool.blobStorage.envVars" . }}
 {{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
   value: {{ .Values.rr.gitServer.repackThreshold | quote }}
