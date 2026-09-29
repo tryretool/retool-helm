@@ -173,6 +173,7 @@ spec:
                 {{- end }}
           {{- end }}
           {{- end }}
+          {{- include "retool.blobStorage.envVars" . | nindent 10 }}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}

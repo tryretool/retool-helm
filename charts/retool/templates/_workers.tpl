@@ -44,6 +44,18 @@ keeps its workers under .Values.rr); omitted means the key is top-level.
 {{- if eq $workerType "agentEval" -}}
   {{- $workerValues = $parentValues.evalWorker -}}
 {{- end -}}
+{{- /*
+  Read metadata (labels/annotations) from parentValues. A specific worker block can
+  add or override keys under its own labels and annotations. deepCopy keeps
+  mergeOverwrite from mutating the parent before another worker under that parent
+  is rendered.
+*/ -}}
+{{- $parentLabels := $parentValues.labels | default dict -}}
+{{- $workerLabels := $workerValues.labels | default dict -}}
+{{- $podLabels := mergeOverwrite (deepCopy $parentLabels) $workerLabels -}}
+{{- $parentAnnotations := $parentValues.annotations | default dict -}}
+{{- $workerAnnotations := $workerValues.annotations | default dict -}}
+{{- $podAnnotations := mergeOverwrite (deepCopy $parentAnnotations) $workerAnnotations -}}
 
 {{- $workerPoolMaxSize := 100 -}}
 {{- if $workerValues }}
@@ -110,8 +122,8 @@ spec:
 {{- if $.Values.backend.annotations }}
 {{ toYaml $.Values.backend.annotations | indent 8 }}
 {{- end }}
-{{- if $parentValues.annotations }}
-{{ toYaml $parentValues.annotations | indent 8 }}
+{{- if $podAnnotations }}
+{{ toYaml $podAnnotations | indent 8 }}
 {{- end }}
       labels:
         {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 8 }}
@@ -120,8 +132,8 @@ spec:
 {{- if $.Values.podLabels }}
 {{ toYaml $.Values.podLabels | indent 8 }}
 {{- end }}
-{{- if $parentValues.labels }}
-{{ toYaml $parentValues.labels | indent 8 }}
+{{- if $podLabels }}
+{{ toYaml $podLabels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" $ }}
@@ -242,6 +254,9 @@ spec:
           {{- end }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
           {{- if eq (include "retool.gitServer.enabled" $) "1" }}
+          {{- include "retool.gitServer.commonEnv" $ | nindent 10 }}
+          {{- end }}
+          {{- if or (eq (include "retool.gitServer.enabled" $) "1") (eq $workerType "retoolos") }}
           {{- /*
             Snapshot blob storage: the agentExecutor / snapshotRetention temporal
             activities run on this worker and read RR_SNAPSHOTS_* with an
@@ -250,8 +265,6 @@ spec:
             resolves here too. No git-server host/port split is needed -- the
             worker is a blob-storage client, not the git server itself.
           */}}
-          {{- include "retool.gitServer.commonEnv" $ | nindent 10 }}
-          {{- else if eq $workerType "retoolos" }}
           {{- include "retool.blobStorage.envVars" $ | nindent 10 }}
           {{- end }}
 

@@ -2,8 +2,20 @@ retoolos:
   # RetoolOS runs its interactive, Job, messaging, and search workers in one
   # backend-image process while isolating their work on separate Temporal queues.
   enabled: true
+  labels:
+    inherited-label: from-parent
+    overridden-label: from-parent
+  annotations:
+    inherited-annotation: from-parent
+    overridden-annotation: from-parent
   worker:
     replicaCount: 2
+    labels:
+      test-pod-label: "true"
+      overridden-label: from-worker
+    annotations:
+      test-pod-annotation: "true"
+      overridden-annotation: from-worker
     resources:
       limits:
         cpu: 2000m
@@ -11,10 +23,6 @@ retoolos:
       requests:
         cpu: 1000m
         memory: 2048Mi
-  labels:
-    test-pod-label: "true"
-  annotations:
-    test-pod-annotation: "true"
 
 # Exercise the separate Jobs Runner path; one combined backend process receives
 # the same search setting without this override.

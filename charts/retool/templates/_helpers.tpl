@@ -1428,12 +1428,9 @@ through the generic environment settings.
 {{- end -}}
 
 {{/*
-Blob-storage and repack settings shared by the in-process and standalone git
-servers. Keep blob storage in its own helper because RetoolOS also consumes it
-when git server is disabled.
+Render Git server settings shared by the in-process and standalone servers.
 */}}
 {{- define "retool.gitServer.commonEnv" -}}
-{{- include "retool.blobStorage.envVars" . }}
 {{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
   value: {{ .Values.rr.gitServer.repackThreshold | quote }}
