@@ -1,0 +1,28 @@
+# Separate git server + agent sandbox on an image that supports the pg-boss
+# R² backend, with no Temporal. The git server and backend should both render
+# R2_ORCHESTRATION_BACKEND=postgres.
+image:
+  tag: 4.47.0
+
+rr:
+  gitServer:
+    enabled: true
+    separate:
+      enabled: true
+
+  blobStorage:
+    s3:
+      bucket: test-rr-bucket
+      region: us-east-1
+
+  agentSandbox:
+    enabled: true
+
+    image:
+      repository: tryretool/agent-sandbox-service
+      tag: 3.123.4
+      pullPolicy: IfNotPresent
+
+    jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AI\nY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
+    jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49\nAwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoB\nQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
+    encryptionKey: a12b01429fe0fe69a80da94e9e837ab2f1e9bda378ed8a25905a238f6fea6b7a
