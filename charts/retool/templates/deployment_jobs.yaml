@@ -94,8 +94,7 @@ spec:
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
-          - name: RR_AGENT_PUBSUB_BACKEND
-            value: "postgres"
+          {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
           {{- end }}
 
           {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
@@ -267,6 +266,10 @@ spec:
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
 {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 {{- with .Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}
@@ -274,10 +277,6 @@ spec:
         - name: {{ .name }}
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
-{{- end }}
-{{- if .Values.securityContext.extraContainerSecurityContext }}
-        securityContext:
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
 {{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:

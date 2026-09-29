@@ -154,12 +154,13 @@ data:
               {
                 "name": "rootfs-etc-copy",
                 "image": "{{ $as.image.repository }}:__IMAGE_TAG__",
-                "command": ["/bin/sh", "-c", "cp -r /opt/sandbox-env/rootfs/etc/. /mnt/etc/"],
+                "command": ["/bin/sh", "-c", "cd /opt/sandbox-env/rootfs/etc && find . -maxdepth 1 -mindepth 1 ! -name shadow -exec cp -R {} /mnt/etc/ \\;"],
                 "securityContext": {
-                  "runAsUser": 0,
+                  "runAsUser": 1001,
+                  "runAsGroup": 1001,
                   "allowPrivilegeEscalation": false,
                   "readOnlyRootFilesystem": true,
-                  "capabilities": {"drop": ["ALL"], "add": ["DAC_READ_SEARCH"]}
+                  "capabilities": {"drop": ["ALL"]}
                 },
                 "volumeMounts": [
                   {"name": "rootfs-etc", "mountPath": "/mnt/etc"}

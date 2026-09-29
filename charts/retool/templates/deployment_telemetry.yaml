@@ -28,6 +28,10 @@ spec:
       - name: telemetry
         image: '{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag | default .Values.image.tag }}'
         imagePullPolicy: {{ .Values.telemetry.image.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         command: ['retool-telemetry']
         resources:
           {{ toYaml .Values.telemetry.resources | nindent 10 }}

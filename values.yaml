@@ -55,6 +55,24 @@ image:
   tag: ""
   pullPolicy: "IfNotPresent"
 
+# Small utility image for the initContainers that install the nsjail seccomp
+# profile onto the host, on the code executor and JS executor. Only used when
+# seccomp is in play.
+#
+# Override repository if every image has to come from one registry -- a private
+# mirror, an air-gapped install, or GCP Marketplace, which rejects any artifact
+# a consumer pulls from outside its own Artifact Registry.
+#
+# The upstream busybox image is pinned to a known-good digest internally, but
+# only while repository and tag are left at their defaults below. Overriding
+# either drops that pin automatically (a copied image gets a new digest, so the
+# original would pin you back to the source registry and fail the pull). Set
+# digest here to pin your own mirrored image by digest.
+initImage:
+  repository: busybox
+  tag: '1.37.0'
+  digest: ''
+
 commandline:
   args: []
 
@@ -909,13 +927,17 @@ codeExecutor:
 
   # Deploy a DaemonSet that loads AppArmor profiles for nsjail on every node.
   # When enabled, the code-executor and js-executor annotations switch from
-  # "unconfined" to "localhost/retool-executor", which satisfies Ubuntu 24.04+'s
-  # kernel.apparmor_restrict_unprivileged_userns=1 restriction by providing an
-  # explicit userns rule. Requires useSeccompProfile: true for code-executor to
-  # take effect (js-executor always uses the seccomp/AppArmor path). The
-  # DaemonSet itself renders whenever this is true and either workflows is
-  # enabled (for code-executor) or rr.jsExecutor is enabled -- it is not tied
-  # to workflows alone, since js-executor doesn't require workflows to run.
+  # "unconfined" to "localhost/retool-executor". Requires useSeccompProfile:
+  # true for code-executor to take effect (js-executor always uses the
+  # seccomp/AppArmor path). The DaemonSet itself renders whenever this is
+  # truthy and either workflows is enabled (for code-executor) or
+  # rr.jsExecutor is enabled.
+  #
+  # Accepted values:
+  #   false    - disabled (default)
+  #   true     - alias for "ubuntu"
+  #   "ubuntu" - for Ubuntu/Debian nodes
+  #   "cos"    - for GKE Container-Optimized OS nodes
   appArmorProfileInstaller: false
 
 # === RR (Retool agent runtime) =============================================
@@ -1172,8 +1194,8 @@ rr:
 
     # Deploy an AppArmor profile for agent-sandbox pods. When enabled, the
     # node-installer DaemonSet loads a retool-agent-sandbox profile on every
-    # node, and sandbox Jobs use it instead of Unconfined. Required on
-    # Ubuntu 24.04+ hosts with kernel.apparmor_restrict_unprivileged_userns=1.
+    # node, and sandbox Jobs use it instead of Unconfined.
+    # Accepts: false | true | "ubuntu" | "cos" (see codeExecutor.appArmorProfileInstaller).
     appArmorProfileInstaller: false
 
     # S3-compatible snapshot storage.
@@ -1364,7 +1386,8 @@ rr:
         - fe80::/10          # IPv6 link-local
         - '::1/128'         # IPv6 loopback
       # Restrict DNS egress to pods matching this selector (typically kube-dns/coredns).
-      # Set to empty to allow DNS to any destination (not recommended).
+      # Set dnsSelector and dnsCidrs both empty to allow DNS to any destination
+      # (not recommended).
       dnsSelector:
         namespaceSelector:
           matchLabels:
@@ -1372,11 +1395,41 @@ rr:
         podSelector:
           matchLabels:
             k8s-app: kube-dns
+      # Additional DNS resolver CIDRs allowed on port 53 (UDP/TCP), alongside
+      # dnsSelector. REQUIRED with NodeLocal DNSCache (common on GKE), which
+      # answers on each node at the kube-dns ClusterIP, so dnsSelector never
+      # matches and every lookup is dropped. Add that ClusterIP as a /32:
+      #   kubectl -n kube-system get svc kube-dns -o jsonpath='{.spec.clusterIP}'
+      # e.g. dnsCidrs: [10.0.0.10/32]
+      dnsCidrs: []
+      # Extra egress rules for sandbox pods (appended verbatim).
       extraEgress: []
+      # Extra egress rules for the controller and proxy (appended verbatim).
+      controllerExtraEgress: []
+      proxyExtraEgress: []
+      # Extra ingress peers (podSelector/namespaceSelector/ipBlock maps) allowed
+      # to reach the controller and proxy. The backend, workflow backend,
+      # jobs-runner, and Temporal worker pods are always allowed; use this for
+      # callers with custom labels.
+      extraIngressFrom: []
       # CIDRs allowed in proxy egress even if they fall within blockedRanges
-      # (e.g. private backend endpoint).
+      # (e.g. private backend endpoint). The in-cluster backend pods are
+      # allowed automatically unless proxy.backendUrl is set.
       backendAllowlist: []
-      # Override sandbox ingress source selector (defaults to retool backend pods).
+      # Egress port for DSN-configured Postgres (postgres.url /
+      # urlSecretName), whose port Helm cannot read; null disables the
+      # Postgres rules. The fields path uses postgres.port and the
+      # inherit path uses the backend's Postgres port automatically.
+      postgresPort: 5432
+      # Postgres destinations allowed on postgresPort: CIDR strings or
+      # podSelector/namespaceSelector maps. The inherited in-cluster subchart
+      # is allowed automatically; REQUIRED for an external host.
+      postgresAllowlist: []
+      # Escape hatch: allow Postgres to ANY destination (for urlSecretName
+      # DSNs). Reopens blockedRanges on that port.
+      postgresAllowAny: false
+      # Override the sandbox-pod ingress source selector (defaults to the retool
+      # backend pods). Controller and proxy ingress use extraIngressFrom instead.
       ingressFrom: []
 
     # Node placement overrides (falls back to global nodeSelector/tolerations if empty)
@@ -1707,9 +1760,6 @@ securityContext:
   # Use this section to define additional pod security context values for primary Retool pods not provided by default.
   # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podsecuritycontext-v1-core
   extraSecurityContext: {}
-  # Use this section to define additional container security context values for primary Retool pods not provided by default.
-  # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#securitycontext-v1-core
-  extraContainerSecurityContext: {}
 
 extraConfigMapMounts: []
 

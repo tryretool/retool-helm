@@ -477,6 +477,7 @@ wait-for-apparmor init container waiting forever on a DaemonSet that never
 gets created when workflows are disabled.
 Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
 Returns "1" when it should render, "" otherwise.
+Accepts true / "ubuntu" / "cos" as enabled values.
 */}}
 {{- define "retool.appArmorNsjailInstaller.enabled" -}}
 {{- $output := "" -}}
@@ -487,6 +488,19 @@ Returns "1" when it should render, "" otherwise.
   {{- end -}}
 {{- end -}}
 {{- $output -}}
+{{- end -}}
+
+{{/*
+Whether an AppArmor profile should include the "userns" rule.
+Ubuntu 24.04+ kernels compile CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS and
+enforce kernel.apparmor_restrict_unprivileged_userns=1, so the profile must
+explicitly grant userns. GKE COS kernels lack this feature and their
+apparmor_parser rejects the keyword entirely.
+Returns "1" on true / "ubuntu"; "" on "cos" or anything else.
+Usage: (include "retool.appArmor.includeUserns" $val)
+*/}}
+{{- define "retool.appArmor.includeUserns" -}}
+{{- if and . (ne (lower (toString .)) "cos") -}}1{{- end -}}
 {{- end -}}
 
 {{/*
@@ -582,6 +596,36 @@ Set Temporal namespace
 {{- $temporalConfig.namespace | quote -}}
 {{- else -}}
 {{- "workflows" | quote -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns "1" when a Temporal cluster is enabled for this deployment -- either
+via the bundled retool-temporal-services-helm subchart or an external Temporal
+cluster configured under .Values.workflows.temporal / .Values.temporal.
+Usage: (include "retool.temporal.enabled" .)
+*/}}
+{{- define "retool.temporal.enabled" -}}
+{{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
+{{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled -}}1{{- end -}}
+{{- end -}}
+
+{{/*
+R² orchestration backend env var. R² sandbox workflows run on either Temporal
+(the code default) or pg-boss (a Postgres-backed durable job queue). When no
+Temporal cluster is enabled, fall back to pg-boss so self-hosted deployments
+without Temporal can still run R² tasks. Requires Retool >= 4.47.0.
+Usage: {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
+*/}}
+{{- define "retool.r2.orchestrationBackendEnv" -}}
+{{- if ne (include "retool.temporal.enabled" .) "1" -}}
+{{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
+{{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
+{{- $retool_version_supports_r2_postgres := ( and ( regexMatch $valid_retool_version_regexp .Values.image.tag ) ( semverCompare ">= 4.47.0-0" ( regexFind $semver_version_regexp .Values.image.tag ) ) ) }}
+{{- if $retool_version_supports_r2_postgres -}}
+- name: R2_ORCHESTRATION_BACKEND
+  value: "postgres"
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -918,6 +962,161 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 {{- end -}}
 
 {{/*
+Effective port for the agent-sandbox Postgres egress rules, mirroring
+postgresUrlEnv's precedence so the policy always matches the port the
+pods dial: postgres.port for the fields path (postgres.host set), the
+inherited backend port on the inherit path, and networkPolicy.postgresPort
+for DSNs (postgres.url / urlSecretName) whose port Helm cannot read.
+Usage: {{ include "retool.agentSandbox.postgresEgressPort" . }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressPort" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- if $as.postgres.url -}}
+{{- $as.networkPolicy.postgresPort -}}
+{{- else if $as.postgres.host -}}
+{{- $as.postgres.port | default 5432 -}}
+{{- else if $as.postgres.urlSecretName -}}
+{{- $as.networkPolicy.postgresPort -}}
+{{- else -}}
+{{- include "retool.postgresql.port" . | trimAll "\"" | default "5432" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Postgres egress rules shared by the agent-sandbox controller and proxy
+NetworkPolicies. Rules add together, so a blanket any-address rule would
+defeat blockedRanges on the Postgres port. Selection order:
+  - postgresAllowAny -> any destination (escape hatch for urlSecretName DSNs)
+  - inherited in-cluster subchart (postgres.url/host/urlSecretName unset,
+    postgresql.enabled) -> automatic podSelector rule
+  - postgresAllowlist -> CIDR strings or podSelector/namespaceSelector maps
+Usage: {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressRules" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $pg := $as.postgres -}}
+{{- $port := include "retool.agentSandbox.postgresEgressPort" . -}}
+{{- if $as.networkPolicy.postgresPort }}
+{{- if $as.networkPolicy.postgresAllowAny }}
+- to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+- to:
+    - ipBlock:
+        cidr: ::/0
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- else }}
+{{- if and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled }}
+- to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgresql
+          app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- end }}
+{{- if $as.networkPolicy.postgresAllowlist }}
+{{- $peers := list -}}
+{{- range $as.networkPolicy.postgresAllowlist }}
+{{- if kindIs "string" . }}
+{{- $peers = append $peers (dict "ipBlock" (dict "cidr" .)) }}
+{{- else }}
+{{- $peers = append $peers . }}
+{{- end }}
+{{- end }}
+- to:
+{{- toYaml $peers | nindent 4 }}
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Returns 1 when the agent-sandbox NetworkPolicy is on but the controller/proxy
+have no allowed egress to Postgres (external/secret DSN, empty allowlist,
+no escape hatch). Renders a NOTES.txt warning.
+Usage: {{- if eq (include "retool.agentSandbox.postgresEgressMissing" .) "1" }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressMissing" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $pg := $as.postgres -}}
+{{- if and $as.networkPolicy.enabled $as.networkPolicy.postgresPort (not $as.networkPolicy.postgresAllowAny) (not $as.networkPolicy.postgresAllowlist) (not (and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled)) -}}
+1{{- end -}}
+{{- end -}}
+
+{{/*
+DNS egress rule shared by the agent-sandbox, controller, and proxy
+NetworkPolicies. Destinations are the dnsSelector pods plus any dnsCidrs.
+dnsCidrs covers resolvers that are not kube-dns pods, e.g. NodeLocal DNSCache
+(common on GKE), which answers on the node at the kube-dns ClusterIP and so
+never matches dnsSelector. With neither set, DNS is allowed to any destination.
+Usage: {{- include "retool.agentSandbox.dnsEgressRules" . | nindent 4 }}
+*/}}
+{{- define "retool.agentSandbox.dnsEgressRules" -}}
+{{- $np := .Values.rr.agentSandbox.networkPolicy -}}
+{{- $peers := list -}}
+{{- with $np.dnsSelector }}
+{{- $peer := dict -}}
+{{- with .namespaceSelector }}{{- $_ := set $peer "namespaceSelector" . -}}{{- end }}
+{{- with .podSelector }}{{- $_ := set $peer "podSelector" . -}}{{- end }}
+{{- if $peer }}{{- $peers = append $peers $peer -}}{{- end }}
+{{- end }}
+{{- range $np.dnsCidrs }}
+{{- $peers = append $peers (dict "ipBlock" (dict "cidr" .)) -}}
+{{- end }}
+{{- if $peers -}}
+- to:
+{{- toYaml $peers | nindent 4 }}
+  ports:
+{{- else -}}
+- ports:
+{{- end }}
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+{{- end -}}
+
+{{/*
+Ingress peers for the agent-sandbox controller and proxy: every Retool
+workload that renders retool.agentSandbox.backendEnvVars (backend, workflow
+backend, jobs-runner, Temporal workers), plus networkPolicy.extraIngressFrom.
+Agent workflows run their /assign and proxy calls from the workers, not the
+backend. Selectors for components that are not deployed match no pods, so
+all are listed unconditionally. Sandbox pods are deliberately excluded.
+Usage: {{- include "retool.agentSandbox.callerPeers" . | nindent 8 }}
+*/}}
+{{- define "retool.agentSandbox.callerPeers" -}}
+- podSelector:
+    matchLabels:
+      {{- include "retool.selectorLabels" . | nindent 6 }}
+- podSelector:
+    matchLabels:
+      {{- include "retool.workflowBackend.selectorLabels" . | nindent 6 }}
+- podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- range list "workflowWorker" "agentWorker" "agentEvalWorker" "rrAgentWorker" }}
+- podSelector:
+    matchLabels:
+      {{- include (printf "retool.%s.selectorLabels" .) $ | nindent 6 }}
+{{- end }}
+{{- with .Values.rr.agentSandbox.networkPolicy.extraIngressFrom }}
+{{ toYaml . }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Agent sandbox env vars for the Retool backend, workflow backend, and workers.
 Outputs env entries that tell the backend how to reach the agent sandbox services.
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
@@ -927,6 +1126,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 {{- $defaultSecretName := .Values.rr.agentSandbox.externalSecret.name | default (include "retool.agentSandbox.name" .) -}}
 - name: RR_AGENT_PUBSUB_BACKEND
   value: "postgres"
+{{ include "retool.r2.orchestrationBackendEnv" . }}
 - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
   value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
 {{- include "retool.agentSandbox.proxyEnvVars" . }}
@@ -1221,6 +1421,33 @@ Two classes of stale config are caught:
 {{- if $found -}}
 {{- fail (printf "\n\nACTION REQUIRED: update your Helm values file.\n\nThe RR (formerly \"r2\") values layout changed: the master switch and every component it needs now live under the top-level `rr:` block. The keys below are still set in your values but are NO LONGER READ, which would silently disable RR. This deploy is blocked until you fix it.\n\nTo fix: edit your values file (values.yaml / your Helm values overrides) and rename / move these keys:\n\n%s\n\nThe master switch is now `rr.enabled`. See the chart's values.yaml for the full new layout." (join "\n" $found)) -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Render the seccomp-install initContainer image reference.
+
+The pinned digest lives here, not in values.yaml, so that overrides actually
+take effect. Helm deep-merges values, so a default digest in values.yaml would
+survive any user override of initImage.repository/tag and keep pulling the
+original pinned image (a digest always wins over a tag in an image ref), or
+fail outright against a mirror that lacks that digest. Instead we only append
+the pinned digest when the repository and tag are still the chart defaults and
+the user hasn't supplied their own digest.
+Usage: (include "retool.initImage" .)
+*/}}
+{{- define "retool.initImage" -}}
+{{- $i := .Values.initImage -}}
+{{- $defaultRepository := "busybox" -}}
+{{- $defaultTag := "1.37.0" -}}
+{{- $defaultDigest := "sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f" -}}
+{{- $repository := $i.repository -}}
+{{- $tag := toString $i.tag -}}
+{{- $digest := $i.digest | default "" -}}
+{{- if and (not $digest) (eq $repository $defaultRepository) (eq $tag $defaultTag) -}}
+{{- $digest = $defaultDigest -}}
+{{- end -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- if $digest }}@{{ $digest }}{{ end -}}
 {{- end -}}
 
 {{/*

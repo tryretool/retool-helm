@@ -43,13 +43,11 @@ spec:
             - |
               set -e
               rm -f /host-run/retool-executor.loaded
-              cp /profiles/usr.bin.nsjail /host-apparmor/usr.bin.nsjail
               cp /profiles/retool-executor /host-apparmor/retool-executor
               if ! nsenter -t 1 -m -- which apparmor_parser >/dev/null 2>&1; then
                 echo "ERROR: apparmor_parser not found on host but AppArmor profile installation was requested" >&2
                 exit 1
               fi
-              nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/usr.bin.nsjail
               nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-executor
               touch /host-run/retool-executor.loaded
               echo "AppArmor profiles loaded successfully"

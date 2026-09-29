@@ -43,6 +43,10 @@ spec:
         - chmod -R +x ./docker_scripts; sync; ./docker_scripts/start_api.sh
         image: "{{ .Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" .Values.image.tag }}"
         name: {{ include "retool.dbconnector.name" . }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         readinessProbe:
           httpGet:
             path: {{ .Values.readinessProbe.path }}
