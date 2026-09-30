@@ -72,24 +72,24 @@ class RoutingTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn(message, result.stderr)
 
-    def test_default_backend_relay_uses_main_service_for_both_route_types(self):
+    def test_default_direct_preserves_legacy_routes_for_both_route_types(self):
         output = self.assert_rendered()
-        self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
-        self.assertEqual(http_routes(output), [HTTP_DIRECT[-1]])
+        self.assertEqual(ingress_routes(output), INGRESS_DIRECT)
+        self.assertEqual(http_routes(output), HTTP_DIRECT)
         self.assertIn('value: "http://routing-retool-mcp:4010"', manifest(output, "deployment_backend.yaml"))
         self.assertIn("- name: MCP_SERVICE_INGRESS_DOMAIN", manifest(output, "deployment_backend.yaml"))
 
-    def test_direct_renders_legacy_mappings_for_both_route_types(self):
-        output = self.assert_rendered("mcp.routing.mode=direct")
-        self.assertEqual(ingress_routes(output), INGRESS_DIRECT)
-        self.assertEqual(http_routes(output), HTTP_DIRECT)
+    def test_backend_relay_uses_main_service_for_both_route_types(self):
+        output = self.assert_rendered("mcp.routing.mode=backendRelay")
+        self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
+        self.assertEqual(http_routes(output), [HTTP_DIRECT[-1]])
         self.assertIn("- name: MCP_SERVICE_INGRESS_DOMAIN", manifest(output, "deployment_backend.yaml"))
 
     def test_hostname_ingress_branch_follows_mode(self):
         output = self.assert_rendered("ingress.hostName=retool.example.com")
-        self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
-        output = self.assert_rendered("ingress.hostName=retool.example.com", "mcp.routing.mode=direct")
         self.assertEqual(ingress_routes(output), INGRESS_DIRECT)
+        output = self.assert_rendered("ingress.hostName=retool.example.com", "mcp.routing.mode=backendRelay")
+        self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
 
     def test_explicit_true_legacy_flags_work_in_direct_mode(self):
         output = self.assert_rendered("mcp.routing.mode=direct", "mcp.ingress.enabled=true", "mcp.httpRoute.enabled=true")
@@ -125,7 +125,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(http_routes(output)[0], ("PathPrefix", "/mcp", MCP, "4020"))
 
     def test_explicit_false_is_accepted_in_backend_relay(self):
-        output = self.assert_rendered("mcp.ingress.enabled=false", "mcp.httpRoute.enabled=false")
+        output = self.assert_rendered("mcp.routing.mode=backendRelay", "mcp.ingress.enabled=false", "mcp.httpRoute.enabled=false")
         self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
         self.assertEqual(http_routes(output), [HTTP_DIRECT[-1]])
 
@@ -134,6 +134,7 @@ class RoutingTests(unittest.TestCase):
             with self.subTest(surface=surface):
                 self.assert_rejected(
                     f"mcp.{surface}.enabled=true conflicts with mcp.routing.mode=backendRelay",
+                    "mcp.routing.mode=backendRelay",
                     f"mcp.{surface}.enabled=true",
                 )
 
