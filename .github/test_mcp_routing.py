@@ -13,6 +13,8 @@ BASE = [
     "--values", "charts/retool/ci/test-mcp-enabled-option.yaml",
     "--set", "ingress.hosts[0].host=retool.example.com",
     "--set", "ingress.hosts[0].paths[0].path=/",
+    "--set", "env.BASE_DOMAIN=https://retool.example.com",
+    "--set", "mcp.config.mcpServiceExternalUrl=https://retool.example.com",
 ]
 MAIN = "routing-retool"
 MCP = "routing-retool-mcp"
@@ -28,7 +30,7 @@ def render(*settings):
 
 def manifest(output, filename):
     marker = f"# Source: retool/templates/{filename}\n"
-    return output.split(marker, 1)[1].split("\n---\n", 1)[0]
+    return output.rsplit(marker, 1)[1].split("\n---\n", 1)[0]
 
 
 def ingress_routes(output):
@@ -143,6 +145,78 @@ class RoutingTests(unittest.TestCase):
             'mcp.routing.mode must be "backendRelay" or "direct"',
             "mcp.routing.mode=other", "mcp.enabled=false", "ingress.enabled=false", "httpRoute.enabled=false",
         )
+
+    def test_base_domain_is_the_mcp_public_fallback_in_both_modes(self):
+        for mode in ("backendRelay", "direct"):
+            with self.subTest(mode=mode):
+                output = self.assert_rendered(
+                    f"mcp.routing.mode={mode}",
+                    "mcp.config.mcpServiceExternalUrl=",
+                    "mcp.config.oauthMainDomain=",
+                )
+                mcp = manifest(output, "deployment_mcp.yaml")
+                self.assertIn('- name: "BASE_DOMAIN"\n            value: "https://retool.example.com"', mcp)
+                self.assertIn('name: OAUTH_MAIN_DOMAIN\n            value: "retool.example.com"', mcp)
+                self.assertNotIn("- name: MCP_SERVICE_EXTERNAL_URL", mcp)
+
+    def test_explicit_origin_override_is_shared_with_backend(self):
+        output = self.assert_rendered()
+        for deployment in ("deployment_mcp.yaml", "deployment_backend.yaml"):
+            self.assertIn(
+                'name: MCP_SERVICE_EXTERNAL_URL\n            value: "https://retool.example.com"',
+                manifest(output, deployment),
+            )
+
+    def test_environment_overrides_are_not_duplicated(self):
+        output = self.assert_rendered(
+            "env.MCP_SERVICE_EXTERNAL_URL=https://retool.example.com",
+            "mcp.environmentVariables[0].name=MCP_SERVICE_EXTERNAL_URL",
+            "mcp.environmentVariables[0].value=https://retool.example.com",
+        )
+        for deployment in ("deployment_backend.yaml", "deployment_mcp.yaml"):
+            self.assertEqual(
+                len(re.findall(r'name: "?MCP_SERVICE_EXTERNAL_URL"?', manifest(output, deployment))), 1,
+            )
+
+    def test_mismatched_chart_managed_hosts_fail_in_both_modes(self):
+        for mode in ("backendRelay", "direct"):
+            with self.subTest(mode=mode):
+                self.assert_rejected(
+                    'env.BASE_DOMAIN host "retool.example.com" does not match a chart-managed ingress host',
+                    f"mcp.routing.mode={mode}", "ingress.hosts[0].host=other.example.com",
+                )
+                self.assert_rejected(
+                    'does not match a chart-managed HTTPRoute hostname',
+                    f"mcp.routing.mode={mode}", "httpRoute.hostnames[0]=other.example.com",
+                )
+        self.assert_rejected(
+            'mcp.config.mcpServiceExternalUrl host "other.example.com" does not match a chart-managed ingress host',
+            "mcp.environmentVariables[0].name=MCP_SERVICE_EXTERNAL_URL",
+            "mcp.environmentVariables[0].value=https://other.example.com",
+        )
+
+    def test_external_ingress_and_custom_host_remain_supported(self):
+        self.assert_rendered(
+            "ingress.enabled=false", "httpRoute.enabled=false",
+            "env.BASE_DOMAIN=https://public.example.com",
+        )
+        self.assert_rendered("ingress.hosts[1].host=custom.space.example.org")
+
+    def test_unresolved_base_domain_can_be_secret_backed(self):
+        command = BASE.copy()
+        base_index = command.index("env.BASE_DOMAIN=https://retool.example.com")
+        del command[base_index - 1:base_index + 1]
+        result = subprocess.run(
+            command + [
+                "--set", "mcp.config.mcpServiceExternalUrl=",
+                "--set-json", 'env.BASE_DOMAIN={"valueFrom":{"secretKeyRef":{"name":"public-origin","key":"url"}}}',
+            ],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        mcp = manifest(result.stdout, "deployment_mcp.yaml")
+        self.assertIn('name: "BASE_DOMAIN"', mcp)
+        self.assertIn('name: public-origin', mcp)
 
 
 if __name__ == "__main__":

@@ -755,16 +755,17 @@ mcp:
   #   #     retoolBackendUrl.
   #   retoolGitServerUrl:
   #
-  #   # Public Retool origin for client-facing upload URLs when the request Host
-  #   # header is insufficient. Do not include /mcp.
+  #   # Optional explicit public origin for all MCP discovery and upload URLs.
+  #   # Overrides per-request custom Space domains. Usually omit this and set
+  #   # env.BASE_DOMAIN; do not include /mcp.
   #   mcpServiceExternalUrl:
   #
   #   # Deprecated alias for mcpServiceExternalUrl.
   #   retoolUrl:
   #
-  #   # Public Retool host serving OAuth metadata and /api/oauth2/*. Defaults to
-  #   # env.BASE_DOMAIN and is usually the Retool application host, not an
-  #   # oauth.* subdomain. URL-shaped values are accepted with the scheme removed.
+  #   # Public Retool host for MCP diagnostics. Defaults to env.BASE_DOMAIN
+  #   # when it can be resolved at render time; not an oauth.* subdomain.
+  #   # URL-shaped values are accepted with the scheme removed.
   #   oauthMainDomain:
   #
   #   # Secret containing the OAuth introspection token shared by MCP and the
