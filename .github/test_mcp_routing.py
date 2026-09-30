@@ -144,6 +144,12 @@ class RoutingTests(unittest.TestCase):
             "mcp.routing.mode=other", "mcp.enabled=false", "ingress.enabled=false", "httpRoute.enabled=false",
         )
 
+    def test_missing_mode_gives_upgrade_guidance(self):
+        self.assert_rejected(
+            "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values",
+            "mcp.routing=null",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

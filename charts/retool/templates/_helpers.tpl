@@ -56,6 +56,9 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $routing := $mcp.routing | default dict -}}
 {{- $mode := $routing.mode -}}
+{{- if not (hasKey $routing "mode") -}}
+{{- fail "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values so Helm loads the new chart defaults, or explicitly set mcp.routing.mode=backendRelay (Retool 4.0.7+) or direct (earlier Retool)" -}}
+{{- end -}}
 {{- if not (has $mode (list "backendRelay" "direct")) -}}
 {{- fail (printf "mcp.routing.mode must be \"backendRelay\" or \"direct\" (got %q)" (toString $mode)) -}}
 {{- end -}}
