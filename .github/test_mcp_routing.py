@@ -28,7 +28,7 @@ def render(*settings):
 
 def manifest(output, filename):
     marker = f"# Source: retool/templates/{filename}\n"
-    return output.split(marker, 1)[1].split("\n---\n", 1)[0]
+    return output.rsplit(marker, 1)[1].split("\n---\n", 1)[0]
 
 
 def ingress_routes(output):
@@ -173,6 +173,80 @@ class RoutingTests(unittest.TestCase):
         output = self.assert_rendered("mcp.routing=null", "mcp.enabled=false")
         self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
         self.assertEqual(http_routes(output), [HTTP_DIRECT[-1]])
+
+    def test_base_domain_is_the_mcp_public_fallback_in_both_modes(self):
+        for mode in ("backendRelay", "direct"):
+            with self.subTest(mode=mode):
+                output = self.assert_rendered(
+                    f"mcp.routing.mode={mode}",
+                    "env.BASE_DOMAIN=https://retool.example.com",
+                    "mcp.config.mcpServiceExternalUrl=",
+                    "mcp.config.oauthMainDomain=",
+                )
+                mcp = manifest(output, "deployment_mcp.yaml")
+                self.assertIn('name: "BASE_DOMAIN"\n            value: "https://retool.example.com"', mcp)
+                self.assertIn('name: OAUTH_MAIN_DOMAIN\n            value: "retool.example.com"', mcp)
+                self.assertNotIn("- name: MCP_SERVICE_EXTERNAL_URL", mcp)
+
+    def test_explicit_external_url_is_shared_and_normalized(self):
+        for settings in (
+            ("mcp.config.mcpServiceExternalUrl=retool.example.com",),
+            ("mcp.environmentVariables[0].name=MCP_SERVICE_EXTERNAL_URL",
+             "mcp.environmentVariables[0].value=retool.example.com"),
+        ):
+            with self.subTest(settings=settings):
+                output = self.assert_rendered(*settings)
+                for deployment in ("deployment_mcp.yaml", "deployment_backend.yaml"):
+                    self.assertRegex(manifest(output, deployment),
+                                     r'name: MCP_SERVICE_EXTERNAL_URL\n            value: "?https://retool.example.com"?')
+
+    def test_explicit_backend_external_url_is_not_duplicated(self):
+        output = self.assert_rendered(
+            "env.MCP_SERVICE_EXTERNAL_URL=https://retool.example.com",
+            "mcp.environmentVariables[0].name=MCP_SERVICE_EXTERNAL_URL",
+            "mcp.environmentVariables[0].value=retool.example.com",
+        )
+        for deployment in ("deployment_backend.yaml", "deployment_mcp.yaml"):
+            self.assertEqual(len(re.findall(r'name: "?MCP_SERVICE_EXTERNAL_URL"?',
+                                    manifest(output, deployment))), 1)
+
+    def test_public_origin_can_match_either_managed_route(self):
+        output = self.assert_rendered(
+            "env.BASE_DOMAIN=https://retool.example.com",
+            "ingress.hosts[0].host=other.example.com",
+            "httpRoute.enabled=true",
+            "httpRoute.hostnames[0]=retool.example.com",
+        )
+        self.assertIn("kind: HTTPRoute", output)
+        self.assert_rejected(
+            'BASE_DOMAIN host "retool.example.com" does not match any chart-managed Ingress or HTTPRoute host',
+            "env.BASE_DOMAIN=https://retool.example.com",
+            "ingress.hosts[0].host=other.example.com",
+            "httpRoute.enabled=true",
+            "httpRoute.hostnames[0]=other.example.com",
+        )
+
+    def test_secret_backed_base_domain_requires_explicit_oauth_host(self):
+        secret = 'env.BASE_DOMAIN={"valueFrom":{"secretKeyRef":{"name":"public-origin","key":"url"}}}'
+        command = BASE.copy()
+        command.extend(("--set-json", secret, "--set", "mcp.config.oauthMainDomain="))
+        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("a secret-backed BASE_DOMAIN requires an explicit OAuth host", result.stderr)
+
+        command.extend(("--set", "mcp.config.oauthMainDomain=retool.example.com"))
+        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("name: public-origin", manifest(result.stdout, "deployment_mcp.yaml"))
+
+    def test_mcp_base_domain_environment_variable_derives_oauth_host(self):
+        output = self.assert_rendered(
+            "mcp.config.oauthMainDomain=",
+            "mcp.environmentVariables[0].name=BASE_DOMAIN",
+            "mcp.environmentVariables[0].value=https://retool.example.com",
+        )
+        self.assertIn('name: OAUTH_MAIN_DOMAIN\n            value: "retool.example.com"',
+                      manifest(output, "deployment_mcp.yaml"))
 
 
 if __name__ == "__main__":

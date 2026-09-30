@@ -42,6 +42,9 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- $domain := ($mcpConfig.oauthMainDomain | default "") -}}
 {{- if not $domain -}}
 {{- $baseDomain := get (.Values.env | default dict) "BASE_DOMAIN" | default "" -}}
+{{- range .Values.mcp.environmentVariables -}}
+{{- if eq .name "BASE_DOMAIN" -}}{{- $baseDomain = .value | default "" -}}{{- end -}}
+{{- end -}}
 {{- if kindIs "map" $baseDomain -}}
 {{- $domain = get $baseDomain "value" | default "" -}}
 {{- else -}}
@@ -49,6 +52,15 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- end -}}
 {{- end -}}
 {{- trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $domain))) -}}
+{{- end }}
+
+{{/* Normalize an explicit MCP public origin shared by MCP and the backend. */}}
+{{- define "retool.mcp.externalUrl" -}}
+{{- $url := trimSuffix "/" (toString .) -}}
+{{- if and $url (not (or (hasPrefix "http://" $url) (hasPrefix "https://" $url))) -}}
+{{- $url = printf "https://%s" $url -}}
+{{- end -}}
+{{- $url -}}
 {{- end }}
 
 {{/* Resolve MCP routing mode and reject incompatible explicit route flags. */}}
@@ -85,6 +97,27 @@ take precedence over the chart-generated in-cluster Service URL.
 */}}
 {{- define "retool.mcp.backendEnvVars" -}}
 {{- if .Values.mcp.enabled }}
+{{- $backendHasExternalUrl := eq (include "retool.envVarIsExplicit" (dict "root" . "name" "MCP_SERVICE_EXTERNAL_URL")) "1" -}}
+{{- if not $backendHasExternalUrl -}}
+{{- $mcpExternalEnv := dict -}}
+{{- range .Values.mcp.environmentVariables -}}
+{{- if eq .name "MCP_SERVICE_EXTERNAL_URL" -}}{{- $mcpExternalEnv = . -}}{{- end -}}
+{{- end -}}
+{{- if $mcpExternalEnv -}}
+{{- $entry := deepCopy $mcpExternalEnv -}}
+{{- if hasKey $entry "value" -}}
+{{- $_ := set $entry "value" (include "retool.mcp.externalUrl" $entry.value) -}}
+{{- end -}}
+{{- toYaml (list $entry) }}
+{{- else -}}
+{{- $mcpConfig := .Values.mcp.config | default dict -}}
+{{- $externalUrl := $mcpConfig.mcpServiceExternalUrl | default $mcpConfig.retoolUrl | default "" -}}
+{{- if $externalUrl -}}
+- name: MCP_SERVICE_EXTERNAL_URL
+  value: {{ include "retool.mcp.externalUrl" $externalUrl | quote }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- $backendHasMcpServiceIngressDomain := hasKey (.Values.env | default dict) "MCP_SERVICE_INGRESS_DOMAIN" -}}
 {{- range .Values.environmentVariables }}
 {{- if eq .name "MCP_SERVICE_INGRESS_DOMAIN" }}
