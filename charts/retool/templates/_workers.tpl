@@ -13,6 +13,8 @@ keeps its workers under .Values.rr); omitted means the key is top-level.
 - parent: agent
   type: rrAgent
   nested: rr
+- parent: retoolos
+  type: retoolos
 - parent: workflows
   type: workflow
 {{- end -}}
@@ -42,6 +44,18 @@ keeps its workers under .Values.rr); omitted means the key is top-level.
 {{- if eq $workerType "agentEval" -}}
   {{- $workerValues = $parentValues.evalWorker -}}
 {{- end -}}
+{{- /*
+  Read metadata (labels/annotations) from parentValues. A specific worker block can
+  add or override keys under its own labels and annotations. deepCopy keeps
+  mergeOverwrite from mutating the parent before another worker under that parent
+  is rendered.
+*/ -}}
+{{- $parentLabels := $parentValues.labels | default dict -}}
+{{- $workerLabels := $workerValues.labels | default dict -}}
+{{- $podLabels := mergeOverwrite (deepCopy $parentLabels) $workerLabels -}}
+{{- $parentAnnotations := $parentValues.annotations | default dict -}}
+{{- $workerAnnotations := $workerValues.annotations | default dict -}}
+{{- $podAnnotations := mergeOverwrite (deepCopy $parentAnnotations) $workerAnnotations -}}
 
 {{- $workerPoolMaxSize := 100 -}}
 {{- if $workerValues }}
@@ -53,16 +67,25 @@ keeps its workers under .Values.rr); omitted means the key is top-level.
 {{- $healthcheckPort := 3005 -}}
 {{- $serviceType := "WORKFLOW_TEMPORAL_WORKER" -}}
 {{- $taskqueue := "" -}}
+{{- $containerName := printf "%s-worker" $workerType -}}
 {{- if eq $workerType "agentEval" -}}
   {{- $healthcheckPort = 3012 -}}
   {{- $serviceType = "AGENT_EVAL_TEMPORAL_WORKER" -}}
   {{- $taskqueue = "agent-eval" -}}
+  {{- $containerName = "agent-eval-worker" -}}
 {{- else if eq $workerType "rrAgent" -}}
   {{- $healthcheckPort = 3016 -}}
   {{- $serviceType = "R2_AGENT_TEMPORAL_WORKER" -}}
   {{- $taskqueue = "r2-agent" -}}
+  {{- $containerName = "r2-agent-worker" -}}
 {{- else if eq $workerType "agent" -}}
   {{- $taskqueue = "agent" -}}
+{{- else if eq $workerType "retoolos" -}}
+  {{- $healthcheckPort = 3014 -}}
+  {{- $serviceType = "RETOOLOS_TEMPORAL_WORKER" -}}
+  {{- /* RetoolOS task queue names are defined in application code because this process polls
+        several queues. Leave the single-queue WORKER_TEMPORAL_TASKQUEUE override unset. */ -}}
+  {{- $containerName = "retoolos-temporal-worker" -}}
 {{- end -}}
 
 {{/* yaml starts here */}}
@@ -99,8 +122,8 @@ spec:
 {{- if $.Values.backend.annotations }}
 {{ toYaml $.Values.backend.annotations | indent 8 }}
 {{- end }}
-{{- if $parentValues.annotations }}
-{{ toYaml $parentValues.annotations | indent 8 }}
+{{- if $podAnnotations }}
+{{ toYaml $podAnnotations | indent 8 }}
 {{- end }}
       labels:
         {{- include (printf "retool.%sWorker.selectorLabels" $workerType) $ | nindent 8 }}
@@ -109,8 +132,8 @@ spec:
 {{- if $.Values.podLabels }}
 {{ toYaml $.Values.podLabels | indent 8 }}
 {{- end }}
-{{- if $parentValues.labels }}
-{{ toYaml $parentValues.labels | indent 8 }}
+{{- if $podLabels }}
+{{ toYaml $podLabels | indent 8 }}
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" $ }}
@@ -125,7 +148,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ if eq $workerType "agentEval" }}agent-eval-worker{{ else if eq $workerType "rrAgent" }}r2-agent-worker{{ else }}{{ $workerType }}-worker{{ end }}
+      - name: {{ $containerName }}
         image: "{{ $.Values.image.repository }}:{{ required "Please set a value for .Values.image.tag" $.Values.image.tag }}"
         imagePullPolicy: {{ $.Values.image.pullPolicy }}
         args:
@@ -231,6 +254,9 @@ spec:
           {{- end }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
           {{- if eq (include "retool.gitServer.enabled" $) "1" }}
+          {{- include "retool.gitServer.commonEnv" $ | nindent 10 }}
+          {{- end }}
+          {{- if or (eq (include "retool.gitServer.enabled" $) "1") (eq $workerType "retoolos") }}
           {{- /*
             Snapshot blob storage: the agentExecutor / snapshotRetention temporal
             activities run on this worker and read RR_SNAPSHOTS_* with an
@@ -239,7 +265,7 @@ spec:
             resolves here too. No git-server host/port split is needed -- the
             worker is a blob-storage client, not the git server itself.
           */}}
-          {{- include "retool.gitServer.commonEnv" $ | nindent 10 }}
+          {{- include "retool.blobStorage.envVars" $ | nindent 10 }}
           {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" $ | nindent 10 }}
@@ -313,6 +339,10 @@ spec:
                 key: google-client-secret
                 {{- end }}
           {{- end }}
+          {{- end }}
+          {{- if eq $workerType "retoolos" }}
+          {{- include "retool.retoolos.searchEnvVars" $ | nindent 10 }}
+          {{- include "retool.retoolosSlack.envVars" $ | nindent 10 }}
           {{- end }}
           {{- include "retool.env" $.Values.env | nindent 10 }}
           {{- range $.Values.environmentSecrets }}
@@ -396,10 +426,10 @@ spec:
 {{- if $.Values.extraVolumeMounts }}
 {{ toYaml $.Values.extraVolumeMounts | indent 8 }}
 {{- end }}
-{{- if $.Values.securityContext.extraContainerSecurityContext }}
         securityContext:
-{{ toYaml $.Values.securityContext.extraContainerSecurityContext | indent 10 }}
-{{- end }}
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 {{- with $.Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}

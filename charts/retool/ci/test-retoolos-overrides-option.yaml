@@ -1,0 +1,9 @@
+retoolos:
+  enabled: true
+  slack:
+    mode: http
+    secretName: retoolos-slack
+
+# Operators can turn search off without disabling the rest of RetoolOS.
+env:
+  RETOOLOS_SEARCH_ENABLED: false

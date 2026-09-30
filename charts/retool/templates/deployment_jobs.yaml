@@ -94,9 +94,7 @@ spec:
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
 
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
-          - name: RR_AGENT_PUBSUB_BACKEND
-            value: "postgres"
-          {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
+          {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
           {{- end }}
 
           {{- $temporalConfig := (include "retool.temporalConfig" . | fromYaml) }}
@@ -188,7 +186,9 @@ spec:
           {{- end }}
           {{- if eq (include "retool.gitServer.enabled" .) "1" }}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
+          {{- include "retool.blobStorage.envVars" . | nindent 10 }}
           {{- end }}
+          {{- include "retool.retoolos.searchEnvVars" . | nindent 10 }}
           {{- include "retool.env" .Values.env | nindent 10 }}
           {{- range .Values.environmentSecrets }}
           - name: {{ .name }}
@@ -268,6 +268,10 @@ spec:
 {{- if .Values.extraVolumeMounts }}
 {{ toYaml .Values.extraVolumeMounts | indent 8 }}
 {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 {{- with .Values.extraContainers }}
 {{ tpl . $ | indent 6 }}
 {{- end }}
@@ -275,10 +279,6 @@ spec:
         - name: {{ .name }}
           mountPath: {{ .mountPath }}
           subPath: {{ .subPath }}
-{{- end }}
-{{- if .Values.securityContext.extraContainerSecurityContext }}
-        securityContext:
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
 {{- end }}
     {{- if .Values.image.pullSecrets }}
       imagePullSecrets:

@@ -121,8 +121,13 @@ spec:
         image: "{{ .Values.rr.jsExecutor.image.repository }}:{{ include "retool.jsExecutor.image.tag" . }}"
         imagePullPolicy: {{ .Values.rr.jsExecutor.image.pullPolicy | default .Values.image.pullPolicy }}
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
-            add: ["NET_ADMIN"]
+            drop: ["ALL"]
+            # Startup runs as root to install the iptables rules that restrict the
+            # sandboxes' network access: NET_ADMIN, plus NET_RAW for iptables-legacy's
+            # raw socket. It then drops to retool_user, which needs SETUID and SETGID.
+            add: ["NET_ADMIN", "NET_RAW", "SETUID", "SETGID"]
           seccompProfile:
             type: Localhost
             localhostProfile: {{ .Values.rr.jsExecutor.seccompLocalhostProfile }}

@@ -290,6 +290,23 @@ telemetry.retool.com/service-name: agent-eval-worker
 {{- end }}
 
 {{/*
+Selector labels for RetoolOS worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.retoolosWorker.selectorLabels" -}}
+retoolService: {{ include "retool.retoolosWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for RetoolOS worker.
+*/}}
+{{- define "retool.retoolosWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.retoolosWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: retoolos-temporal-worker
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "retool.serviceAccountName" -}}
@@ -321,6 +338,29 @@ Map values allow structured EnvVar fields such as valueFrom.
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Return "1" when a top-level env setting already owns a variable.
+
+Chart-derived defaults use this helper to avoid emitting a duplicate EnvVar.
+For example, `env.RETOOLOS_SEARCH_ENABLED: false` must override the chart's
+RetoolOS default. Values supplied through envFrom cannot be inspected while the
+chart renders; use env, environmentVariables, or environmentSecrets to override
+a chart-derived default.
+
+Usage: include "retool.envVarIsExplicit" (dict "root" . "name" "MY_VAR")
+*/}}
+{{- define "retool.envVarIsExplicit" -}}
+{{- $name := .name -}}
+{{- $found := hasKey (.root.Values.env | default dict) $name -}}
+{{- range .root.Values.environmentVariables -}}
+{{- if eq .name $name -}}{{- $found = true -}}{{- end -}}
+{{- end -}}
+{{- range .root.Values.environmentSecrets -}}
+{{- if eq .name $name -}}{{- $found = true -}}{{- end -}}
+{{- end -}}
+{{- if $found -}}1{{- end -}}
+{{- end -}}
 
 {{/*
 Render a container startupProbe from a values block.
@@ -477,6 +517,7 @@ wait-for-apparmor init container waiting forever on a DaemonSet that never
 gets created when workflows are disabled.
 Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
 Returns "1" when it should render, "" otherwise.
+Accepts true / "ubuntu" / "cos" as enabled values.
 */}}
 {{- define "retool.appArmorNsjailInstaller.enabled" -}}
 {{- $output := "" -}}
@@ -490,6 +531,19 @@ Returns "1" when it should render, "" otherwise.
 {{- end -}}
 
 {{/*
+Whether an AppArmor profile should include the "userns" rule.
+Ubuntu 24.04+ kernels compile CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS and
+enforce kernel.apparmor_restrict_unprivileged_userns=1, so the profile must
+explicitly grant userns. GKE COS kernels lack this feature and their
+apparmor_parser rejects the keyword entirely.
+Returns "1" on true / "ubuntu"; "" on "cos" or anything else.
+Usage: (include "retool.appArmor.includeUserns" $val)
+*/}}
+{{- define "retool.appArmor.includeUserns" -}}
+{{- if and . (ne (lower (toString .)) "cos") -}}1{{- end -}}
+{{- end -}}
+
+{{/*
 Set agents enabled
 Usage: (include "retool.agents.enabled" .)
 */}}
@@ -499,6 +553,98 @@ Usage: (include "retool.agents.enabled" .)
   {{- $output = "1" -}}
 {{- end -}}
 {{- $output -}}
+{{- end -}}
+
+{{/*
+Set RetoolOS worker enabled
+Usage: (include "retool.retoolos.enabled" .)
+*/}}
+{{- define "retool.retoolos.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.retoolos.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Enable RetoolOS search with the RetoolOS worker unless the operator explicitly
+sets a value. The same value is rendered on every process that participates in
+search: the backend, Jobs Runner, and RetoolOS worker.
+*/}}
+{{- define "retool.retoolos.searchEnvVars" -}}
+{{- if and (eq (include "retool.retoolos.enabled" .) "1") (ne (include "retool.envVarIsExplicit" (dict "root" . "name" "RETOOLOS_SEARCH_ENABLED")) "1") -}}
+- name: RETOOLOS_SEARCH_ENABLED
+  value: "true"
+{{- end -}}
+{{- end -}}
+
+{{/*
+Render Slack configuration for the backend and RetoolOS worker. Customers choose
+where the Slack app credentials come from:
+
+  - retoolos.slack.secretName: read one deployment-managed app from a Kubernetes Secret.
+  - RETOOLOS_SLACK_* env vars: use the chart's generic env settings.
+  - neither: let an organization admin configure the app in Retool, where its
+    credentials are stored encrypted in Postgres.
+
+You can either provide a secretName OR the explicit RETOOLOS_SLACK_* env vars but not both.
+*/}}
+{{- define "retool.retoolosSlack.envVars" -}}
+{{- if eq (include "retool.retoolos.enabled" .) "1" -}}
+{{- $slack := .Values.retoolos.slack -}}
+{{- $mode := $slack.mode | default "socket" -}}
+{{- if not (has $mode (list "http" "socket")) -}}
+{{- fail "retoolos.slack.mode must be http or socket" -}}
+{{- end -}}
+
+{{- $slackEnvNames := list
+  "RETOOLOS_SLACK_INGRESS_MODE"
+  "RETOOLOS_SLACK_CLIENT_ID"
+  "RETOOLOS_SLACK_CLIENT_SECRET"
+  "RETOOLOS_SLACK_SIGNING_SECRET"
+  "RETOOLOS_SLACK_APP_TOKEN"
+-}}
+{{- $hasExplicitSlackEnv := false -}}
+{{- range $name := $slackEnvNames -}}
+{{- if eq (include "retool.envVarIsExplicit" (dict "root" $ "name" $name)) "1" -}}
+{{- $hasExplicitSlackEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- if and $slack.secretName $hasExplicitSlackEnv -}}
+{{- fail "retoolos.slack.secretName cannot be combined with RETOOLOS_SLACK_* env settings; configure Slack through one source" -}}
+{{- end -}}
+
+{{- $ingressModeIsExplicit := eq (include "retool.envVarIsExplicit" (dict "root" . "name" "RETOOLOS_SLACK_INGRESS_MODE")) "1" -}}
+{{- if not $ingressModeIsExplicit -}}
+- name: RETOOLOS_SLACK_INGRESS_MODE
+  value: {{ $mode | quote }}
+{{ end -}}
+{{- with $slack.secretName -}}
+- name: RETOOLOS_SLACK_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: client-id
+- name: RETOOLOS_SLACK_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: client-secret
+- name: RETOOLOS_SLACK_SIGNING_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: signing-secret
+{{- if eq $mode "socket" }}
+- name: RETOOLOS_SLACK_APP_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: app-token
+{{- end }}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -669,6 +815,13 @@ Set agent eval worker service name
 */}}
 {{- define "retool.agentEvalWorker.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "agent-eval-worker") }}
+{{- end -}}
+
+{{/*
+Set RetoolOS worker service name
+*/}}
+{{- define "retool.retoolosWorker.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "retoolos-temporal-worker") }}
 {{- end -}}
 
 {{/*
@@ -948,6 +1101,161 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 {{- end -}}
 
 {{/*
+Effective port for the agent-sandbox Postgres egress rules, mirroring
+postgresUrlEnv's precedence so the policy always matches the port the
+pods dial: postgres.port for the fields path (postgres.host set), the
+inherited backend port on the inherit path, and networkPolicy.postgresPort
+for DSNs (postgres.url / urlSecretName) whose port Helm cannot read.
+Usage: {{ include "retool.agentSandbox.postgresEgressPort" . }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressPort" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- if $as.postgres.url -}}
+{{- $as.networkPolicy.postgresPort -}}
+{{- else if $as.postgres.host -}}
+{{- $as.postgres.port | default 5432 -}}
+{{- else if $as.postgres.urlSecretName -}}
+{{- $as.networkPolicy.postgresPort -}}
+{{- else -}}
+{{- include "retool.postgresql.port" . | trimAll "\"" | default "5432" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Postgres egress rules shared by the agent-sandbox controller and proxy
+NetworkPolicies. Rules add together, so a blanket any-address rule would
+defeat blockedRanges on the Postgres port. Selection order:
+  - postgresAllowAny -> any destination (escape hatch for urlSecretName DSNs)
+  - inherited in-cluster subchart (postgres.url/host/urlSecretName unset,
+    postgresql.enabled) -> automatic podSelector rule
+  - postgresAllowlist -> CIDR strings or podSelector/namespaceSelector maps
+Usage: {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressRules" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $pg := $as.postgres -}}
+{{- $port := include "retool.agentSandbox.postgresEgressPort" . -}}
+{{- if $as.networkPolicy.postgresPort }}
+{{- if $as.networkPolicy.postgresAllowAny }}
+- to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+- to:
+    - ipBlock:
+        cidr: ::/0
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- else }}
+{{- if and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled }}
+- to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgresql
+          app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- end }}
+{{- if $as.networkPolicy.postgresAllowlist }}
+{{- $peers := list -}}
+{{- range $as.networkPolicy.postgresAllowlist }}
+{{- if kindIs "string" . }}
+{{- $peers = append $peers (dict "ipBlock" (dict "cidr" .)) }}
+{{- else }}
+{{- $peers = append $peers . }}
+{{- end }}
+{{- end }}
+- to:
+{{- toYaml $peers | nindent 4 }}
+  ports:
+    - port: {{ $port }}
+      protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Returns 1 when the agent-sandbox NetworkPolicy is on but the controller/proxy
+have no allowed egress to Postgres (external/secret DSN, empty allowlist,
+no escape hatch). Renders a NOTES.txt warning.
+Usage: {{- if eq (include "retool.agentSandbox.postgresEgressMissing" .) "1" }}
+*/}}
+{{- define "retool.agentSandbox.postgresEgressMissing" -}}
+{{- $as := .Values.rr.agentSandbox -}}
+{{- $pg := $as.postgres -}}
+{{- if and $as.networkPolicy.enabled $as.networkPolicy.postgresPort (not $as.networkPolicy.postgresAllowAny) (not $as.networkPolicy.postgresAllowlist) (not (and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled)) -}}
+1{{- end -}}
+{{- end -}}
+
+{{/*
+DNS egress rule shared by the agent-sandbox, controller, and proxy
+NetworkPolicies. Destinations are the dnsSelector pods plus any dnsCidrs.
+dnsCidrs covers resolvers that are not kube-dns pods, e.g. NodeLocal DNSCache
+(common on GKE), which answers on the node at the kube-dns ClusterIP and so
+never matches dnsSelector. With neither set, DNS is allowed to any destination.
+Usage: {{- include "retool.agentSandbox.dnsEgressRules" . | nindent 4 }}
+*/}}
+{{- define "retool.agentSandbox.dnsEgressRules" -}}
+{{- $np := .Values.rr.agentSandbox.networkPolicy -}}
+{{- $peers := list -}}
+{{- with $np.dnsSelector }}
+{{- $peer := dict -}}
+{{- with .namespaceSelector }}{{- $_ := set $peer "namespaceSelector" . -}}{{- end }}
+{{- with .podSelector }}{{- $_ := set $peer "podSelector" . -}}{{- end }}
+{{- if $peer }}{{- $peers = append $peers $peer -}}{{- end }}
+{{- end }}
+{{- range $np.dnsCidrs }}
+{{- $peers = append $peers (dict "ipBlock" (dict "cidr" .)) -}}
+{{- end }}
+{{- if $peers -}}
+- to:
+{{- toYaml $peers | nindent 4 }}
+  ports:
+{{- else -}}
+- ports:
+{{- end }}
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+{{- end -}}
+
+{{/*
+Ingress peers for the agent-sandbox controller and proxy: every Retool
+workload that renders retool.agentSandbox.backendEnvVars (backend, workflow
+backend, jobs-runner, Temporal workers), plus networkPolicy.extraIngressFrom.
+Agent workflows run their /assign and proxy calls from the workers, not the
+backend. Selectors for components that are not deployed match no pods, so
+all are listed unconditionally. Sandbox pods are deliberately excluded.
+Usage: {{- include "retool.agentSandbox.callerPeers" . | nindent 8 }}
+*/}}
+{{- define "retool.agentSandbox.callerPeers" -}}
+- podSelector:
+    matchLabels:
+      {{- include "retool.selectorLabels" . | nindent 6 }}
+- podSelector:
+    matchLabels:
+      {{- include "retool.workflowBackend.selectorLabels" . | nindent 6 }}
+- podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "retool.name" . }}-jobs-runner
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- range list "workflowWorker" "agentWorker" "agentEvalWorker" "rrAgentWorker" }}
+- podSelector:
+    matchLabels:
+      {{- include (printf "retool.%s.selectorLabels" .) $ | nindent 6 }}
+{{- end }}
+{{- with .Values.rr.agentSandbox.networkPolicy.extraIngressFrom }}
+{{ toYaml . }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Agent sandbox env vars for the Retool backend, workflow backend, and workers.
 Outputs env entries that tell the backend how to reach the agent sandbox services.
 Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
@@ -1046,14 +1354,15 @@ http://{{ template "retool.gitServer.name" . }}:{{ include "retool.gitServer.por
 {{- end -}}
 
 {{/*
-Blob-storage + git repack env vars shared by the in-process git server (main
-backend) and the standalone git server deployment. git_server stores all
-objects/packs in blob storage; the same RR_DEFAULT_* vars are also used by
-snapshots. Emits nothing when no blobStorage provider is configured (in which
-case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
-directly via environmentVariables / environmentSecrets).
+Render the canonical RR blob-storage configuration. RetoolOS can safely share
+the store used by Git and snapshots because it puts its objects under the
+`retoolos/` prefix.
+
+Emits nothing when no rr.blobStorage provider is configured. In that case,
+operators can still supply RR_BLOB_STORAGE_PROVIDER and RR_DEFAULT_* directly
+through the generic environment settings.
 */}}
-{{- define "retool.gitServer.commonEnv" -}}
+{{- define "retool.blobStorage.envVars" -}}
 {{- $bs := .Values.rr.blobStorage | default dict }}
 {{- if $bs.s3 }}
 - name: RR_BLOB_STORAGE_PROVIDER
@@ -1116,6 +1425,12 @@ directly via environmentVariables / environmentSecrets).
   value: {{ $bs.azure.accountUrl | quote }}
 {{- end }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Render Git server settings shared by the in-process and standalone servers.
+*/}}
+{{- define "retool.gitServer.commonEnv" -}}
 {{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
   value: {{ .Values.rr.gitServer.repackThreshold | quote }}
