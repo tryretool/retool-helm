@@ -34,7 +34,7 @@ The Job pod must be able to resolve and reach that URL through the public ingres
 After installing or upgrading the release, run:
 
 ```sh
-helm test <release> --namespace <namespace> --logs
+helm test <release> --namespace <namespace>
 ```
 
-The test sends unauthenticated requests to `/mcp`, the advertised `resource_metadata` URL, `/.well-known/oauth-protected-resource`, and `/.well-known/oauth-authorization-server`. It expects a 401 Bearer challenge and valid, consistent JSON discovery metadata. A failed Job is retained: find it with `kubectl get jobs --namespace <namespace>`, then read `kubectl logs job/<job-name> --namespace <namespace>`. A successful Job is removed. Each failure names the URL, expected result, and observed status or missing field. Redirects, HTML login pages, malformed JSON, and connection errors fail the test. It does not authenticate a user or exercise MCP tools.
+The test sends unauthenticated requests to `/mcp`, the advertised `resource_metadata` URL, `/.well-known/oauth-protected-resource`, and `/.well-known/oauth-authorization-server`. It expects a 401 Bearer challenge and valid, consistent JSON discovery metadata. A failed Job is retained: find it with `kubectl get jobs --namespace <namespace>`, then read `kubectl logs job/<job-name> --namespace <namespace>`. A successful Job is removed. Some Helm versions, including 4.2.0, try to read Job logs from a Pod with the Job's name when `--logs` is used, so that flag can report an error even after the test succeeds. Each failure names the URL, expected result, and observed status or missing field. Redirects, HTML login pages, malformed JSON, and connection errors fail the test. It does not authenticate a user or exercise MCP tools.
