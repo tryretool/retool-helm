@@ -57,7 +57,7 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- $routing := $mcp.routing | default dict -}}
 {{- $mode := $routing.mode -}}
 {{- if not (hasKey $routing "mode") -}}
-{{- fail "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values so Helm loads the new chart defaults, or explicitly set mcp.routing.mode=backendRelay (Retool 4.0.7+) or direct (earlier Retool)" -}}
+{{- fail "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values so Helm loads the new chart defaults, or explicitly set mcp.routing.mode=direct (compatible default) or backendRelay (Retool 4.0.7+)" -}}
 {{- end -}}
 {{- if not (has $mode (list "backendRelay" "direct")) -}}
 {{- fail (printf "mcp.routing.mode must be \"backendRelay\" or \"direct\" (got %q)" (toString $mode)) -}}
@@ -69,7 +69,7 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
     {{- fail (printf "mcp.%s.enabled must be true, false, or null" $surface) -}}
   {{- end -}}
   {{- if and $mcp.enabled (eq $mode "backendRelay") $enabled -}}
-    {{- fail (printf "mcp.%s.enabled=true conflicts with mcp.routing.mode=backendRelay: remove mcp.%s.enabled or set it to false to route through the main Retool Service; use mcp.routing.mode=direct for Retool before 4.0.7" $surface $surface) -}}
+    {{- fail (printf "mcp.%s.enabled=true conflicts with mcp.routing.mode=backendRelay: remove mcp.%s.enabled or set it to false to route through the main Retool Service; use mcp.routing.mode=direct to keep dedicated routes" $surface $surface) -}}
   {{- end -}}
 {{- end -}}
 {{- $mode -}}
