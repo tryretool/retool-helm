@@ -829,13 +829,14 @@ mcp:
       labels: {}
 
   routing:
-    # Retool 4.0.7 and later support backendRelay: send every public path,
-    # including /mcp and both /.well-known OAuth discovery paths, to the main
-    # Retool Service (<fullname>:3000). Its backend relays /mcp to the MCP
-    # Service. The chart sets MCP_SERVICE_INGRESS_DOMAIN to the in-cluster MCP
-    # Service URL when MCP is enabled unless you override that backend env var.
-    # Retool before 4.0.7 needs direct routing because its main backend does
-    # not relay /mcp. Set direct to render the dedicated rules below.
+    # direct remains the default so older installations keep their public MCP
+    # routes. Retool before 4.0.7 requires direct because its main backend
+    # cannot relay /mcp. Retool 4.0.7 and later also support direct; set
+    # backendRelay explicitly to send every public path, including /mcp and
+    # both /.well-known OAuth discovery paths, to the main Retool Service
+    # (<fullname>:3000). Its backend relays /mcp to the MCP Service. The chart
+    # sets MCP_SERVICE_INGRESS_DOMAIN to the in-cluster MCP Service URL when MCP
+    # is enabled unless you override that backend env var.
     # For ingress managed outside this chart, use these public mappings:
     #   backendRelay: all paths, including /mcp and /.well-known/* -> <fullname>:3000
     #   direct: Exact /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
@@ -848,7 +849,7 @@ mcp:
     # to load these new defaults and preserve saved overrides. Plain
     # --reuse-values can retain the old chart defaults. If that flag is not
     # available, pass your custom values file with -f and omit --reuse-values.
-    mode: backendRelay
+    mode: direct
 
   ingress:
     # null follows routing.mode (on for direct, off for backendRelay). Set false
