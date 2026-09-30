@@ -1,0 +1,2 @@
+{{- /* Run mode and migration validation even when neither public route is enabled. */ -}}
+{{- $mode := include "retool.mcp.routingMode" . -}}

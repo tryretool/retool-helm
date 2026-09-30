@@ -72,6 +72,8 @@ jobs:
         run: ct lint --config .github/ct.yaml
       - name: Verify MCP Helm test render and HTTP behavior
         run: python3 .github/test_mcp_helm_test.py
+      - name: Verify MCP routing modes and migration errors
+        run: python3 .github/test_mcp_routing.py
 
   # We don't use helm-docs yet, can set this up later
   #
