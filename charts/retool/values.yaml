@@ -706,6 +706,15 @@ mcp:
   # Set to true to deploy the MCP server.
   enabled: false
 
+  # Optional public-ingress smoke test run by `helm test`. Set publicUrl to the
+  # Retool origin (no path), such as https://retool.example.com. The Job pod
+  # must resolve and reach this URL through the public ingress, including its
+  # TLS certificate. Leave empty to omit the hook even when MCP is enabled.
+  test:
+    publicUrl: ""
+    image: python:3.12-alpine
+    imagePullPolicy: IfNotPresent
+
   replicaCount: 1
 
   annotations: {}
