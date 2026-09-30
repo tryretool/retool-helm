@@ -4,6 +4,8 @@
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
 {{- $mcpIngress := $mcp.ingress | default dict -}}
+{{- $mcpRoutingMode := include "retool.mcp.routingMode" . -}}
+{{- $mcpDirectIngress := and $mcp.enabled (eq $mcpRoutingMode "direct") (or (not (kindIs "bool" $mcpIngress.enabled)) $mcpIngress.enabled) -}}
 {{- $backendInternalService := $mcpBackendMetadata.service | default dict -}}
 {{- $backendInternalPort := $backendInternalService.externalPort | default 3001 -}}
 {{- $pathType := .Values.ingress.pathType -}}
@@ -49,12 +51,12 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
-          {{- if ( and ((.Values.mcp).enabled) $mcpIngress.enabled ) }}
+          {{- if $mcpDirectIngress }}
           {{- range $mcpIngress.paths }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
           {{- end }}
           {{- end }}
-          - path:
+          - path: /
             {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version) }}
             pathType: {{ $pathType }}
             {{- end }}
@@ -90,7 +92,7 @@ spec:
                   number: {{ .port }}
           {{- end }}
           {{- end }}
-          {{- if ( and (($.Values.mcp).enabled) $mcpIngress.enabled ) }}
+          {{- if $mcpDirectIngress }}
           {{- range $mcpIngress.paths }}
           {{- include "retool.ingress.mcpPath" (dict "root" $ "path" . "backendInternalPort" $backendInternalPort) | nindent 10 }}
           {{- end }}

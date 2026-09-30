@@ -51,6 +51,27 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $domain))) -}}
 {{- end }}
 
+{{/* Validate the public MCP routing choice, including legacy opt-in flags. */}}
+{{- define "retool.mcp.routingMode" -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $routing := $mcp.routing | default dict -}}
+{{- $mode := $routing.mode -}}
+{{- if not (has $mode (list "backendRelay" "direct")) -}}
+{{- fail (printf "mcp.routing.mode must be \"backendRelay\" or \"direct\" (got %q)" (toString $mode)) -}}
+{{- end -}}
+{{- range $surface := list "ingress" "httpRoute" -}}
+  {{- $legacy := get $mcp $surface | default dict -}}
+  {{- $enabled := get $legacy "enabled" -}}
+  {{- if and (not (empty $enabled)) (not (kindIs "bool" $enabled)) -}}
+    {{- fail (printf "mcp.%s.enabled must be true, false, or null" $surface) -}}
+  {{- end -}}
+  {{- if and $mcp.enabled (eq $mode "backendRelay") $enabled -}}
+    {{- fail (printf "mcp.%s.enabled=true conflicts with mcp.routing.mode=backendRelay: remove mcp.%s.enabled or set it to false to route through the main Retool Service; use mcp.routing.mode=direct for Retool before 4.0.7" $surface $surface) -}}
+  {{- end -}}
+{{- end -}}
+{{- $mode -}}
+{{- end }}
+
 {{/*
 MCP Service env var for the main Retool backend. Explicit backend env settings
 take precedence over the chart-generated in-cluster Service URL.
