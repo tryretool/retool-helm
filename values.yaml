@@ -604,7 +604,7 @@ dbconnector:
   #     memory: 4096Mi
 
   config:
-    nodeOptions: '--max_old_space_size=1024'
+    nodeOptions: '--max-old-space-size-percentage=70'
     postgresPoolMaxSize: 100
     httpAgentMaxSockets: 1000
 
