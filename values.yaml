@@ -706,6 +706,25 @@ mcp:
   # Set to true to deploy the MCP server.
   enabled: false
 
+  # Optional public-ingress smoke test run by `helm test`. Set publicUrl to the
+  # Retool origin (no path), such as https://retool.example.com. The Job pod
+  # must resolve and reach this URL through the public ingress, including its
+  # TLS certificate. Leave empty to omit the hook even when MCP is enabled.
+  # After installation or upgrade, run:
+  #   helm test <release> --namespace <namespace>
+  # The unauthenticated test expects a 401 Bearer challenge at /mcp and valid
+  # JSON from both OAuth discovery URLs. Redirects, HTML, and connection errors
+  # fail the Job with the URL and observed status or missing field. On failure:
+  #   kubectl get jobs --namespace <namespace>
+  #   kubectl logs job/<job-name> --namespace <namespace>
+  # Failed Jobs remain; successful Jobs are removed. Helm 4.2.0 may report a
+  # log retrieval error with `helm test --logs` even after this Job succeeds.
+  test:
+    publicUrl: ""
+    # Use a Python 3 image with the standard library; image.pullSecrets apply.
+    image: python:3.12-alpine
+    imagePullPolicy: IfNotPresent
+
   replicaCount: 1
 
   annotations: {}

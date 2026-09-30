@@ -1,0 +1,53 @@
+{{- if and .Values.mcp.enabled .Values.mcp.test.publicUrl }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "retool.fullnameWithSuffix" (list . "mcp-test") }}
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        {{- include "retool.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.image.pullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: mcp-test
+          image: {{ .Values.mcp.test.image | quote }}
+          imagePullPolicy: {{ .Values.mcp.test.imagePullPolicy }}
+          command: [python3, -c]
+          args:
+            - |
+{{ .Files.Get "files/mcp_test.py" | indent 14 }}
+          env:
+            - name: RETOOL_PUBLIC_URL
+              value: {{ .Values.mcp.test.publicUrl | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile:
+              type: RuntimeDefault
+{{- end }}
