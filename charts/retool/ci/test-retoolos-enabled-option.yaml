@@ -1,0 +1,39 @@
+retoolos:
+  # RetoolOS runs its interactive, Job, messaging, and search workers in one
+  # backend-image process while isolating their work on separate Temporal queues.
+  enabled: true
+  labels:
+    inherited-label: from-parent
+    overridden-label: from-parent
+  annotations:
+    inherited-annotation: from-parent
+    overridden-annotation: from-parent
+  worker:
+    replicaCount: 2
+    labels:
+      test-pod-label: "true"
+      overridden-label: from-worker
+    annotations:
+      test-pod-annotation: "true"
+      overridden-annotation: from-worker
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
+
+# Exercise the separate Jobs Runner path; one combined backend process receives
+# the same search setting without this override.
+jobRunner:
+  enabled: true
+
+# RetoolOS reuses the existing RR object store when no RETOOLOS_S3_* override is
+# supplied. This endpoint makes the S3-compatible R2 case explicit.
+rr:
+  blobStorage:
+    s3:
+      bucket: shared-r2-bucket
+      region: auto
+      endpoint: https://example.r2.cloudflarestorage.com

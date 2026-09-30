@@ -173,6 +173,7 @@ spec:
                 {{- end }}
           {{- end }}
           {{- end }}
+          {{- include "retool.blobStorage.envVars" . | nindent 10 }}
           {{- include "retool.gitServer.commonEnv" . | nindent 10 }}
           {{- /* Push-triggered R² work must use the same backends as the backend pods, which only set these with agentSandbox. */}}
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1" }}

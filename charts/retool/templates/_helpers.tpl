@@ -290,6 +290,23 @@ telemetry.retool.com/service-name: agent-eval-worker
 {{- end }}
 
 {{/*
+Selector labels for RetoolOS worker. Note changes here will require manual
+deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.retoolosWorker.selectorLabels" -}}
+retoolService: {{ include "retool.retoolosWorker.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for RetoolOS worker.
+*/}}
+{{- define "retool.retoolosWorker.labels" -}}
+app.kubernetes.io/name: {{ include "retool.retoolosWorker.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: retoolos-temporal-worker
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "retool.serviceAccountName" -}}
@@ -321,6 +338,29 @@ Map values allow structured EnvVar fields such as valueFrom.
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Return "1" when a top-level env setting already owns a variable.
+
+Chart-derived defaults use this helper to avoid emitting a duplicate EnvVar.
+For example, `env.RETOOLOS_SEARCH_ENABLED: false` must override the chart's
+RetoolOS default. Values supplied through envFrom cannot be inspected while the
+chart renders; use env, environmentVariables, or environmentSecrets to override
+a chart-derived default.
+
+Usage: include "retool.envVarIsExplicit" (dict "root" . "name" "MY_VAR")
+*/}}
+{{- define "retool.envVarIsExplicit" -}}
+{{- $name := .name -}}
+{{- $found := hasKey (.root.Values.env | default dict) $name -}}
+{{- range .root.Values.environmentVariables -}}
+{{- if eq .name $name -}}{{- $found = true -}}{{- end -}}
+{{- end -}}
+{{- range .root.Values.environmentSecrets -}}
+{{- if eq .name $name -}}{{- $found = true -}}{{- end -}}
+{{- end -}}
+{{- if $found -}}1{{- end -}}
+{{- end -}}
 
 {{/*
 Render a container startupProbe from a values block.
@@ -516,6 +556,98 @@ Usage: (include "retool.agents.enabled" .)
 {{- end -}}
 
 {{/*
+Set RetoolOS worker enabled
+Usage: (include "retool.retoolos.enabled" .)
+*/}}
+{{- define "retool.retoolos.enabled" -}}
+{{- $output := "" -}}
+{{- if (eq (toString .Values.retoolos.enabled) "true") -}}
+  {{- $output = "1" -}}
+{{- end -}}
+{{- $output -}}
+{{- end -}}
+
+{{/*
+Enable RetoolOS search with the RetoolOS worker unless the operator explicitly
+sets a value. The same value is rendered on every process that participates in
+search: the backend, Jobs Runner, and RetoolOS worker.
+*/}}
+{{- define "retool.retoolos.searchEnvVars" -}}
+{{- if and (eq (include "retool.retoolos.enabled" .) "1") (ne (include "retool.envVarIsExplicit" (dict "root" . "name" "RETOOLOS_SEARCH_ENABLED")) "1") -}}
+- name: RETOOLOS_SEARCH_ENABLED
+  value: "true"
+{{- end -}}
+{{- end -}}
+
+{{/*
+Render Slack configuration for the backend and RetoolOS worker. Customers choose
+where the Slack app credentials come from:
+
+  - retoolos.slack.secretName: read one deployment-managed app from a Kubernetes Secret.
+  - RETOOLOS_SLACK_* env vars: use the chart's generic env settings.
+  - neither: let an organization admin configure the app in Retool, where its
+    credentials are stored encrypted in Postgres.
+
+You can either provide a secretName OR the explicit RETOOLOS_SLACK_* env vars but not both.
+*/}}
+{{- define "retool.retoolosSlack.envVars" -}}
+{{- if eq (include "retool.retoolos.enabled" .) "1" -}}
+{{- $slack := .Values.retoolos.slack -}}
+{{- $mode := $slack.mode | default "socket" -}}
+{{- if not (has $mode (list "http" "socket")) -}}
+{{- fail "retoolos.slack.mode must be http or socket" -}}
+{{- end -}}
+
+{{- $slackEnvNames := list
+  "RETOOLOS_SLACK_INGRESS_MODE"
+  "RETOOLOS_SLACK_CLIENT_ID"
+  "RETOOLOS_SLACK_CLIENT_SECRET"
+  "RETOOLOS_SLACK_SIGNING_SECRET"
+  "RETOOLOS_SLACK_APP_TOKEN"
+-}}
+{{- $hasExplicitSlackEnv := false -}}
+{{- range $name := $slackEnvNames -}}
+{{- if eq (include "retool.envVarIsExplicit" (dict "root" $ "name" $name)) "1" -}}
+{{- $hasExplicitSlackEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- if and $slack.secretName $hasExplicitSlackEnv -}}
+{{- fail "retoolos.slack.secretName cannot be combined with RETOOLOS_SLACK_* env settings; configure Slack through one source" -}}
+{{- end -}}
+
+{{- $ingressModeIsExplicit := eq (include "retool.envVarIsExplicit" (dict "root" . "name" "RETOOLOS_SLACK_INGRESS_MODE")) "1" -}}
+{{- if not $ingressModeIsExplicit -}}
+- name: RETOOLOS_SLACK_INGRESS_MODE
+  value: {{ $mode | quote }}
+{{ end -}}
+{{- with $slack.secretName -}}
+- name: RETOOLOS_SLACK_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: client-id
+- name: RETOOLOS_SLACK_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: client-secret
+- name: RETOOLOS_SLACK_SIGNING_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: signing-secret
+{{- if eq $mode "socket" }}
+- name: RETOOLOS_SLACK_APP_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: app-token
+{{- end }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resolve whether an RR component (agent, jsExecutor, agentSandbox) is
 enabled. Components are nested under .Values.rr (each ships as a default block
 with `enabled: null`). The component's own `enabled` wins when explicitly set to
@@ -683,6 +815,13 @@ Set agent eval worker service name
 */}}
 {{- define "retool.agentEvalWorker.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "agent-eval-worker") }}
+{{- end -}}
+
+{{/*
+Set RetoolOS worker service name
+*/}}
+{{- define "retool.retoolosWorker.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "retoolos-temporal-worker") }}
 {{- end -}}
 
 {{/*
@@ -1215,14 +1354,15 @@ http://{{ template "retool.gitServer.name" . }}:{{ include "retool.gitServer.por
 {{- end -}}
 
 {{/*
-Blob-storage + git repack env vars shared by the in-process git server (main
-backend) and the standalone git server deployment. git_server stores all
-objects/packs in blob storage; the same RR_DEFAULT_* vars are also used by
-snapshots. Emits nothing when no blobStorage provider is configured (in which
-case the user is expected to plumb RR_BLOB_STORAGE_PROVIDER / RR_DEFAULT_*
-directly via environmentVariables / environmentSecrets).
+Render the canonical RR blob-storage configuration. RetoolOS can safely share
+the store used by Git and snapshots because it puts its objects under the
+`retoolos/` prefix.
+
+Emits nothing when no rr.blobStorage provider is configured. In that case,
+operators can still supply RR_BLOB_STORAGE_PROVIDER and RR_DEFAULT_* directly
+through the generic environment settings.
 */}}
-{{- define "retool.gitServer.commonEnv" -}}
+{{- define "retool.blobStorage.envVars" -}}
 {{- $bs := .Values.rr.blobStorage | default dict }}
 {{- if $bs.s3 }}
 - name: RR_BLOB_STORAGE_PROVIDER
@@ -1285,6 +1425,12 @@ directly via environmentVariables / environmentSecrets).
   value: {{ $bs.azure.accountUrl | quote }}
 {{- end }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Render Git server settings shared by the in-process and standalone servers.
+*/}}
+{{- define "retool.gitServer.commonEnv" -}}
 {{- if .Values.rr.gitServer.repackThreshold }}
 - name: RR_GIT_REPACK_THRESHOLD
   value: {{ .Values.rr.gitServer.repackThreshold | quote }}
