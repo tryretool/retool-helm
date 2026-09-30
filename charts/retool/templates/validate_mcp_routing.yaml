@@ -1,2 +1,45 @@
 {{- /* Run mode and migration validation even when neither public route is enabled. */ -}}
 {{- $mode := include "retool.mcp.routingMode" . -}}
+{{- if .Values.mcp.enabled -}}
+{{- $base := get (.Values.env | default dict) "BASE_DOMAIN" -}}
+{{- if kindIs "map" $base -}}{{- $base = get $base "value" -}}{{- end -}}
+{{- $external := (.Values.mcp.config | default dict).mcpServiceExternalUrl | default (.Values.mcp.config | default dict).retoolUrl | default "" -}}
+{{- range .Values.mcp.environmentVariables -}}
+  {{- if eq .name "BASE_DOMAIN" -}}{{- $base = .value | default "" -}}{{- end -}}
+  {{- if eq .name "MCP_SERVICE_EXTERNAL_URL" -}}{{- $external = .value | default "" -}}{{- end -}}
+{{- end -}}
+{{- $sources := dict "env.BASE_DOMAIN" $base "mcp.config.mcpServiceExternalUrl" $external -}}
+{{- range $source, $raw := $sources -}}
+  {{- if $raw -}}
+    {{- $url := toString $raw -}}
+    {{- if and (eq $source "mcp.config.mcpServiceExternalUrl") (not (regexMatch "^https?://" $url)) -}}
+      {{- $url = printf "https://%s" $url -}}
+    {{- end -}}
+    {{- if not (regexMatch "^https?://[a-zA-Z0-9.-]+(:[0-9]+)?/?$" $url) -}}
+      {{- fail (printf "%s must be an HTTP(S) origin without a path (got %q)" $source $url) -}}
+    {{- end -}}
+    {{- $host := regexReplaceAll "^https?://" $url "" | trimSuffix "/" | lower -}}
+    {{- $host = regexReplaceAll ":[0-9]+$" $host "" -}}
+    {{- if $.Values.ingress.enabled -}}
+      {{- $hosts := list -}}
+      {{- if $.Values.ingress.hostName -}}{{- $hosts = append $hosts $.Values.ingress.hostName -}}{{- else -}}
+        {{- range $.Values.ingress.hosts -}}{{- if .host -}}{{- $hosts = append $hosts .host -}}{{- end -}}{{- end -}}
+      {{- end -}}
+      {{- if $hosts -}}
+        {{- $matched := false -}}
+        {{- range $routeHost := $hosts -}}
+          {{- if or (eq (lower $routeHost) $host) (and (hasPrefix "*." $routeHost) (hasSuffix (trimPrefix "*" (lower $routeHost)) $host)) -}}{{- $matched = true -}}{{- end -}}
+        {{- end -}}
+        {{- if not $matched -}}{{- fail (printf "%s host %q does not match a chart-managed ingress host (%s)" $source $host (join ", " $hosts)) -}}{{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if and $.Values.httpRoute.enabled $.Values.httpRoute.hostnames -}}
+      {{- $matched := false -}}
+      {{- range $routeHost := $.Values.httpRoute.hostnames -}}
+        {{- if or (eq (lower $routeHost) $host) (and (hasPrefix "*." $routeHost) (hasSuffix (trimPrefix "*" (lower $routeHost)) $host)) -}}{{- $matched = true -}}{{- end -}}
+      {{- end -}}
+      {{- if not $matched -}}{{- fail (printf "%s host %q does not match a chart-managed HTTPRoute hostname (%s)" $source $host (join ", " $.Values.httpRoute.hostnames)) -}}{{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}

@@ -7,6 +7,16 @@
     {{- $mcpServiceExternalUrl = printf "https://%s" $mcpServiceExternalUrl }}
   {{- end }}
   {{- $mcpOAuthMainDomain := include "retool.mcp.oauthMainDomain" . }}
+  {{- $mcpBaseDomain := get (.Values.env | default dict) "BASE_DOMAIN" }}
+  {{- $mcpTrustedProxies := get (.Values.env | default dict) "MCP_TRUSTED_PROXY_CIDRS" }}
+  {{- $hasBaseDomainEnv := false }}
+  {{- $hasTrustedProxiesEnv := false }}
+  {{- $hasExternalUrlEnv := false }}
+  {{- range .Values.mcp.environmentVariables }}
+    {{- if eq .name "BASE_DOMAIN" }}{{- $hasBaseDomainEnv = true }}{{- end }}
+    {{- if eq .name "MCP_TRUSTED_PROXY_CIDRS" }}{{- $hasTrustedProxiesEnv = true }}{{- end }}
+    {{- if eq .name "MCP_SERVICE_EXTERNAL_URL" }}{{- $hasExternalUrlEnv = true }}{{- end }}
+  {{- end }}
   {{- $hasOAuthMainDomainEnv := false }}
   {{- range .Values.mcp.environmentVariables }}
     {{- if eq .name "OAUTH_MAIN_DOMAIN" }}
@@ -36,7 +46,7 @@
       {{- $mcpAgentSandboxJwtPrivateKeySecretName = .Values.rr.agentSandbox.externalSecret.name }}
     {{- end }}
   {{- end }}
-  {{- if not (or $mcpOAuthMainDomain $hasOAuthMainDomainEnv) }}
+  {{- if not (or $mcpOAuthMainDomain $hasOAuthMainDomainEnv $mcpBaseDomain $hasBaseDomainEnv) }}
     {{- fail "Please set .Values.mcp.config.oauthMainDomain, .Values.env.BASE_DOMAIN, or an OAUTH_MAIN_DOMAIN entry in .Values.mcp.environmentVariables when the MCP server is enabled (.Values.mcp.enabled)" }}
   {{- end }}
   {{- if not (or $mcpConfig.oauthIntrospectionAuthTokenSecretName $mcpConfig.oauthIntrospectionAuthToken $hasOAuthIntrospectionAuthTokenEnv $chartOwnedConfigSecret) }}
@@ -162,9 +172,15 @@ spec:
           - name: RETOOL_GIT_SERVER_URL
             value: {{ $retoolGitServerUrl | quote }}
           {{- end }}
-          {{- if $mcpServiceExternalUrl }}
+          {{- if and $mcpServiceExternalUrl (not $hasExternalUrlEnv) }}
           - name: MCP_SERVICE_EXTERNAL_URL
             value: {{ $mcpServiceExternalUrl | quote }}
+          {{- end }}
+          {{- if and $mcpBaseDomain (not $hasBaseDomainEnv) }}
+          {{- include "retool.env" (dict "BASE_DOMAIN" $mcpBaseDomain) | nindent 10 }}
+          {{- end }}
+          {{- if and $mcpTrustedProxies (not $hasTrustedProxiesEnv) }}
+          {{- include "retool.env" (dict "MCP_TRUSTED_PROXY_CIDRS" $mcpTrustedProxies) | nindent 10 }}
           {{- end }}
           {{- if and $mcpOAuthMainDomain (not $hasOAuthMainDomainEnv) }}
           - name: OAUTH_MAIN_DOMAIN

@@ -78,6 +78,27 @@ take precedence over the chart-generated in-cluster Service URL.
 */}}
 {{- define "retool.mcp.backendEnvVars" -}}
 {{- if .Values.mcp.enabled }}
+{{- $backendHasExternalUrl := eq (include "retool.envVarIsExplicit" (dict "root" . "name" "MCP_SERVICE_EXTERNAL_URL")) "1" -}}
+{{- if not $backendHasExternalUrl -}}
+{{- $mcpExternalEnv := dict -}}
+{{- range .Values.mcp.environmentVariables -}}
+{{- if eq .name "MCP_SERVICE_EXTERNAL_URL" -}}{{- $mcpExternalEnv = . -}}{{- end -}}
+{{- end -}}
+{{- if $mcpExternalEnv -}}
+{{- toYaml (list $mcpExternalEnv) }}
+{{- else -}}
+{{- $mcpConfig := .Values.mcp.config | default dict -}}
+{{- $externalUrl := $mcpConfig.mcpServiceExternalUrl | default $mcpConfig.retoolUrl | default "" -}}
+{{- if $externalUrl -}}
+{{- $externalUrl = trimSuffix "/" (toString $externalUrl) -}}
+{{- if not (or (hasPrefix "http://" $externalUrl) (hasPrefix "https://" $externalUrl)) -}}
+{{- $externalUrl = printf "https://%s" $externalUrl -}}
+{{- end -}}
+- name: MCP_SERVICE_EXTERNAL_URL
+  value: {{ $externalUrl | quote }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- $backendHasMcpServiceIngressDomain := hasKey (.Values.env | default dict) "MCP_SERVICE_INGRESS_DOMAIN" -}}
 {{- range .Values.environmentVariables }}
 {{- if eq .name "MCP_SERVICE_INGRESS_DOMAIN" }}

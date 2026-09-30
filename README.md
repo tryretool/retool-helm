@@ -19,6 +19,40 @@ For any inquiries regarding deploying Retool on Helm, please feel free to reach 
 
 ## MCP public routing
 
+### One public origin
+
+For a single-host installation, set `env.BASE_DOMAIN` to the public Retool
+origin, including `https://`, and serve that host through the chart-managed
+Ingress or HTTPRoute (or your external ingress). The chart passes this value to
+the backend and MCP process. The server uses it when a request reaches an
+internal Service host; it keeps a valid public request host for custom Space
+domains. `RETOOL_BACKEND_URL` remains an internal destination and is never a
+client-facing URL.
+
+The chart derives `OAUTH_MAIN_DOMAIN` from `BASE_DOMAIN` when its value is
+available at render time. A secret-backed `BASE_DOMAIN` is passed through but
+cannot be checked against route hosts during rendering. Explicit
+`mcp.config.oauthMainDomain`, `mcp.config.mcpServiceExternalUrl` (or its legacy
+`retoolUrl` alias), and `mcp.environmentVariables` take precedence. An explicit
+`MCP_SERVICE_EXTERNAL_URL` pins the advertised origin, including on custom
+Space domains; omit it when those domains should be advertised per request.
+The chart copies an explicit MCP external URL to the backend unless the
+backend has its own explicit value. Keep explicit values equal across both
+workloads so discovery and upload links agree.
+
+If your proxy changes the Host or scheme before forwarding, set
+`env.MCP_TRUSTED_PROXY_CIDRS` to the comma-separated CIDRs of the immediate
+trusted proxy peers. The chart passes it to the MCP process too. Only requests
+from those peers may use `X-Forwarded-Host` and `X-Forwarded-Proto` for MCP
+advertised URLs. Include every relevant proxy peer range when custom Space
+domains reach Retool through an internal Host. Otherwise the server falls back
+to `BASE_DOMAIN` for an internal Host.
+
+When the chart knows the Ingress host or HTTPRoute hostnames, MCP rendering
+checks that `BASE_DOMAIN` and any explicit MCP external URL match a managed
+host. Multiple hosts are allowed for custom domains. With externally managed
+ingress, disable the chart-managed route and provide equivalent public paths.
+
 With `mcp.enabled: true`, `mcp.routing.mode` defaults to `backendRelay` for Retool 4.0.7 and later. The normal `/` Ingress or HTTPRoute sends all public paths to the main Retool Service, and its backend relays `/mcp` to the MCP Service using the chart-provided `MCP_SERVICE_INGRESS_DOMAIN`. For Retool before 4.0.7, set `mcp.routing.mode: direct`; those versions need dedicated MCP and OAuth discovery routes. Choose the mode explicitly for your server version, including builds with PR or custom image tags.
 
 | Mode | Public path | Service |
