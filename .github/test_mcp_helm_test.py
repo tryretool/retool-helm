@@ -2,8 +2,10 @@
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
+import textwrap
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -129,7 +131,7 @@ class BehaviorTests(unittest.TestCase):
 
 
 class RenderTests(unittest.TestCase):
-    def render(self, *settings):
+    def render(self, *settings, json_settings=()):
         command = [
             "helm", "template", "mcp-smoke", "charts/retool",
             "--values", "charts/retool/ci/test-install-values.yaml",
@@ -137,7 +139,13 @@ class RenderTests(unittest.TestCase):
         ]
         for setting in settings:
             command.extend(("--set", setting))
+        for setting in json_settings:
+            command.extend(("--set-json", setting))
         return subprocess.check_output(command, cwd=ROOT, text=True)
+
+    @staticmethod
+    def hook(output):
+        return output.split("# Source: retool/templates/test_mcp.yaml", 1)[1].split("\n---\n", 1)[0]
 
     def test_hook_absent_without_public_url_or_mcp(self):
         marker = "# Source: retool/templates/test_mcp.yaml"
@@ -146,7 +154,7 @@ class RenderTests(unittest.TestCase):
 
     def test_hook_renders_configured_image_and_url(self):
         output = self.render("mcp.test.publicUrl=https://retool.example.com", "mcp.test.image=registry.example.com/python:3.12")
-        hook = output.split("# Source: retool/templates/test_mcp.yaml", 1)[1].split("\n---\n", 1)[0]
+        hook = self.hook(output)
         self.assertIn("kind: Job", hook)
         self.assertIn('"helm.sh/hook": test', hook)
         self.assertIn('image: "registry.example.com/python:3.12"', hook)
@@ -154,6 +162,59 @@ class RenderTests(unittest.TestCase):
         self.assertIn("automountServiceAccountToken: false", hook)
         self.assertIn("resource_metadata", hook)
         self.assertNotIn("EXPIRED-LICENSE-KEY-TRIAL", hook)
+
+    def test_hook_inherits_pod_placement(self):
+        affinity = {"nodeAffinity": {"requiredDuringSchedulingIgnoredDuringExecution": {
+            "nodeSelectorTerms": [{"matchExpressions": [{"key": "kubernetes.io/arch", "operator": "In", "values": ["amd64"]}]}]
+        }}}
+        output = self.render(
+            "mcp.test.publicUrl=https://retool.example.com",
+            "tolerations[0].key=dedicated",
+            "tolerations[0].operator=Exists",
+            json_settings=(f"affinity={json.dumps(affinity)}",),
+        )
+        hook = self.hook(output)
+        self.assertIn("nodeSelector:\n        kubernetes.io/arch: amd64", hook)
+        self.assertIn("tolerations:\n        - key: dedicated\n          operator: Exists", hook)
+        self.assertIn("affinity:\n        nodeAffinity:", hook)
+
+    def test_rendered_python_command_runs_against_http_fixture(self):
+        output = self.render("mcp.test.publicUrl=https://retool.example.com")
+        hook = self.hook(output)
+        self.assertIn("command: [python3, -c]", hook)
+        script = textwrap.dedent(hook.split("          args:\n            - |\n", 1)[1].split("\n          env:\n", 1)[0])
+
+        with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+            origin = f"http://127.0.0.1:{server.server_port}"
+            resource = json.dumps({"resource": f"{origin}/mcp", "authorization_servers": [origin]}).encode()
+            authorization = json.dumps({
+                "issuer": origin,
+                "authorization_endpoint": f"{origin}/auth/oauth2/authorize",
+                "token_endpoint": f"{origin}/api/oauth2/token",
+                "response_types_supported": ["code"],
+            }).encode()
+            Handler.responses = {
+                "/mcp": (401, "text/plain", b"", {"WWW-Authenticate": f'Bearer resource_metadata="{origin}/.well-known/oauth-protected-resource"'}),
+                "/.well-known/oauth-protected-resource": (200, "application/json", resource, {}),
+                "/.well-known/oauth-authorization-server": (200, "application/json", authorization, {}),
+            }
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                env = {**os.environ, "RETOOL_PUBLIC_URL": origin}
+                result = subprocess.run([sys.executable, "-c", script], env=env, text=True, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("MCP discovery passed", result.stdout)
+
+                Handler.responses["/mcp"] = (302, "text/html", b"", {"Location": "/login"})
+                result = subprocess.run([sys.executable, "-c", script], env=env, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"{origin}/mcp", result.stderr)
+                self.assertIn("expected HTTP 401", result.stderr)
+                self.assertIn("observed HTTP 302", result.stderr)
+            finally:
+                server.shutdown()
+                thread.join()
 
 
 if __name__ == "__main__":
