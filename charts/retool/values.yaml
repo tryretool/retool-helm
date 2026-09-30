@@ -1501,10 +1501,11 @@ rr:
         annotations: {}
         labels: {}
 
-  # Shared blob-storage config used by git_server (and other features that
-  # need object storage, e.g. snapshots). Set exactly one of s3, gcs, azure.
-  # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on
-  # the backend deployment.
+  # Shared blob-storage config used by git_server, snapshots, and RetoolOS. Set
+  # exactly one of s3, gcs, azure. RetoolOS puts its objects under the
+  # `retoolos/` prefix, so it can safely reuse the same bucket or container.
+  # Renders RR_BLOB_STORAGE_PROVIDER + RR_DEFAULT_<provider>_* env vars on each
+  # workload that needs the store.
   #
   # This block can be omitted entirely if RR_BLOB_STORAGE_PROVIDER and the
   # RR_DEFAULT_*_* env vars are provided directly via environmentVariables /
@@ -1602,6 +1603,75 @@ agents:
 
   # Annotations for agent worker pods
   annotations: {}
+
+retoolos:
+  # Enable the RetoolOS worker. A single worker pod runs the agent loop,
+  # messaging ingress and egress, search indexing and refresh, and pg-boss
+  # Jobs workers. Those workloads use separate Temporal task queues within the process.
+  enabled: false
+
+  # One customer-owned Slack app serves all RetoolOS agents.
+  slack:
+    # Slack recommends HTTP for production when the deployment can expose a public
+    # request URL. HTTP uses short-lived, stateless requests, making it simpler to
+    # operate, load balance, scale horizontally, and recover from network failures.
+    # Configure Slack to send events to:
+    # https://<your-retool-domain>/api/os/messaging/slack/events
+    #
+    # Socket Mode is the default for self-hosted deployments because it requires
+    # only outbound internet access and no public webhook ingress. It requires an
+    # app-level token and maintains a long-lived WebSocket that must reconnect when
+    # Slack refreshes the connection or the network is interrupted.
+    mode: socket
+    # Optional existing Kubernetes Secret in this release's namespace. When
+    # omitted, organization admins configure Slack in Retool and the credentials
+    # are stored encrypted in Postgres. When set, the Secret must contain
+    # client-id, client-secret, and signing-secret; socket also needs app-token.
+    # Do not combine secretName with top-level RETOOLOS_SLACK_* env settings.
+    secretName: ""
+
+  # Process settings for the RetoolOS worker Deployment. These do not apply to
+  # the main backend or Jobs Runner. The shared worker template recognizes the
+  # fields shown below; other keys are ignored.
+  config: {}
+  # config:
+  #   nodeOptions: --max_old_space_size=2048
+  #   otelCollector:
+  #     enabled: true
+  #     endpoint: http://otel-collector.monitoring:4317
+  #   environmentVariables:
+  #     - name: EXAMPLE_WORKER_SETTING
+  #       value: example
+
+  # Search is enabled on the backend, Jobs Runner, and this worker when RetoolOS
+  # is enabled. Set top-level env.RETOOLOS_SEARCH_ENABLED to false as a kill switch.
+
+  worker:
+    # RetoolOS intentionally combines its workloads in one pod by default.
+    replicaCount: 1
+
+    # Labels for RetoolOS worker pods
+    labels: {}
+
+    # Annotations for RetoolOS worker pods
+    annotations: {}
+
+    startupProbe:
+      enabled: true
+      path: /api/checkHealth
+      initialDelaySeconds: 0
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 30
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4096Mi
+      requests:
+        cpu: 1000m
+        memory: 2048Mi
 
 # SHARED TEMPORAL CONFIGURATION
 # This configuration is shared between all workers.
