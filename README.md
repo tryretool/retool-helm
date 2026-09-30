@@ -17,6 +17,21 @@ This is the repository for the official Retool Helm chart. For release notes, se
 
 For any inquiries regarding deploying Retool on Helm, please feel free to reach out to us at support@retool.com or search our [Community Forums](https://community.retool.com/) and post your question there.
 
+## MCP public routing
+
+With `mcp.enabled: true`, `mcp.routing.mode` defaults to `backendRelay` for Retool 4.0.7 and later. The normal `/` Ingress or HTTPRoute sends all public paths to the main Retool Service, and its backend relays `/mcp` to the MCP Service using the chart-provided `MCP_SERVICE_INGRESS_DOMAIN`. For Retool before 4.0.7, set `mcp.routing.mode: direct`; those versions need dedicated MCP and OAuth discovery routes. Choose the mode explicitly for your server version, including builds with PR or custom image tags.
+
+| Mode | Public path | Service |
+| --- | --- | --- |
+| `backendRelay` | All paths, including `/mcp` and `/.well-known/*` | Main Retool Service, port 3000 |
+| `direct` | `/.well-known/oauth-authorization-server` (exact) | Backend API Service, port 3001 |
+| `direct` | `/.well-known/oauth-protected-resource` (exact) and `/mcp` (prefix) | MCP Service, port 4010 |
+| `direct` | `/` (prefix) | Main Retool Service, port 3000 |
+
+These are also the mappings to use when ingress is managed outside the chart. In `direct` mode, place the dedicated paths before the main `/` path. The service names are `<fullname>`, `<fullname>-backend-internal`, and `<fullname>-mcp`, where `<fullname>` is the chart release's full name.
+
+When upgrading existing values files, remove `mcp.ingress.enabled: true` and `mcp.httpRoute.enabled: true` to use `backendRelay`, or set `mcp.routing.mode: direct` for an older server. An explicit legacy `true` setting conflicts with `backendRelay` and stops chart rendering with migration guidance. Both flags now default to `null`, which follows the mode. An explicit `false` keeps the corresponding chart-managed direct routes off when you supply them externally.
+
 ## MCP public URL smoke test
 
 When MCP is enabled, set `mcp.test.publicUrl` to the public Retool origin to add an optional `helm test` Job:
