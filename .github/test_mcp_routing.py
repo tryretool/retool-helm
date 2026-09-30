@@ -137,6 +137,16 @@ class RoutingTests(unittest.TestCase):
                     f"mcp.{surface}.enabled=true",
                 )
 
+    def test_legacy_flags_reject_non_boolean_values(self):
+        for surface in ("ingress", "httpRoute"):
+            for value in ("0", ""):
+                with self.subTest(surface=surface, value=value):
+                    self.assert_rejected(
+                        f"mcp.{surface}.enabled must be true, false, or null",
+                        "mcp.routing.mode=direct",
+                        f"mcp.{surface}.enabled={value}",
+                    )
+
     def test_unknown_mode_fails_even_if_mcp_and_public_routes_are_disabled(self):
         self.assert_rejected('mcp.routing.mode must be "backendRelay" or "direct"', "mcp.routing.mode=other")
         self.assert_rejected(

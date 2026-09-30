@@ -699,9 +699,8 @@ multiplayer:
 #     oauthIntrospectionAuthTokenSecretName: retool-mcp-oauth
 #     oauthIntrospectionAuthTokenSecretKey: token
 #
-# The chart injects the token into both MCP and the backend. The MCP ingress
-# routes below are enabled by default; reproduce their mapping when ingress is
-# managed outside this chart.
+# The chart injects the token into both MCP and the backend. Public MCP routing
+# is selected by mcp.routing.mode below.
 mcp:
   # Set to true to deploy the MCP server.
   enabled: false
@@ -845,6 +844,10 @@ mcp:
     #           Prefix /                                         -> <fullname>:3000
     # Replace <fullname> with this chart release's full name. Do not infer the
     # mode from image.tag; PR and custom image tags may not identify a version.
+    # When upgrading an older chart, use helm upgrade --reset-then-reuse-values
+    # to load these new defaults and preserve saved overrides. Plain
+    # --reuse-values can retain the old chart defaults. If that flag is not
+    # available, pass your custom values file with -f and omit --reuse-values.
     mode: backendRelay
 
   ingress:

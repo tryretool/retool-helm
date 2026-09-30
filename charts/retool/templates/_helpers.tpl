@@ -65,7 +65,7 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- range $surface := list "ingress" "httpRoute" -}}
   {{- $legacy := get $mcp $surface | default dict -}}
   {{- $enabled := get $legacy "enabled" -}}
-  {{- if and (not (empty $enabled)) (not (kindIs "bool" $enabled)) -}}
+  {{- if and (hasKey $legacy "enabled") (not (kindIs "bool" $enabled)) (not (kindIs "invalid" $enabled)) -}}
     {{- fail (printf "mcp.%s.enabled must be true, false, or null" $surface) -}}
   {{- end -}}
   {{- if and $mcp.enabled (eq $mode "backendRelay") $enabled -}}
