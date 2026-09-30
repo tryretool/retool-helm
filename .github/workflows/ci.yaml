@@ -70,6 +70,8 @@ jobs:
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (lint)
         run: ct lint --config .github/ct.yaml
+      - name: Verify MCP Helm test render and HTTP behavior
+        run: python3 .github/test_mcp_helm_test.py
 
   # We don't use helm-docs yet, can set this up later
   #
