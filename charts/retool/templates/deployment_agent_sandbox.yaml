@@ -201,6 +201,9 @@ data:
                   ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
                   ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   ,{"name": "SANDBOX_READY_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxReadyTimeoutMs }}"}
+                  {{- if $as.sandbox.cpuAwareThreads }}
+                  ,{"name": "SANDBOX_CPU_LIMIT", "valueFrom": {"resourceFieldRef": {"resource": "limits.cpu", "divisor": "1"}}}
+                  {{- end }}
                   {{- if .Values.telemetry.enabled }}
                   ,{"name": "STATSD_HOST", "value": "{{ include "retool.telemetry.fullname" . }}.{{ .Release.Namespace }}"}
                   ,{"name": "STATSD_PORT", "value": "9125"}
