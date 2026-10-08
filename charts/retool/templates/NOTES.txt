@@ -95,3 +95,15 @@ destination(s) (CIDR strings or podSelector/namespaceSelector maps), or
 postgresAllowAny: true for urlSecretName DSNs Helm cannot inspect.
 ***************************************************************************
 {{- end }}
+{{- if and (eq (include "retool.rr.componentEnabled" (dict "root" . "component" "agentSandbox")) "1") .Values.rr.agentSandbox.networkPolicy.enabled .Values.rr.agentSandbox.networkPolicy.dnsSelector (not .Values.rr.agentSandbox.networkPolicy.dnsCidrs) }}
+
+***************************************************************************
+NOTE: the agent-sandbox NetworkPolicy allows DNS only to the pods matching
+rr.agentSandbox.networkPolicy.dnsSelector (kube-dns by default).
+
+If the cluster runs NodeLocal DNSCache (common on GKE), lookups are answered
+on the node at the kube-dns ClusterIP and will be dropped. Add that IP:
+  kubectl -n kube-system get svc kube-dns -o jsonpath='{.spec.clusterIP}'
+  rr.agentSandbox.networkPolicy.dnsCidrs: [<clusterIP>/32]
+***************************************************************************
+{{- end }}
