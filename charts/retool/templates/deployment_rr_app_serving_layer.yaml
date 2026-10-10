@@ -47,7 +47,7 @@ metadata:
 {{ toYaml .Values.deployment.annotations | indent 4 }}
 {{- end }}
 spec:
-  replicas: {{ $aslValues.replicaCount | default 1 }}
+  replicas: {{ $aslValues.replicaCount }}
   selector:
     matchLabels:
       {{- include "retool.appServingLayer.selectorLabels" . | nindent 6 }}

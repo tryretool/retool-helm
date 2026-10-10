@@ -698,8 +698,11 @@ into explicitly (rr.appServingLayer.enabled: true). Same reasoning as mcp.
 Usage: (include "retool.appServingLayer.enabled" .)
 */}}
 {{- define "retool.appServingLayer.enabled" -}}
-{{- if (.Values.rr.appServingLayer | default dict).enabled -}}
-1
+{{- $cfg := (.Values.rr | default dict).appServingLayer -}}
+{{- if kindIs "map" $cfg -}}
+  {{- if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- else if not (kindIs "invalid" $cfg) -}}
+  {{- fail (printf "rr.appServingLayer must be a mapping (got %s). To enable it set rr.appServingLayer.enabled: true." (kindOf $cfg)) -}}
 {{- end -}}
 {{- end -}}
 
