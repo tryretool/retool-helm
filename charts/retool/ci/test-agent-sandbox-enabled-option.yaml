@@ -83,6 +83,8 @@ rr:
             hosts:
               - sandbox.example.com
     frontendWsProxyDomain: https://sandbox.example.com
+    # Per-sandbox origins → renders AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN on the backend and proxy.
+    frontendWildcardDomain: sandboxes.example.com
 
     # Restrict sandbox/controller/proxy traffic → renders the NetworkPolicies.
     networkPolicy:
