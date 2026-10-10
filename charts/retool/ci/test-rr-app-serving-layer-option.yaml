@@ -30,6 +30,13 @@ rr:
       labels:
         test-service-label: "true"
 
+  # Derives the editor sandbox root, sandboxes.<appServingLayer.domain>.
+  agentSandbox:
+    enabled: true
+    externalSecret:
+      name: agent-sandbox-secrets
+    wildcardSandboxes: true
+
   blobStorage:
     s3:
       bucket: test-rr-bucket

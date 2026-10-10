@@ -1289,9 +1289,9 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
   value: {{ .Values.rr.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
-{{- if .Values.rr.agentSandbox.frontendWildcardDomain }}
+{{- with include "retool.agentSandbox.frontendWildcardDomain" . }}
 - name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
-  value: {{ .Values.rr.agentSandbox.frontendWildcardDomain | quote }}
+  value: {{ . | quote }}
 {{- end }}
 {{- if .Values.rr.agentSandbox.jwtPrivateKey }}
 - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
@@ -1388,6 +1388,24 @@ backend to build published-app URLs, so it is rendered onto both.
 {{- define "retool.appServingLayer.domain" -}}
 {{- $asl := .Values.rr.appServingLayer | default dict -}}
 {{- required "Please set a value for .Values.rr.appServingLayer.domain when the app serving layer is enabled" $asl.domain -}}
+{{- end -}}
+
+{{/*
+Root domain for per-sandbox editor origins (sandbox-<id>.<root>), or empty when
+unset. rr.agentSandbox.frontendWildcardDomain wins; otherwise
+rr.agentSandbox.wildcardSandboxes derives sandboxes.<rr.appServingLayer.domain>.
+Usage: (include "retool.agentSandbox.frontendWildcardDomain" .)
+*/}}
+{{- define "retool.agentSandbox.frontendWildcardDomain" -}}
+{{- $as := .Values.rr.agentSandbox | default dict -}}
+{{- if $as.frontendWildcardDomain -}}
+{{- $as.frontendWildcardDomain -}}
+{{- else if eq (toString $as.wildcardSandboxes) "true" -}}
+{{- if not (include "retool.appServingLayer.enabled" .) -}}
+{{- fail "rr.agentSandbox.wildcardSandboxes derives the sandbox domain from rr.appServingLayer.domain, so it needs rr.appServingLayer enabled. Enable it, or set rr.agentSandbox.frontendWildcardDomain." -}}
+{{- end -}}
+{{- printf "sandboxes.%s" (include "retool.appServingLayer.domain" .) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
