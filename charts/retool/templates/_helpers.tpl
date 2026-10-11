@@ -1387,7 +1387,21 @@ backend to build published-app URLs, so it is rendered onto both.
 */}}
 {{- define "retool.appServingLayer.domain" -}}
 {{- $asl := .Values.rr.appServingLayer | default dict -}}
-{{- required "Please set a value for .Values.rr.appServingLayer.domain when the app serving layer is enabled" $asl.domain -}}
+{{- $domain := required "Please set a value for .Values.rr.appServingLayer.domain when the app serving layer is enabled" $asl.domain -}}
+{{- include "retool.validateHostname" (dict "key" "rr.appServingLayer.domain" "value" $domain) -}}
+{{- $domain -}}
+{{- end -}}
+
+{{/*
+Fails the render unless value is a lowercase hostname. The backend and the agent-sandbox
+proxy compare these domains against the request Host header, which browsers lowercase, so
+a scheme, port, path, uppercase letter, or trailing dot would never match.
+Usage: (include "retool.validateHostname" (dict "key" "rr.x.domain" "value" $domain))
+*/}}
+{{- define "retool.validateHostname" -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" (toString .value)) -}}
+{{- fail (printf "%s must be a lowercase hostname with no scheme, port, path, or trailing dot (got %q), e.g. apps.retool.example.com" .key (toString .value)) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -1399,6 +1413,7 @@ Usage: (include "retool.agentSandbox.frontendWildcardDomain" .)
 {{- define "retool.agentSandbox.frontendWildcardDomain" -}}
 {{- $as := .Values.rr.agentSandbox | default dict -}}
 {{- if $as.frontendWildcardDomain -}}
+{{- include "retool.validateHostname" (dict "key" "rr.agentSandbox.frontendWildcardDomain" "value" $as.frontendWildcardDomain) -}}
 {{- $as.frontendWildcardDomain -}}
 {{- else if eq (toString $as.wildcardSandboxes) "true" -}}
 {{- if not (include "retool.appServingLayer.enabled" .) -}}
