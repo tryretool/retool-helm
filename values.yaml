@@ -1372,10 +1372,11 @@ rr:
     # Optional. Serves each editor sandbox on its own origin at
     # sandbox-<id>.sandboxes.<rr.appServingLayer.domain> (e.g.
     # sandbox-<id>.sandboxes.apps.retool.example.com) instead of the shared
-    # /sandbox/<id>/ path on the Retool host. Needed for camera, mic, and storage
-    # in the editor preview. Requires rr.appServingLayer, a *.sandboxes.<domain>
-    # DNS record and certificate, and a route to the proxy Service on proxy.port.
-    # Turn it on only after that route works; it moves every org's editor.
+    # /sandbox/<id>/ path on the Retool host. On Retool versions that support it,
+    # the editor preview then loads on that origin instead of a sandboxed iframe.
+    # Requires rr.appServingLayer, a *.sandboxes.<domain> DNS record and
+    # certificate, and a route to the proxy Service on proxy.port. Turn it on only
+    # after that route works; it moves every org's editor.
     wildcardSandboxes: false
     # Overrides the derived sandboxes.<rr.appServingLayer.domain> root, e.g. to put
     # sandboxes on a separate registrable domain. Setting it also turns per-sandbox
