@@ -1393,6 +1393,18 @@ backend to build published-app URLs, so it is rendered onto both.
 {{- end -}}
 
 {{/*
+RR_APP_DOMAIN for every workload that builds or resolves published-app URLs: the main
+backend, the serving layer, and the standalone git server (CLI preview links).
+Usage: {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
+*/}}
+{{- define "retool.appServingLayer.domainEnv" -}}
+{{- if include "retool.appServingLayer.enabled" . }}
+- name: RR_APP_DOMAIN
+  value: {{ include "retool.appServingLayer.domain" . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Fails the render unless value is a lowercase hostname. The backend and the agent-sandbox
 proxy compare these domains against the request Host header, which browsers lowercase, so
 a scheme, port, path, uppercase letter, or trailing dot would never match.

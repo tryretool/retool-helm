@@ -73,6 +73,7 @@ spec:
 {{- end }}
     spec:
       serviceAccountName: {{ template "retool.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ $aslValues.terminationGracePeriodSeconds }}
       {{- if .Values.priorityClassName }}
       priorityClassName: "{{ .Values.priorityClassName }}"
       {{- end }}
@@ -109,8 +110,7 @@ spec:
             value: RR_APP_SERVING_LAYER
           - name: RR_APP_SERVING_LAYER_SERVER_PORT
             value: {{ $port | quote }}
-          - name: RR_APP_DOMAIN
-            value: {{ include "retool.appServingLayer.domain" . | quote }}
+          {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
           # The serving layer does not run migrations; the main backend owns them.
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"

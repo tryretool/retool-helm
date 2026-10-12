@@ -11,10 +11,21 @@ podDisruptionBudget:
 rr:
   gitServer:
     enabled: true
+    # The standalone git server builds CLI preview links, so it needs RR_APP_DOMAIN too.
+    separate:
+      enabled: true
 
   appServingLayer:
     enabled: true
     domain: apps.example.retool.com
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      tls:
+        - secretName: retool-apps-tls
+          hosts:
+            - "*.apps.example.retool.com"
+            - "*.sandboxes.apps.example.retool.com"
     replicaCount: 2
     resources:
       requests:

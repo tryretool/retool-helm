@@ -1,0 +1,59 @@
+{{- /*
+Routes the apps domain, and the editor sandbox domain when per-sandbox origins are
+on, with nothing else on those hosts. The main Ingress adds multiplayer and MCP
+paths to every host, so these hosts get their own Ingress (as Retool Cloud does).
+*/}}
+{{- if and (include "retool.appServingLayer.enabled" .) (.Values.rr.appServingLayer.ingress).enabled }}
+{{- $ing := .Values.rr.appServingLayer.ingress }}
+{{- $sandboxRoot := "" }}
+{{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "agentSandbox")) "1" }}
+{{- $sandboxRoot = include "retool.agentSandbox.frontendWildcardDomain" . }}
+{{- end }}
+{{- $routes := list (dict "host" (printf "*.%s" (include "retool.appServingLayer.domain" .)) "service" (include "retool.appServingLayer.name" .) "port" (include "retool.appServingLayer.port" .)) }}
+{{- if $sandboxRoot }}
+{{- $routes = append $routes (dict "host" (printf "*.%s" $sandboxRoot) "service" (include "retool.agentSandbox.proxy.name" .) "port" (toString .Values.rr.agentSandbox.proxy.port)) }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.Version }}
+apiVersion: networking.k8s.io/v1
+{{- else }}
+apiVersion: networking.k8s.io/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ include "retool.appServingLayer.name" . }}
+  labels:
+    {{- include "retool.labels" . | nindent 4 }}
+    {{- include "retool.appServingLayer.labels" . | nindent 4 }}
+{{- with $ing.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  {{- if and $ing.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.Version) }}
+  ingressClassName: {{ $ing.ingressClassName }}
+  {{- end }}
+  rules:
+    {{- range $routes }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: /
+            {{- if semverCompare ">=1.18-0" $.Capabilities.KubeVersion.Version }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.Version }}
+              service:
+                name: {{ .service }}
+                port:
+                  number: {{ .port }}
+              {{- else }}
+              serviceName: {{ .service }}
+              servicePort: {{ .port }}
+              {{- end }}
+    {{- end }}
+{{- with $ing.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}

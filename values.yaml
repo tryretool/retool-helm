@@ -1530,10 +1530,10 @@ rr:
   # covering it, neither of which the chart can provide, so it must be opted
   # into explicitly.
   #
-  # Routing the apps domain to the service is left to your ingress. With the
-  # bundled ingress, add a wildcard host with an extraPaths entry pointing at
-  # <fullname>-app-serving-layer on `port` below; do not give that host a
-  # regular `paths` entry, or it will also route to the main backend.
+  # Route the apps domain with `ingress` below, or with your own ingress or load
+  # balancer rule to <fullname>-app-serving-layer on `port`. Don't add the apps
+  # domain to the top-level `ingress.hosts`: that Ingress also adds multiplayer
+  # and MCP paths to every host it serves.
   appServingLayer:
     enabled: false
     # Domain published apps are served under, e.g. apps.retool.example.com.
@@ -1544,6 +1544,18 @@ rr:
     # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and
     # that its service exposes.
     port: 3010
+    # The serving layer drains in-flight requests for up to 480s on shutdown.
+    terminationGracePeriodSeconds: 616
+    # Renders an Ingress that routes *.<domain> to the serving layer and nothing
+    # else. When rr.agentSandbox has per-sandbox origins on (wildcardSandboxes or
+    # frontendWildcardDomain), it also routes *.<sandbox domain> to the
+    # agent-sandbox proxy. Both hosts need wildcard DNS and a certificate.
+    ingress:
+      enabled: false
+      ingressClassName: ''
+      annotations: {}
+      # e.g. [{ secretName: retool-apps-tls, hosts: ["*.apps.retool.example.com"] }]
+      tls: []
     # Pod resource requests/limits. Falls back to top-level `resources` if unset.
     resources: {}
     # Falls back to top-level `affinity` if unset.
