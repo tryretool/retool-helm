@@ -1417,7 +1417,7 @@ Usage: (include "retool.agentSandbox.frontendWildcardDomain" .)
 {{- $as.frontendWildcardDomain -}}
 {{- else if eq (toString $as.wildcardSandboxes) "true" -}}
 {{- if not (include "retool.appServingLayer.enabled" .) -}}
-{{- fail "rr.agentSandbox.wildcardSandboxes derives the sandbox domain from rr.appServingLayer.domain, so it needs rr.appServingLayer enabled. Enable it, or set rr.agentSandbox.frontendWildcardDomain." -}}
+{{- fail "rr.agentSandbox.wildcardSandboxes puts sandboxes at sandboxes.<rr.appServingLayer.domain>, so it needs rr.appServingLayer enabled with a domain. To use a different sandbox domain, set rr.agentSandbox.frontendWildcardDomain instead." -}}
 {{- end -}}
 {{- printf "sandboxes.%s" (include "retool.appServingLayer.domain" .) -}}
 {{- end -}}
