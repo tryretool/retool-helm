@@ -178,6 +178,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Executors: nsjail under the securityContext the chart renders
+# ---------------------------------------------------------------------------
+echo "=== Testing executors can start nsjail ==="
+
+if "$SCRIPT_DIR/test-executor-nsjail.sh" "$NAMESPACE"; then
+  pass "code-executor and js-executor can start nsjail"
+else
+  fail "code-executor or js-executor cannot start nsjail (details above)"
+fi
+
+# ---------------------------------------------------------------------------
 # Test pod: retool-executor profile
 # ---------------------------------------------------------------------------
 echo "=== Testing retool-executor profile ==="
