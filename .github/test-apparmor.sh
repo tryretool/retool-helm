@@ -187,6 +187,14 @@ else
   fail "code-executor or js-executor cannot start nsjail (details above)"
 fi
 
+echo "=== Testing the executor images ==="
+
+if "$SCRIPT_DIR/test-executor-images.sh" "$NAMESPACE"; then
+  pass "executor images run sandboxed code with every process but nsjail restricted"
+else
+  fail "executor images failed under the AppArmor profiles (details above)"
+fi
+
 # ---------------------------------------------------------------------------
 # Test pod: retool-agent-sandbox profile
 # ---------------------------------------------------------------------------
