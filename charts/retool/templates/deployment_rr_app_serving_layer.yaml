@@ -4,8 +4,8 @@
 {{- end }}
 {{- include "retool.gitServer.validateBlobStorage" . }}
 {{- $port := include "retool.appServingLayer.port" . }}
-{{- $aslValues := .Values.rr.appServingLayer }}
-{{- $aslService := $aslValues.service | default dict }}
+{{- $aslValues := .Values.rr.appServingLayer.separate | default dict }}
+{{- $aslService := .Values.rr.appServingLayer.service | default dict }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -27,12 +27,20 @@ metadata:
   {{- end }}
 spec:
   selector:
+  {{- if include "retool.appServingLayer.separateEnabled" . }}
     {{- include "retool.appServingLayer.selectorLabels" . | nindent 4 }}
+  {{- else }}
+    {{- include "retool.selectorLabels" . | nindent 4 }}
+    {{- range $key, $value := .Values.service.selector }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
   ports:
   - name: http-server
     protocol: TCP
     port: {{ $port }}
     targetPort: {{ $port }}
+{{- if include "retool.appServingLayer.separateEnabled" . }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -314,5 +322,6 @@ spec:
   selector:
     matchLabels:
       {{- include "retool.appServingLayer.selectorLabels" . | nindent 6 }}
+{{- end }}
 {{- end }}
 {{- end }}

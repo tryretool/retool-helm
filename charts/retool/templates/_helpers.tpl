@@ -1373,11 +1373,21 @@ telemetry.retool.com/service-name: rr-app-serving-layer
 
 {{/*
 Port the app serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and exposes
-via its service. Matches the backend default. Note rr.gitServer.separate.port defaults
-to the same number; the two run in separate pods, so they do not collide.
+via its service. Matches the backend default. rr.gitServer.separate.port defaults to the
+same number without colliding: that git server has its own pod, and the in-process one uses 3020.
 */}}
 {{- define "retool.appServingLayer.port" -}}
 {{- (.Values.rr.appServingLayer | default dict).port | default 3010 -}}
+{{- end -}}
+
+{{/*
+Truthy when the app serving layer runs in its own deployment
+(rr.appServingLayer.separate.enabled). Otherwise it runs in-process on the main backend.
+*/}}
+{{- define "retool.appServingLayer.separateEnabled" -}}
+{{- if and (include "retool.appServingLayer.enabled" .) (.Values.rr.appServingLayer.separate | default dict).enabled -}}
+1
+{{- end -}}
 {{- end -}}
 
 {{/*

@@ -1519,11 +1519,13 @@ rr:
         annotations: {}
         labels: {}
 
-  # Serves published React Retool apps out of a dedicated
-  # <fullname>-app-serving-layer Deployment + Service running
-  # SERVICE_TYPE=RR_APP_SERVING_LAYER (mirrors how the workload is split in
-  # Retool Cloud). Requires the git server to be enabled: the serving layer
-  # reads published app assets from the same blob storage git_server writes to.
+  # Serves published React Retool apps on their own origins under `domain`
+  # (SERVICE_TYPE=RR_APP_SERVING_LAYER). By default it runs in-process on the
+  # main backend pods and <fullname>-app-serving-layer is a Service pointing at
+  # them on `port`. Set separate.enabled to run it as its own Deployment
+  # instead, as Retool Cloud does. Requires the git server to be enabled: the
+  # serving layer reads published app assets from the same blob storage
+  # git_server writes to.
   #
   # Unlike the other rr components this does NOT inherit the rr.enabled master
   # switch. It only works alongside wildcard DNS for `domain` and a certificate
@@ -1537,15 +1539,12 @@ rr:
   appServingLayer:
     enabled: false
     # Domain published apps are served under, e.g. apps.retool.example.com.
-    # Rendered as RR_APP_DOMAIN onto both this deployment and the main backend.
-    # Required when enabled.
+    # Rendered as RR_APP_DOMAIN onto the main backend (and the serving layer
+    # Deployment when separate). Required when enabled.
     domain: ~
-    replicaCount: 1
     # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and
-    # that its service exposes.
+    # that its Service exposes.
     port: 3010
-    # The serving layer drains in-flight requests for up to 480s on shutdown.
-    terminationGracePeriodSeconds: 616
     # Renders an Ingress that routes *.<domain> to the serving layer and nothing
     # else. When rr.agentSandbox has per-sandbox origins on (wildcardSandboxes or
     # frontendWildcardDomain), it also routes *.<sandbox domain> to the
@@ -1556,26 +1555,32 @@ rr:
       annotations: {}
       # e.g. [{ secretName: retool-apps-tls, hosts: ["*.apps.retool.example.com"] }]
       tls: []
-    # Pod resource requests/limits. Falls back to top-level `resources` if unset.
-    resources: {}
-    # Falls back to top-level `affinity` if unset.
-    affinity: {}
-    # Annotations/labels applied to the serving-layer pod template.
-    annotations: {}
-    labels: {}
-    startupProbe:
-      enabled: true
-      path: /api/checkHealth
-      initialDelaySeconds: 0
-      timeoutSeconds: 10
-      periodSeconds: 10
-      successThreshold: 1
-      failureThreshold: 18
-    # Annotations/labels applied to the serving-layer Service (kept separate
-    # from the pod ones above).
+    # Annotations/labels applied to the serving-layer Service.
     service:
       annotations: {}
       labels: {}
+    # Runs the serving layer as its own <fullname>-app-serving-layer Deployment
+    # and PodDisruptionBudget instead of on the main backend pods.
+    separate:
+      enabled: false
+      replicaCount: 1
+      # The serving layer drains in-flight requests for up to 480s on shutdown.
+      terminationGracePeriodSeconds: 616
+      # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+      resources: {}
+      # Falls back to top-level `affinity` if unset.
+      affinity: {}
+      # Annotations/labels applied to the serving-layer pod template.
+      annotations: {}
+      labels: {}
+      startupProbe:
+        enabled: true
+        path: /api/checkHealth
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
 
   # Shared blob-storage config used by git_server, snapshots, and RetoolOS. Set
   # exactly one of s3, gcs, azure. RetoolOS puts its objects under the
