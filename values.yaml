@@ -1308,6 +1308,14 @@ rr:
       # URL the proxy uses to reach the Retool backend for token exchange.
       # Defaults to http://<fullname>:3000 (same-cluster backend service).
       backendUrl: ''
+      # Domain suffix(es) exempted from the sandbox proxy's private-IP egress block,
+      # so sandboxes can reach your own Retool backend (git clone, org libraries,
+      # thread branch data, etc). REQUIRED if your BASE_DOMAIN resolves to a
+      # private IP from inside the cluster (e.g. ingress.enabled: false). Must
+      # match the actual public hostname(s) sandboxes call out to — comma-separate
+      # multiple domains if you serve this deployment from more than one (e.g.
+      # per-environment subdomains). Getting this wrong fails silently or with a
+      # generic error, with no indication the cause is this setting.
       backendDomainSuffixes: ''
       sandboxProxyTimeoutMs: '180000'  # 3 minutes
       # Where the proxy fetches public npm packages. Leave url empty to use
