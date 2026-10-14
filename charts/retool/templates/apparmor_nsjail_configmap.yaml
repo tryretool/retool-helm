@@ -11,47 +11,16 @@ data:
   retool-executor: |
     #include <tunables/global>
 
+    # Executor containers start under retool-executor, which has the rights nsjail
+    # needs (mount, pivot_root, userns). Everything they exec except nsjail gets
+    # retool-executor-restricted stacked on top, which takes those rights away.
+    # When a restricted process execs nsjail, nsjail drops back to retool-executor.
+    # allowPrivilegeEscalation: false lets a process drop a stacked profile, but not
+    # switch to one with more rights.
     profile retool-executor flags=(attach_disconnected,mediate_deleted) {
-      #include <abstractions/base>
-
       network,
       capability,
-      file,
-
-      signal (send,receive) peer=retool-executor,
-      signal (send) peer=retool-executor//nsjail,
-      signal (receive) peer=unconfined,
-
-      ptrace (trace,read,tracedby,readby) peer=retool-executor,
-
-      deny @{PROC}/* w,
-      deny @{PROC}/sys/[^k]*/** wklx,
-      deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} wklx,
-      deny @{PROC}/sysrq-trigger rwklx,
-      deny @{PROC}/kcore rwklx,
-
-      deny /sys/[^f]*/** wklx,
-      deny /sys/f[^s]*/** wklx,
-      deny /sys/fs/[^c]*/** wklx,
-      deny /sys/fs/c[^g]*/** wklx,
-      deny /sys/fs/cg[^r]*/** wklx,
-      deny /sys/firmware/** rwklx,
-      deny /sys/devices/virtual/powercap/** rwklx,
-      deny /sys/kernel/security/** rwklx,
-
-      # Only nsjail gets mount/pivot_root/userns — mandatory profile
-      # transition on exec. The container's own processes (Node.js, etc.)
-      # cannot call these syscalls directly.
-      /usr/bin/nsjail px -> retool-executor//nsjail,       # code-executor
-      /usr/local/bin/nsjail px -> retool-executor//nsjail, # js-executor
-    }
-
-    profile retool-executor//nsjail flags=(attach_disconnected,mediate_deleted) {
-      #include <abstractions/base>
-
-      network,
-      capability,
-      file,
+      /{,**} rwlkm,
       umount,
       mount,
       pivot_root,
@@ -59,11 +28,12 @@ data:
       userns,
 {{- end }}
 
-      signal (send,receive) peer=retool-executor//nsjail,
       signal (send,receive) peer=retool-executor,
+      signal (send,receive) peer=retool-executor-restricted,
       signal (receive) peer=unconfined,
 
-      ptrace (trace,read,tracedby,readby) peer=retool-executor//nsjail,
+      ptrace (trace,read,tracedby,readby) peer=retool-executor,
+      ptrace (trace,read,tracedby,readby) peer="retool-executor//&retool-executor-restricted",
 
       deny @{PROC}/* w,
       deny @{PROC}/sys/[^k]*/** wklx,
@@ -79,5 +49,42 @@ data:
       deny /sys/firmware/** rwklx,
       deny /sys/devices/virtual/powercap/** rwklx,
       deny /sys/kernel/security/** rwklx,
+
+      /usr/bin/nsjail ix,       # code-executor
+      /usr/local/bin/nsjail ix, # js-executor
+      /** cix -> &retool-executor-restricted,
+    }
+
+    profile retool-executor-restricted flags=(attach_disconnected,mediate_deleted) {
+      #include <abstractions/base>
+
+      network,
+      capability,
+      file,
+
+      signal (send,receive) peer=retool-executor,
+      signal (send,receive) peer=retool-executor-restricted,
+      signal (receive) peer=unconfined,
+
+      ptrace (trace,read,tracedby,readby) peer="retool-executor//&retool-executor-restricted",
+      ptrace (read,tracedby,readby) peer=retool-executor,
+
+      deny @{PROC}/* w,
+      deny @{PROC}/sys/[^k]*/** wklx,
+      deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} wklx,
+      deny @{PROC}/sysrq-trigger rwklx,
+      deny @{PROC}/kcore rwklx,
+
+      deny /sys/[^f]*/** wklx,
+      deny /sys/f[^s]*/** wklx,
+      deny /sys/fs/[^c]*/** wklx,
+      deny /sys/fs/c[^g]*/** wklx,
+      deny /sys/fs/cg[^r]*/** wklx,
+      deny /sys/firmware/** rwklx,
+      deny /sys/devices/virtual/powercap/** rwklx,
+      deny /sys/kernel/security/** rwklx,
+
+      /usr/bin/nsjail px -> retool-executor,
+      /usr/local/bin/nsjail px -> retool-executor,
     }
 {{- end }}
