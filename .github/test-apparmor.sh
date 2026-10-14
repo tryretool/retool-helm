@@ -177,22 +177,14 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Executors: nsjail under the securityContext the chart renders
+# Executors: the real images run nsjail under the chart's securityContext
 # ---------------------------------------------------------------------------
-echo "=== Testing executors can start nsjail ==="
+echo "=== Testing the executors run nsjail ==="
 
 if "$SCRIPT_DIR/test-executor-nsjail.sh" "$NAMESPACE"; then
-  pass "code-executor and js-executor can start nsjail"
+  pass "code-executor and js-executor run nsjail, with every other process restricted"
 else
-  fail "code-executor or js-executor cannot start nsjail (details above)"
-fi
-
-echo "=== Testing the executor images ==="
-
-if "$SCRIPT_DIR/test-executor-images.sh" "$NAMESPACE"; then
-  pass "executor images run sandboxed code with every process but nsjail restricted"
-else
-  fail "executor images failed under the AppArmor profiles (details above)"
+  fail "code-executor or js-executor failed under the AppArmor profiles (details above)"
 fi
 
 # ---------------------------------------------------------------------------
