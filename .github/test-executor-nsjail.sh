@@ -128,10 +128,14 @@ check_executor() {
     fail "$nsjail_path cannot create its namespaces: $(echo "$out" | tr '\n' ' ')"
   fi
 
-  if "${KUBECTL[@]}" exec -n "$NAMESPACE" "$pod" -- sh -c "unshare --user --mount --pid --fork true" >/dev/null 2>&1; then
+  local denied
+  if denied=$("${KUBECTL[@]}" exec -n "$NAMESPACE" "$pod" -- sh -c "unshare --user --mount --pid --fork true" 2>&1); then
     fail "/usr/bin/unshare created namespaces; only nsjail should be able to"
-  else
+  # AppArmor denials surface as EACCES; any other failure means the check didn't test the restriction.
+  elif [[ "$denied" == *"unshare: "*"Permission denied"* ]]; then
     pass "/usr/bin/unshare is denied the same namespaces"
+  else
+    fail "/usr/bin/unshare did not run or failed for another reason: $(echo "$denied" | tr '\n' ' ')"
   fi
 }
 
