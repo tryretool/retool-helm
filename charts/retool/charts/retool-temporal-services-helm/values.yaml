@@ -19,13 +19,12 @@ serviceAccount:
 server:
   enabled: true
   sidecarContainers:
-  # automatically sets up schema for temporal
-  # this requires using our custom image (tryretool/one-offs:retool-temporal)
-  # if disabled, can use temporalio/server:1.18.5 image for faster startup
-  autosetup: true
+  # Official Temporal server does not create schemas or the `workflows`
+  # namespace. New installs must do that first: https://docs.temporal.io/self-hosted-guide
+  autosetup: false
   image:
-    repository: tryretool/one-offs
-    tag: retool-temporal-1.1.5
+    repository: temporalio/server
+    tag: "1.18.5"
     pullPolicy: IfNotPresent
 
   # Global default settings (can be overridden per service)
