@@ -145,7 +145,7 @@ check_processes() {
   fi
 }
 
-# Runs nsjail as retool_user from a narrowed shell, the way the service starts it. At its real path it
+# Runs nsjail through runuser, which is restricted like the service that starts it. At its real path nsjail
 # must build a sandbox; a copy elsewhere must be denied by AppArmor, so the rights stay with the real path.
 check_nsjail_path() {
   local deploy="$1" container="$2" nsjail_path="$3"

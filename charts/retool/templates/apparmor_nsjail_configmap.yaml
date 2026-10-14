@@ -11,13 +11,15 @@ data:
   retool-executor: |
     #include <tunables/global>
 
-    # Container profile. allowPrivilegeEscalation: false means no process can gain
-    # rights beyond this one, so it holds what nsjail needs. Every exec except nsjail
-    # stacks retool-executor-restricted on top, which removes those rights again.
+    # Executor containers start under retool-executor, which has the rights nsjail
+    # needs (mount, pivot_root, userns). Everything they exec except nsjail gets
+    # retool-executor-restricted stacked on top, which takes those rights away.
+    # When a restricted process execs nsjail, nsjail drops back to retool-executor.
+    # allowPrivilegeEscalation: false lets a process drop a stacked profile, but not
+    # switch to one with more rights.
     profile retool-executor flags=(attach_disconnected,mediate_deleted) {
       network,
       capability,
-      # No file, or abstractions/base: their ix rules conflict with the stack rule below.
       /{,**} rwlkm,
       umount,
       mount,
@@ -50,11 +52,9 @@ data:
 
       /usr/bin/nsjail ix,       # code-executor
       /usr/local/bin/nsjail ix, # js-executor
-      # cix, not pix, so host profiles that attach by path can't capture the exec.
       /** cix -> &retool-executor-restricted,
     }
 
-    # Stacked on every process except nsjail: no mount, pivot_root, or userns.
     profile retool-executor-restricted flags=(attach_disconnected,mediate_deleted) {
       #include <abstractions/base>
 
@@ -66,7 +66,6 @@ data:
       signal (send,receive) peer=retool-executor-restricted,
       signal (receive) peer=unconfined,
 
-      # Narrowed processes can trace each other and read nsjail (top, ps), but not trace it.
       ptrace (trace,read,tracedby,readby) peer="retool-executor//&retool-executor-restricted",
       ptrace (read,tracedby,readby) peer=retool-executor,
 
@@ -85,7 +84,6 @@ data:
       deny /sys/devices/virtual/powercap/** rwklx,
       deny /sys/kernel/security/** rwklx,
 
-      # Exec of nsjail drops the stack back to retool-executor, which no_new_privs allows.
       /usr/bin/nsjail px -> retool-executor,
       /usr/local/bin/nsjail px -> retool-executor,
     }
