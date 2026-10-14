@@ -1218,6 +1218,9 @@ rr:
         limits:
           cpu: '2'
           memory: 4Gi
+      # Pass the sandbox container's CPU limit to build tools (tsc, esbuild, Rolldown, pnpm)
+      # so they size their thread pools to it. Without a CPU limit this is the node's CPU count.
+      cpuAwareThreads: true
       # Idle timeout (ms) before an unassigned sandbox self-terminates.
       sandboxIdleTimeoutMs: 600000
       # Hard ceiling (ms) on total sandbox lifetime, regardless of activity. When
