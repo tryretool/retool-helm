@@ -1520,7 +1520,7 @@ rr:
         labels: {}
 
   # Serves published React Retool apps on their own origins under `domain`
-  # (SERVICE_TYPE=RR_APP_SERVING_LAYER). By default it runs in-process on the
+  # (SERVICE_TYPE=RR_APP_SERVING_LAYER). When enabled, it runs in-process on the
   # main backend pods and <fullname>-app-serving-layer is a Service pointing at
   # them on `port`. Set separate.enabled to run it as its own Deployment
   # instead, as Retool Cloud does. Requires the git server to be enabled: the
