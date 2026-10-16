@@ -155,12 +155,13 @@ class RoutingTests(unittest.TestCase):
                         f"mcp.{surface}.enabled={value}",
                     )
 
-    def test_unknown_mode_fails_even_if_mcp_and_public_routes_are_disabled(self):
+    def test_unknown_mode_fails_when_public_routes_are_enabled(self):
         self.assert_rejected('mcp.routing.mode must be "backendRelay" or "direct"', "mcp.routing.mode=other")
-        self.assert_rejected(
-            'mcp.routing.mode must be "backendRelay" or "direct"',
-            "mcp.routing.mode=other", "mcp.enabled=false", "ingress.enabled=false", "httpRoute.enabled=false",
-        )
+
+    def test_mode_is_not_validated_without_chart_managed_public_routes(self):
+        for routing in ("mcp.routing.mode=other", "mcp.routing=null"):
+            with self.subTest(routing=routing):
+                self.assert_rendered(routing, "ingress.enabled=false", "httpRoute.enabled=false")
 
     def test_missing_mode_gives_upgrade_guidance(self):
         self.assert_rejected(
