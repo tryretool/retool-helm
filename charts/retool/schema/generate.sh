@@ -112,6 +112,40 @@ install_tools() {
   HELM_SCHEMA="$helm_schema"
 }
 
+# check_explicit_types <values.yaml>
+#
+# Every key with a `# --` description must declare its type with
+# `# @schema type:` (or `$ref:`) instead of relying on inference from its
+# default. Keys under a top-level `# @schema hidden` section are skipped.
+check_explicit_types() {
+  awk '
+    function indent_of(s) { match(s, /^ */); return RLENGTH }
+    /^[[:space:]]*#/ { block[++n] = $0; next }
+    {
+      if (match($0, /^ *[A-Za-z0-9_][A-Za-z0-9_.\/-]*:/)) {
+        ind = indent_of($0); doc = 0; typed = 0; hidden = 0
+        for (i = 1; i <= n; i++) {
+          if (indent_of(block[i]) != ind) continue
+          l = block[i]; sub(/^ */, "", l)
+          if (l ~ /^# -- /) doc = 1
+          if (l ~ /^# @schema/ && l ~ /(@schema|;)[[:space:]]*(type|\$ref):/) typed = 1
+          if (l ~ /^# @schema hidden/) hidden = 1
+        }
+        if (ind == 0) hidden_section = hidden
+        if (doc && !typed && !hidden_section) {
+          printf "%s:%d: \"%s\" has a # -- description but no explicit # @schema type\n", FILENAME, NR, $0 > "/dev/stderr"
+          bad = 1
+        }
+      }
+      n = 0
+    }
+    END { exit bad }
+  ' "$1" || {
+    echo "ERROR: add \`# @schema type: ...\` above the \`# --\` line of each key listed above (see CONTRIBUTING.md)." >&2
+    exit 1
+  }
+}
+
 # generate <chart-dir>
 generate() {
   local chart="$1"
@@ -146,6 +180,7 @@ generate() {
 # main
 # ---------------------------------------------------------------------------
 install_tools
+check_explicit_types "${CHART_DIR}/values.yaml"
 
 if [[ "${1:-}" == "--check" ]]; then
   tmp="$(mktemp -d)"

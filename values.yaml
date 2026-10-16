@@ -12,6 +12,7 @@ nameOverride:
 fullnameOverride:
 
 config:
+  # @schema type: string
   # -- Retool license key. Ignored when `config.licenseKeySecretName` is set.
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
   # @schema type: [string, null]
@@ -33,6 +34,7 @@ config:
   postgresPoolMaxSize: 10
   auth:
     google:
+      # @schema type: boolean
       # -- Set the `CLIENT_ID` and `CLIENT_SECRET` env vars for Google SSO. Defaults to true for backwards compatibility.
       enabled: true
       # @schema type: [string, null]
@@ -102,13 +104,14 @@ config:
     ssl_enabled:
 
 image: # @schema required
+  # @schema type: string
   # -- Retool backend image repository.
   repository: "tryretool/backend"
-  # @schema required; minLength: 1
+  # @schema type: string; required; minLength: 1
   # -- Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.
   # @default -- none (required)
   tag: ""
-  # @schema enum: [Always, IfNotPresent, Never]
+  # @schema type: string; enum: [Always, IfNotPresent, Never]
   # -- Image pull policy for Retool containers.
   pullPolicy: "IfNotPresent"
   # @schema type: [array, null]
@@ -120,6 +123,7 @@ image: # @schema required
 # drops that pin automatically (a copied image gets a new digest, so the
 # original would pin you back to the source registry and fail the pull).
 initImage:
+  # @schema type: string
   # -- Utility image for the initContainers that install the nsjail seccomp profile on the host, used by the code executor and JS executor. Override it to pull from a private mirror, an air-gapped registry, or GCP Marketplace.
   repository: busybox
   # @schema type: [string, number]
@@ -130,6 +134,7 @@ initImage:
   digest: ''
 
 commandline:
+  # @schema type: array
   # -- Extra arguments for the backend container.
   args: []
 
@@ -137,6 +142,7 @@ commandline:
 #   env:
 #     BASE_DOMAIN: https://retool.example.com
 #     DISABLE_GIT_SYNCING: "true"
+# @schema type: object
 # -- Environment variables for Retool containers, as `NAME: value`. A value can also be a map with `value` and/or `valueFrom`.
 env: {}
 
@@ -146,6 +152,7 @@ env: {}
 #       secretKeyRef:
 #         name: retool-scim-auth-token
 #         key: auth-token
+# @schema type: array
 # -- Environment variables populated from Kubernetes Secrets. Each item has `name` and `secretKeyRef` (`name`, `key`).
 environmentSecrets: []
 
@@ -160,6 +167,7 @@ environmentSecrets: []
 #       valueFrom:
 #         fieldRef:
 #           fieldPath: status.hostIP
+# @schema type: array
 # -- Environment variables in Kubernetes `EnvVar` form, for values `env` cannot express such as `valueFrom.fieldRef`.
 environmentVariables: []
 
@@ -167,23 +175,30 @@ environmentVariables: []
 # kubernetes-external-secrets) and `externalSecretsOperator.enabled` are
 # mutually exclusive.
 externalSecrets:
+  # @schema type: boolean
   # -- Read env vars from the legacy [kubernetes-external-secrets](https://github.com/godaddy/kubernetes-external-secrets) controller. Deprecated in favour of `externalSecrets.externalSecretsOperator`.
   enabled: false
+  # @schema type: boolean
   # -- Also create the chart's config Secret while external secrets are enabled. It is skipped by default so it can't clobber keys supplied by the external secret.
   includeConfigSecrets: false
+  # @schema type: string
   # -- Name of the legacy external secret to read env vars from.
   name: retool-config
+  # @schema type: array
   # -- Additional legacy external secrets to read env vars from. Each item has a `name`.
   secrets: []
   externalSecretsOperator:
+    # @schema type: boolean
     # -- Read env vars through [External Secrets Operator](https://github.com/external-secrets/external-secrets).
     enabled: false
+    # @schema type: string
     # -- How often to re-read secrets from the provider, as a Go duration (`1m`, `1h`). `0` fetches once.
     refreshInterval: "1m"
     secretStoreRef:
+      # @schema type: string
       # -- Name of the SecretStore to read from.
       name: aws-secretsmanager
-      # @schema enum: [SecretStore, ClusterSecretStore]
+      # @schema type: string; enum: [SecretStore, ClusterSecretStore]
       # -- Kind of the store.
       kind: SecretStore
     # Example:
@@ -195,24 +210,30 @@ externalSecrets:
     #       creationPolicy: Owner
     #       deletionPolicy: Retain
     #       optional: true
+    # @schema type: array
     # -- ExternalSecrets to create, each also added to pod `envFrom`. Each item needs `name` and `path`; `creationPolicy`, `deletionPolicy` and `optional` are optional.
     secretRef: []
+    # @schema type: boolean
     # -- Create `kubernetes-client.io/v1` (legacy) ExternalSecret resources instead of `external-secrets.io` ones.
     useLegacyCR: true
+    # @schema type: string
     # -- Backend type for legacy ExternalSecret resources.
     backendType: secretsManager
 
+# @schema type: object
 # -- Legacy. Config file mounts under `/usr/share/retool/config`, keyed by filename.
 files: {}
 
 deployment:
+  # @schema type: object
   # -- Labels added to Retool Deployments.
   labels: {}
+  # @schema type: object
   # -- Annotations added to Retool Deployments.
   annotations: {}
 
 service:
-  # @schema enum: [ClusterIP, NodePort, LoadBalancer]
+  # @schema type: string; enum: [ClusterIP, NodePort, LoadBalancer]
   # -- Service type for the Retool backend.
   type: ClusterIP
   # @schema type: [integer, string]; pattern: ^[0-9]+$
@@ -239,10 +260,13 @@ service:
   # @schema type: [string, null]
   # -- (string) Name for the Service port.
   portName:
+  # @schema type: object
   # -- Annotations added to the Service.
   annotations: {}
+  # @schema type: object
   # -- Labels added to the Service.
   labels: {}
+  # @schema type: object
   # -- Extra selector labels for the Service.
   selector: {}
 
@@ -272,13 +296,16 @@ service:
 #         paths:
 #           - path: /*
 ingress:
+  # @schema type: boolean
   # -- Create an Ingress for Retool.
   enabled: true
   # @schema type: [string, null]
   # -- (string) IngressClass to use.
   ingressClassName:
+  # @schema type: object
   # -- Labels added to the Ingress.
   labels: {}
+  # @schema type: object
   # -- Annotations added to the Ingress.
   annotations: {}
   # @schema type: [string, null]
@@ -304,10 +331,13 @@ ingress:
 #     hostnames:
 #       - retool.example.com
 httpRoute:
+  # @schema type: boolean
   # -- Create a Gateway API HTTPRoute for Retool, as an alternative to `ingress`. Requires a Gateway API implementation (e.g. GKE Gateway, Istio, Envoy Gateway, NGINX Gateway Fabric).
   enabled: false
+  # @schema type: object
   # -- Labels added to the HTTPRoute.
   labels: {}
+  # @schema type: object
   # -- Annotations added to the HTTPRoute.
   annotations: {}
   # @schema type: [array, null]
@@ -327,16 +357,20 @@ httpRoute:
 #
 # Any other value of the Bitnami postgresql chart can also be set here.
 postgresql:
+  # @schema type: boolean
   # -- Deploy the bundled Postgres subchart. Not suitable for production.
   enabled: true
   # @schema type: [boolean, string]; enum: [true, false, "true", "false"]
   # -- Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`.
   ssl_enabled: false
   auth:
+    # @schema type: string
     # -- Database name.
     database: hammerhead_production
+    # @schema type: string
     # -- Database user. With `postgres`, a random admin password is generated unless `postgresPassword` is set.
     username: postgres
+    # @schema type: string
     # -- Database password.
     password: retool
     # postgresPassword: retool
@@ -347,30 +381,38 @@ postgresql:
   # The official image rather than bitnami/postgresql, since Retool depends on
   # the uuid-ossp extension.
   image:
+    # @schema type: string
     # -- Postgres image repository.
     repository: "postgres"
     # @schema type: [string, number]
     # -- Postgres image tag.
     tag: "13"
+  # @schema type: string
   # -- Postgres data directory.
   postgresqlDataDir: "/data/pgdata"
   primary:
     persistence:
+      # @schema type: boolean
       # -- Persist Postgres data in a PersistentVolumeClaim.
       enabled: true
+      # @schema type: string
       # -- Mount path of the Postgres volume.
       mountPath: "/data/"
 
 serviceAccount:
+  # @schema type: boolean
   # -- Create a ServiceAccount for Retool.
   create: true
   # @schema type: [string, null]
   # -- (string) ServiceAccount to use. When `create` is true and this is unset, a name is generated from the full name. When `create` is false, it must already exist.
   name:
+  # @schema type: object
   # -- Annotations added to the ServiceAccount, e.g. for IRSA or Workload Identity.
   annotations: {}
+  # @schema type: object
   # -- Labels added to the ServiceAccount.
   labels: {}
+  # @schema type: boolean
   # -- Mount the ServiceAccount token into Retool pods.
   automountToken: false
 
@@ -397,14 +439,18 @@ networkPolicy:
   # -- (bool) Block backend egress to the cloud metadata endpoint (169.254.169.254). `true`/`false` force it on or off.
   # @default -- null: on when blob storage is keyless (no static credential set), off otherwise
   blockCloudMetadataEgress:
+  # @schema type: array
   # -- Additional IPv4 CIDRs to deny in backend egress, e.g. private ranges user-defined requests should not reach.
   blockedRanges: []
+  # @schema type: array
   # -- IPv6 CIDRs to deny in backend egress. Empty leaves IPv6 egress fully allowed.
   blockedRanges6: []
 
 livenessProbe:
+  # @schema type: boolean
   # -- Enable the backend liveness probe.
   enabled: true
+  # @schema type: string
   # -- HTTP path the probe requests.
   path: /api/checkHealth
   # @schema type: [string, null]
@@ -429,8 +475,10 @@ livenessProbe:
   failureThreshold: 3
 
 readinessProbe:
+  # @schema type: boolean
   # -- Enable the backend readiness probe.
   enabled: true
+  # @schema type: string
   # -- HTTP path the probe requests.
   path: /api/checkHealth
   # @schema type: [string, null]
@@ -455,14 +503,17 @@ readinessProbe:
   successThreshold: 5
 
 preStopHook:
+  # @schema type: boolean
   # -- Sleep 30 seconds before the backend container stops, so load balancers drain it first.
   enabled: true
 
 # Other deployments have their own <component>.startupProbe, also enabled by
 # default.
 startupProbe:
+  # @schema type: boolean
   # -- Enable the backend startup probe.
   enabled: true
+  # @schema type: string
   # -- HTTP path the probe requests.
   path: /api/checkHealth
   # @schema type: [string, null]
@@ -489,12 +540,15 @@ startupProbe:
   # -- Consecutive failures before the container is restarted. With the defaults, the backend has 5 minutes to start.
   failureThreshold: 30
 
+# @schema type: array
 # -- Extra containers added to the backend pods.
 extraContainers: []
 
+# @schema type: array
 # -- Extra volume mounts added to Retool containers.
 extraVolumeMounts: []
 
+# @schema type: array
 # -- Extra volumes added to Retool pods.
 extraVolumes: []
 
@@ -512,9 +566,11 @@ resources:
     cpu: 2048m
     memory: 4096Mi
 
+# @schema type: string
 # -- PriorityClass for Retool pods.
 priorityClassName: ""
 
+# @schema type: object
 # -- Affinity for Retool pods. The default prefers spreading Retool pods across nodes.
 affinity:
   # @schema hidden
@@ -530,13 +586,16 @@ affinity:
                   - retool
           topologyKey: "kubernetes.io/hostname"
 
+# @schema type: array
 # -- Tolerations for Retool pods.
 tolerations: []
 
+# @schema type: object
 # -- Node selector for Retool pods.
 nodeSelector:
   kubernetes.io/arch: amd64
 
+# @schema type: object
 # -- Annotations added to all Retool pods.
 podAnnotations: {}
 
@@ -547,9 +606,11 @@ revisionHistoryLimit: 3
 # Example:
 #   podDisruptionBudget:
 #     maxUnavailable: 1
+# @schema type: object
 # -- PodDisruptionBudget spec for Retool deployments, with `minAvailable` or `maxUnavailable` as a pod count (`1`) or a percentage (`"50%"`). Empty creates none.
 podDisruptionBudget: {}
 
+# @schema type: object
 # -- Labels added to the backend and jobs-runner pods.
 podLabels: {}
 
@@ -1971,12 +2032,16 @@ retool-temporal-services-helm:
     enabled: false
 
 persistentVolumeClaim:
+  # @schema type: boolean
   # -- Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector and workflows pods.
   enabled: false
+  # @schema type: string
   # -- Use this existing PVC instead of creating one.
   existingClaim: ""
+  # @schema type: object
   # -- Annotations added to the created PVC.
   annotations: {}
+  # @schema type: array
   # -- Access modes of the created PVC.
   accessModes:
     - ReadWriteOnce
@@ -1986,10 +2051,12 @@ persistentVolumeClaim:
   # @schema type: [string, null]
   # -- StorageClass of the created PVC. `"-"` sets `storageClassName: ""`, which disables dynamic provisioning; empty uses the cluster default.
   storageClass: ""
+  # @schema type: string
   # -- Path the volume is mounted at.
   mountPath: /retool_backend/pv-data
 
 securityContext:
+  # @schema type: boolean
   # -- Set `runAsUser` and `fsGroup` on the main Retool pods.
   enabled: false
   # @schema type: [integer, string]; pattern: ^[0-9]+$
@@ -1998,6 +2065,7 @@ securityContext:
   # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Group ID that owns mounted volumes.
   fsGroup: 2000
+  # @schema type: object
   # -- Additional pod security context fields for the main Retool pods, in Kubernetes `PodSecurityContext` form.
   extraSecurityContext: {}
 
@@ -2007,6 +2075,7 @@ securityContext:
 #       configMap: my-ca-bundle
 #       mountPath: /etc/ssl/certs/my-ca.pem
 #       subPath: ca.pem
+# @schema type: array
 # -- ConfigMaps to mount into Retool containers. Each item needs `name`, `configMap` and `mountPath`, and optionally `subPath`.
 extraConfigMapMounts: []
 
@@ -2015,6 +2084,7 @@ extraConfigMapMounts: []
 #     wait-for-db:
 #       image: busybox
 #       command: ["sh", "-c", "until nc -z db 5432; do sleep 2; done"]
+# @schema type: object
 # -- Init containers for Retool pods, as a map of container name to container spec.
 initContainers: {}
 
@@ -2027,13 +2097,16 @@ initContainers: {}
 #       spec:
 #         securityPolicy:
 #           name: "my-gcp-cloud-armor-policy"
+# @schema type: array
 # -- Extra Kubernetes manifests to deploy with the chart. Each is rendered with `tpl`, so it can use template expressions.
 extraManifests: []
 
 # Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
 securityGroupPolicy:
+  # @schema type: boolean
   # -- Create an AWS SecurityGroupPolicy for Retool pods (EKS security groups for pods).
   enabled: false
+  # @schema type: array
   # -- Security group IDs to attach.
   groupIds: []
 

@@ -31,19 +31,22 @@ Helm validates every install, upgrade, `template` and `lint` against `values.sch
 **Every key gets a `# --` description** directly above it: one or two sentences, in sentence case, ending with a period. Mention what the key does, not how the template implements it. Wrap other key names in backticks.
 
 ```yaml
+# @schema type: [integer, string]; pattern: ^[0-9]+$
 # -- Number of backend replicas. With more than 1, a separate jobs-runner pod is also deployed.
 replicaCount: 2
 ```
 
+**Every documented key declares its type with `# @schema type:`** (or `$ref:`). Don't rely on the schema tool inferring a type from the default value: the type then changes whenever someone edits the default, and it's usually narrower than what the templates accept. `generate.sh` fails if a key with a `# --` description has no explicit type. Keys inside a top-level `# @schema hidden` section are exempt until that section is converted.
+
 **Put `# @schema` lines above the `# --` line.** helm-docs reads everything from `# --` down to the key as the description, so an annotation below it would leak into the README.
 
 ```yaml
-# @schema enum: [Always, IfNotPresent, Never]
+# @schema type: string; enum: [Always, IfNotPresent, Never]
 # -- Image pull policy for Retool containers.
 pullPolicy: "IfNotPresent"
 ```
 
-**Optional keys are real keys with an empty value, never commented out.** Neither tool sees commented-out keys, so they would be missing from the README and the schema. An empty value is `null`, which templates treat the same as a missing key. Don't use `""` instead: `quote` renders `null` and `""` differently, so the rendered manifests would change. Because the schema tool infers type `null` from an empty value, always give these keys an explicit type, plus a helm-docs type hint in parentheses:
+**Optional keys are real keys with an empty value, never commented out.** Neither tool sees commented-out keys, so they would be missing from the README and the schema. An empty value is `null`, which templates treat the same as a missing key. Don't use `""` instead: `quote` renders `null` and `""` differently, so the rendered manifests would change. Include `null` in their type, and add a helm-docs type hint in parentheses, since helm-docs can't tell the type from an empty value:
 
 ```yaml
 # @schema type: [string, null]
@@ -51,7 +54,7 @@ pullPolicy: "IfNotPresent"
 licenseKeySecretName:
 ```
 
-**Give a key every type the templates accept.** The schema tool infers a key's type from its default, which is often narrower than what the templates handle. Check how the value is used before tightening anything:
+**Give a key every type the templates accept.** Check how the value is used before choosing its type:
 
 - Numbers rendered into a manifest work as an integer or a numeric string (`replicaCount: "2"` renders as `replicas: 2`), so accept both and reject anything else: `# @schema type: [integer, string]; pattern: ^[0-9]+$`. JSON Schema applies `pattern` only to strings.
 - Booleans rendered with `quote` (usually into an env var) work as a boolean or the strings `"true"`/`"false"`: `# @schema type: [boolean, string]; enum: [true, false, "true", "false"]`. Don't do this for switches the templates test with `if`, where the string `"false"` counts as true.
@@ -75,7 +78,7 @@ licenseKeySecretName:
 
 ```yaml
 image: # @schema required
-  # @schema required; minLength: 1
+  # @schema type: string; required; minLength: 1
   # -- Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.
   # @default -- none (required)
   tag: ""
@@ -108,7 +111,7 @@ podDisruptionBudget: {}
 
 Top-level sections that haven't been converted yet are marked `# @schema hidden`, which keeps them out of the schema (anything is accepted) and the README. To convert one:
 
-1. Turn every commented-out option into a real key and write `# --` descriptions for all keys.
+1. Turn every commented-out option into a real key, and give every key a `# --` description and an explicit `# @schema type`.
 2. Read the templates that consume the section and set types per the conventions above.
 3. Remove the `# @schema hidden` marker and run `generate.sh`.
 4. Run `charts/retool/schema/compare-render.sh`. It renders the same combinations as CI (every `ci/` values file alone and with each option file) on `origin/main` and on your working tree; documentation changes must report every combination as `same`.
