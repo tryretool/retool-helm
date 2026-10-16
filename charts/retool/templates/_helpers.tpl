@@ -144,12 +144,18 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 
+{{/*
+DEPLOYMENT_TEMPLATE_{TYPE,VERSION} reporting. Both default to the plain chart
+identity. The top-level `deploymentTemplateType` / `deploymentTemplateVersion`
+values are reserved overrides for first-party wrappers (Retool's self-hosted
+blueprints) and are deliberately not documented in values.yaml.
+*/}}
 {{- define "retool.deploymentTemplateType" -}}
-{{- "k8s-helm" | quote -}}
+{{- .Values.deploymentTemplateType | default "k8s-helm" | quote -}}
 {{- end -}}
 
 {{- define "retool.deploymentTemplateVersion" -}}
-{{- .Chart.Version | quote -}}
+{{- .Values.deploymentTemplateVersion | default .Chart.Version | quote -}}
 {{- end -}}
 
 {{/*
