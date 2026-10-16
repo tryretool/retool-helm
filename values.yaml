@@ -1376,8 +1376,8 @@ rr:
     # the editor preview then loads on that origin instead of a sandboxed iframe.
     # Requires rr.appServingLayer, a *.sandboxes.<domain> DNS record and
     # certificate, and a route to the proxy Service on proxy.port
-    # (rr.appServingLayer.ingress renders one). Turn it on only after that route
-    # works; it moves every org's editor.
+    # (rr.appServingLayer.ingress renders one). Turn this on only after that route
+    # works; this moves every editor preview immediately.
     wildcardSandboxes: false
     # Overrides the derived sandboxes.<rr.appServingLayer.domain> root, e.g. to put
     # sandboxes on a separate registrable domain. Setting it also turns per-sandbox
