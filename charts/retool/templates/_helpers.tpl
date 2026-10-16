@@ -89,7 +89,6 @@ target: backendInternal routes to the backend API Service.
 {{- if eq $target "backendInternal" -}}
 {{- $serviceName = include "retool.backendInternal.name" $root -}}
 {{- $servicePort = $path.port | default (.backendInternalPort | default 3001) -}}
-{{- $pathType = $path.pathType | default "Exact" -}}
 {{- end -}}
 - path: {{ $path.path }}
   {{- if (semverCompare ">=1.18-0" $root.Capabilities.KubeVersion.Version) }}
