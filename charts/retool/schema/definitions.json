@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shared definitions referenced from values.yaml with `# @schema $ref: schema/definitions.json#/definitions/<name>`. generate.sh bundles them into values.schema.json.",
+  "definitions": {
+    "quantity": {
+      "description": "A Kubernetes resource quantity, e.g. `500m`, `2`, or `4Gi`.",
+      "type": ["string", "number"]
+    },
+    "intOrString": {
+      "description": "An integer or a string, e.g. a pod count (`1`) or a percentage (`\"50%\"`).",
+      "type": ["integer", "string"]
+    },
+    "resources": {
+      "description": "Container resource requests and limits (core/v1 ResourceRequirements).",
+      "type": ["object", "null"],
+      "properties": {
+        "limits": {
+          "type": ["object", "null"],
+          "additionalProperties": { "$ref": "#/definitions/quantity" }
+        },
+        "requests": {
+          "type": ["object", "null"],
+          "additionalProperties": { "$ref": "#/definitions/quantity" }
+        },
+        "claims": {
+          "type": ["array", "null"]
+        }
+      }
+    }
+  }
+}
