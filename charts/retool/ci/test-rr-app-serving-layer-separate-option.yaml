@@ -1,4 +1,6 @@
-# R2 app serving layer split into its own deployment + service.
+# R2 app serving layer in its own deployment + service (separate.enabled). The
+# default, in-process on the main backend, is covered by
+# test-rr-app-serving-layer-option.yaml.
 #
 # Exercises the opt-in path: appServingLayer is deliberately NOT wired to the
 # rr.enabled master switch (it needs an apps domain and matching wildcard DNS
@@ -25,7 +27,7 @@ rr:
         - secretName: retool-apps-tls
           hosts:
             - "*.apps.example.retool.com"
-            - "*.sandboxes.apps.example.retool.com"
+            - "*.previews.example.retool.com"
     separate:
       enabled: true
       replicaCount: 2
@@ -43,12 +45,13 @@ rr:
       labels:
         test-service-label: "true"
 
-  # Derives the editor sandbox root, sandboxes.<appServingLayer.domain>.
+  # frontendWildcardDomain overrides the derived sandboxes.<appServingLayer.domain>.
   agentSandbox:
     enabled: true
     externalSecret:
       name: agent-sandbox-secrets
     wildcardSandboxes: true
+    frontendWildcardDomain: previews.example.retool.com
 
   blobStorage:
     s3:

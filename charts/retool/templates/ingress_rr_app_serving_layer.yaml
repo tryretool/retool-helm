@@ -1,7 +1,7 @@
 {{- /*
 Routes the apps domain, and the editor sandbox domain when per-sandbox origins are
 on, with nothing else on those hosts. The main Ingress adds multiplayer and MCP
-paths to every host, so these hosts get their own Ingress (as Retool Cloud does).
+paths to every host, so these hosts get their own Ingress.
 */}}
 {{- if and (include "retool.appServingLayer.enabled" .) (.Values.rr.appServingLayer.ingress).enabled }}
 {{- $ing := .Values.rr.appServingLayer.ingress }}

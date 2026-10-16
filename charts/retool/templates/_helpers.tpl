@@ -1355,8 +1355,8 @@ Set app serving layer deployment/service name (only used when rr.appServingLayer
 {{- end -}}
 
 {{/*
-Selector labels for the app serving layer. Note changes here will require manual
-deployment recreation and incur downtime, so should be avoided.
+Selector labels for the separate app serving layer Deployment. Note changes here will
+require manual deployment recreation and incur downtime, so should be avoided.
 */}}
 {{- define "retool.appServingLayer.selectorLabels" -}}
 retoolService: {{ include "retool.appServingLayer.name" . }}
@@ -1393,7 +1393,7 @@ Truthy when the app serving layer runs in its own deployment
 {{/*
 Domain published R2 apps are served under (RR_APP_DOMAIN), e.g. apps.retool.example.com.
 Read by the serving layer to resolve a request hostname to an app, and by the main
-backend to build published-app URLs, so it is rendered onto both.
+backend to build published-app URLs.
 */}}
 {{- define "retool.appServingLayer.domain" -}}
 {{- $asl := .Values.rr.appServingLayer | default dict -}}
@@ -1404,7 +1404,8 @@ backend to build published-app URLs, so it is rendered onto both.
 
 {{/*
 RR_APP_DOMAIN for every workload that builds or resolves published-app URLs: the main
-backend, the serving layer, and the standalone git server (CLI preview links).
+backend (which runs the serving layer unless separate.enabled), the separate serving
+layer, and the standalone git server (CLI preview links).
 Usage: {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
 */}}
 {{- define "retool.appServingLayer.domainEnv" -}}
