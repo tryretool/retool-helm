@@ -1,0 +1,22 @@
+# Exercises the AppArmor profile installer in COS mode (GKE Container-Optimized
+# OS). The "cos" value omits the "userns" keyword from the AppArmor profile,
+# which is necessary because GKE COS kernels lack
+# CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS and their apparmor_parser rejects
+# the keyword entirely.
+#
+# This file validates that helm template renders valid manifests when
+# appArmorProfileInstaller is set to "cos" — the profile must NOT contain
+# the "userns" rule.
+#
+# Overlaid on test-install-values.yaml.
+
+codeExecutor:
+  enabled: true
+  useSeccompProfile: true
+  appArmorProfileInstaller: "cos"
+
+rr:
+  jsExecutor:
+    enabled: true
+  agentSandbox:
+    appArmorProfileInstaller: "cos"

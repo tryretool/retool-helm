@@ -164,11 +164,10 @@ else
   fail "retool-executor profile NOT found in kernel"
 fi
 
-# nsjail profile uses flags=(unconfined), so it appears as "(unconfined)" in the kernel
-if echo "$PROFILES" | grep -q "/usr/bin/nsjail"; then
-  pass "usr.bin.nsjail profile loaded"
+if echo "$PROFILES" | grep -q "retool-executor-restricted (enforce)"; then
+  pass "retool-executor-restricted profile loaded"
 else
-  fail "usr.bin.nsjail profile NOT found in kernel"
+  fail "retool-executor-restricted profile NOT found in kernel"
 fi
 
 if echo "$PROFILES" | grep -q "retool-agent-sandbox (enforce)"; then
@@ -178,37 +177,14 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Test pod: retool-executor profile
+# Executors: the real images run nsjail under the chart's securityContext
 # ---------------------------------------------------------------------------
-echo "=== Testing retool-executor profile ==="
+echo "=== Testing the executors run nsjail ==="
 
-kubectl run test-executor -n "$NAMESPACE" --image=busybox:1.37 --restart=Never \
-  --overrides='{
-    "spec": {
-      "containers": [{
-        "name": "test-executor",
-        "image": "busybox:1.37",
-        "command": ["sleep", "120"],
-        "securityContext": {
-          "appArmorProfile": {"type": "Localhost", "localhostProfile": "retool-executor"}
-        }
-      }]
-    }
-  }' -- sleep 120 2>/dev/null || true
-
-kubectl wait --for=condition=Ready pod/test-executor -n "$NAMESPACE" --timeout=60s
-
-CURRENT=$(kubectl exec test-executor -n "$NAMESPACE" -- cat /proc/self/attr/current 2>/dev/null || echo "UNKNOWN")
-if echo "$CURRENT" | grep -q "retool-executor (enforce)"; then
-  pass "test-executor pod running under retool-executor profile"
+if "$SCRIPT_DIR/test-executor-nsjail.sh" "$NAMESPACE"; then
+  pass "code-executor and js-executor run nsjail, with every other process restricted"
 else
-  fail "test-executor pod profile is '$CURRENT', expected 'retool-executor (enforce)'"
-fi
-
-if kubectl exec test-executor -n "$NAMESPACE" -- unshare --user --mount --pid --fork echo "OK" 2>/dev/null; then
-  pass "unshare --user --mount --pid --fork succeeds under retool-executor"
-else
-  fail "unshare --user --mount --pid --fork FAILED under retool-executor"
+  fail "code-executor or js-executor failed under the AppArmor profiles (details above)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -246,11 +222,47 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# COS mode: verify profiles render without userns keyword
+# ---------------------------------------------------------------------------
+echo "=== COS mode: verifying profiles omit userns ==="
+
+COS_NSJAIL_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set codeExecutor.appArmorProfileInstaller=cos \
+  "${NSJAIL_TEMPLATES[@]}")
+
+if echo "$COS_NSJAIL_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "COS nsjail profile should NOT contain 'userns' rule"
+else
+  pass "COS nsjail profile correctly omits 'userns'"
+fi
+
+COS_SANDBOX_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set rr.agentSandbox.appArmorProfileInstaller=cos \
+  "${SANDBOX_TEMPLATES[@]}")
+
+if echo "$COS_SANDBOX_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "COS agent-sandbox profile should NOT contain 'userns' rule"
+else
+  pass "COS agent-sandbox profile correctly omits 'userns'"
+fi
+
+# Also verify case-insensitive handling (COS, Cos)
+COS_UPPER_PROFILE=$(helm template "$RELEASE" "$CHART_DIR" "${COMMON_SETS[@]}" \
+  --set codeExecutor.appArmorProfileInstaller=COS \
+  "${NSJAIL_TEMPLATES[@]}")
+
+if echo "$COS_UPPER_PROFILE" | grep -qE "^\s+userns,"; then
+  fail "Uppercase 'COS' should also omit 'userns' rule"
+else
+  pass "Uppercase 'COS' correctly omits 'userns'"
+fi
+
+# ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
 echo "=== Cleanup ==="
 
-kubectl delete pod test-executor test-sandbox -n "$NAMESPACE" --grace-period=0 --force 2>/dev/null || true
+kubectl delete pod test-sandbox -n "$NAMESPACE" --grace-period=0 --force 2>/dev/null || true
 kubectl delete namespace "$NAMESPACE" --wait=false 2>/dev/null || true
 
 if $CLEANUP_K3S; then

@@ -8,28 +8,32 @@ metadata:
     {{- include "retool.labels" . | nindent 4 }}
     app.kubernetes.io/component: apparmor-installer
 data:
-  usr.bin.nsjail: |
-    profile /usr/bin/nsjail flags=(unconfined) {
-       userns,
-    }
   retool-executor: |
     #include <tunables/global>
 
+    # Executor containers start under retool-executor, which has the rights nsjail
+    # needs (mount, pivot_root, userns). Everything they exec except nsjail gets
+    # retool-executor-restricted stacked on top, which takes those rights away.
+    # When a restricted process execs nsjail, nsjail drops back to retool-executor.
+    # allowPrivilegeEscalation: false lets a process drop a stacked profile, but not
+    # switch to one with more rights.
     profile retool-executor flags=(attach_disconnected,mediate_deleted) {
-      #include <abstractions/base>
-
       network,
       capability,
-      file,
+      /{,**} rwlkm,
       umount,
       mount,
       pivot_root,
+{{- if eq (include "retool.appArmor.includeUserns" .Values.codeExecutor.appArmorProfileInstaller) "1" }}
       userns,
+{{- end }}
 
       signal (send,receive) peer=retool-executor,
+      signal (send,receive) peer=retool-executor-restricted,
       signal (receive) peer=unconfined,
 
       ptrace (trace,read,tracedby,readby) peer=retool-executor,
+      ptrace (trace,read,tracedby,readby) peer="retool-executor//&retool-executor-restricted",
 
       deny @{PROC}/* w,
       deny @{PROC}/sys/[^k]*/** wklx,
@@ -45,5 +49,42 @@ data:
       deny /sys/firmware/** rwklx,
       deny /sys/devices/virtual/powercap/** rwklx,
       deny /sys/kernel/security/** rwklx,
+
+      /usr/bin/nsjail ix,       # code-executor
+      /usr/local/bin/nsjail ix, # js-executor
+      /** cix -> &retool-executor-restricted,
+    }
+
+    profile retool-executor-restricted flags=(attach_disconnected,mediate_deleted) {
+      #include <abstractions/base>
+
+      network,
+      capability,
+      file,
+
+      signal (send,receive) peer=retool-executor,
+      signal (send,receive) peer=retool-executor-restricted,
+      signal (receive) peer=unconfined,
+
+      ptrace (trace,read,tracedby,readby) peer="retool-executor//&retool-executor-restricted",
+      ptrace (read,tracedby,readby) peer=retool-executor,
+
+      deny @{PROC}/* w,
+      deny @{PROC}/sys/[^k]*/** wklx,
+      deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} wklx,
+      deny @{PROC}/sysrq-trigger rwklx,
+      deny @{PROC}/kcore rwklx,
+
+      deny /sys/[^f]*/** wklx,
+      deny /sys/f[^s]*/** wklx,
+      deny /sys/fs/[^c]*/** wklx,
+      deny /sys/fs/c[^g]*/** wklx,
+      deny /sys/fs/cg[^r]*/** wklx,
+      deny /sys/firmware/** rwklx,
+      deny /sys/devices/virtual/powercap/** rwklx,
+      deny /sys/kernel/security/** rwklx,
+
+      /usr/bin/nsjail px -> retool-executor,
+      /usr/local/bin/nsjail px -> retool-executor,
     }
 {{- end }}

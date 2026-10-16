@@ -1,0 +1,51 @@
+rr:
+
+  # Agent Sandbox NetworkPolicy on a GKE-style cluster: NodeLocal DNSCache
+  # answers at the kube-dns ClusterIP (dnsCidrs), agent traffic comes from the
+  # Temporal workers (always allowed) plus a custom-labelled caller
+  # (extraIngressFrom), and the controller/proxy get extra egress rules.
+  agentSandbox:
+    enabled: true
+
+    image:
+      repository: tryretool/agent-sandbox-service
+      tag: 3.123.4
+      pullPolicy: IfNotPresent
+
+    jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AI\nY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
+    jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49\nAwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoB\nQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
+    # encryption key is required (proxy derives the asset-token HMAC key from it)
+    encryptionKey: a12b01429fe0fe69a80da94e9e837ab2f1e9bda378ed8a25905a238f6fea6b7a
+
+    postgres:
+      host: 10.20.0.5
+      port: 5432
+      database: agent_sandbox
+      user: retool
+      passwordSecretName: agent-sandbox-db-password
+      passwordSecretKey: password
+
+    networkPolicy:
+      enabled: true
+      dnsCidrs:
+        - 240.65.0.10/32
+      postgresAllowlist:
+        - 10.20.0.5/32
+      extraIngressFrom:
+        - podSelector:
+            matchLabels:
+              app: custom-retool-caller
+      controllerExtraEgress:
+        - to:
+            - ipBlock:
+                cidr: 10.30.0.0/24
+          ports:
+            - port: 8200
+              protocol: TCP
+      proxyExtraEgress:
+        - to:
+            - ipBlock:
+                cidr: 10.30.0.0/24
+          ports:
+            - port: 8200
+              protocol: TCP

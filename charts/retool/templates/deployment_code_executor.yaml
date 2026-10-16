@@ -131,17 +131,23 @@ spec:
           {{- if .Values.codeExecutor.securityContext }}
 {{ toYaml .Values.codeExecutor.securityContext | indent 10 }}
           {{- else if $useSecComp }}
+          allowPrivilegeEscalation: false
           capabilities:
-            add: ["NET_ADMIN"]
+            drop: ["ALL"]
+            # Startup runs as root to install the iptables rules that restrict the
+            # sandboxes' network access: NET_ADMIN, plus NET_RAW for iptables-legacy's
+            # raw socket. It then drops to retool_user, which needs SETUID and SETGID.
+            add: ["NET_ADMIN", "NET_RAW", "SETUID", "SETGID"]
           procMount: Unmasked
           seccompProfile:
             type: Localhost
             localhostProfile: {{ .Values.codeExecutor.seccompLocalhostProfile }}
           {{- else }}
+          {{- /* nsjail without the seccomp profile needs a privileged container, which is
+                 why the hardened defaults above are not repeated here: the API server
+                 rejects `privileged: true` alongside `allowPrivilegeEscalation: false`,
+                 and one rejected container fails the whole release. */}}
           privileged: true
-          {{- end }}
-          {{- if .Values.securityContext.extraContainerSecurityContext }}
-{{ toYaml .Values.securityContext.extraContainerSecurityContext | indent 10 }}
           {{- end }}
         env:
           - name: DEPLOYMENT_TEMPLATE_TYPE
