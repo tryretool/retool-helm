@@ -71,6 +71,18 @@ licenseKeySecretName:
 
 **Use `enum` only for values Kubernetes or Retool would reject anyway**, such as `service.type` or `pullPolicy`.
 
+**Mark values the chart cannot work without as required in three places.** Helm validates the merged values, where the default always supplies the key, so `required` alone never fails in Helm; it makes editors flag a values file that omits the key. `minLength: 1` is what makes Helm reject the empty default. Add `required` to each parent too, so editors flag the key when its parent section is missing. Keep the template's `required` call as well, since Helm 3.16+ can skip schema validation with `--skip-schema-validation`. Show it in the README with `# @default -- none (required)`:
+
+```yaml
+image: # @schema required
+  # @schema required; minLength: 1
+  # -- Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.
+  # @default -- none (required)
+  tag: ""
+```
+
+Values that are only required depending on other settings, such as `config.encryptionKey`, stay as `required`/`fail` checks in the templates. A schema can't see whether a Secret already exists in the cluster, and its error messages for conditions that involve other keys are worse.
+
 **Use `# @default --` when the effective default is computed in a template**, so the README shows what actually happens:
 
 ```yaml
@@ -99,5 +111,5 @@ Top-level sections that haven't been converted yet are marked `# @schema hidden`
 1. Turn every commented-out option into a real key and write `# --` descriptions for all keys.
 2. Read the templates that consume the section and set types per the conventions above.
 3. Remove the `# @schema hidden` marker and run `generate.sh`.
-4. Run `charts/retool/schema/compare-render.sh`. It renders every values file in `charts/retool/ci/` on `origin/main` and on your working tree; documentation changes must report every file as `same`.
+4. Run `charts/retool/schema/compare-render.sh`. It renders the same combinations as CI (every `ci/` values file alone and with each option file) on `origin/main` and on your working tree; documentation changes must report every combination as `same`.
 5. Check that the CI values files and the repo-root `values.yaml` from `main` still pass validation (`helm lint charts/retool -f <file>`).

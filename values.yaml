@@ -100,10 +100,12 @@ config:
     # -- (bool) Connect to Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`; set it here rather than in `env`.
     ssl_enabled:
 
-image:
+image: # @schema required
   # -- Retool backend image repository.
   repository: "tryretool/backend"
+  # @schema required; minLength: 1
   # -- Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.
+  # @default -- none (required)
   tag: ""
   # @schema enum: [Always, IfNotPresent, Never]
   # -- Image pull policy for Retool containers.

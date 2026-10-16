@@ -2,6 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Retool Helm chart values",
   "type": "object",
+  "required": [
+    "image"
+  ],
   "properties": {
     "affinity": {
       "description": "Affinity for Retool pods. The default prefers spreading Retool pods across nodes.",
@@ -379,6 +382,9 @@
     },
     "image": {
       "type": "object",
+      "required": [
+        "tag"
+      ],
       "properties": {
         "pullPolicy": {
           "description": "Image pull policy for Retool containers.",
@@ -402,7 +408,8 @@
         },
         "tag": {
           "description": "Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.",
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       }
     },

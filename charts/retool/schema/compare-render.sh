@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
-# Renders the chart with every values file in charts/retool/ci/ on a base ref
-# and on the working tree, and diffs the output. Use it when annotating
-# values.yaml: documentation and schema changes must not change what the chart
-# renders.
+# Renders the chart the way .github/kubeconform.sh does -- every
+# charts/retool/ci/**/*values.yaml on its own and combined with each
+# *option.yaml -- on a base ref and on the working tree, and diffs the output.
+# Use it when annotating values.yaml: documentation and schema changes must
+# not change what the chart renders.
 #
 # The base is rendered with the working tree's chart version, so a version bump
 # does not show up as a change. Lines holding randomly generated secrets are
@@ -33,18 +34,23 @@ cp "${CHART_DIR}"/charts/*.tgz "${tmp}/base/charts/retool/charts/" 2>/dev/null |
 version="$(grep '^version:' "${CHART_DIR}/Chart.yaml")"
 sed -i.bak "s/^version:.*/${version}/" "${tmp}/base/charts/retool/Chart.yaml"
 
-# render <chart-dir> <values-file> <out-file>
+# render <chart-dir> <out-file> <values-file>...
 render() {
-  helm template retool "$1" -f "$2" 2>&1 \
+  local chart="$1" out="$2"
+  shift 2
+  local args=()
+  for f in "$@"; do args+=(-f "$f"); done
+  helm template retool "$chart" "${args[@]}" 2>&1 \
     | grep -vE '(password|jwt-secret|encryption-key|oauthIntrospectionAuthToken)"?: ' \
-    > "$3" || true
+    > "$out" || true
 }
 
-rc=0
-while IFS= read -r values; do
-  name="${values#"${CHART_DIR}/"}"
-  render "${tmp}/base/charts/retool" "$values" "${tmp}/base.out"
-  render "$CHART_DIR" "$values" "${tmp}/head.out"
+# compare <values-file>...
+compare() {
+  local name="${*#"${CHART_DIR}/"}"
+  name="${name// ${CHART_DIR}\// + }"
+  render "${tmp}/base/charts/retool" "${tmp}/base.out" "$@"
+  render "$CHART_DIR" "${tmp}/head.out" "$@"
   if diff -u --label "${BASE_REF}" --label "working tree" "${tmp}/base.out" "${tmp}/head.out" > "${tmp}/diff"; then
     echo "same     ${name}"
   else
@@ -52,6 +58,16 @@ while IFS= read -r values; do
     cat "${tmp}/diff"
     rc=1
   fi
-done < <(find "${CHART_DIR}/ci" -name '*.yaml' | sort)
+}
+
+rc=0
+options=()
+while IFS= read -r f; do options+=("$f"); done < <(find "${CHART_DIR}/ci" -name '*option.yaml' | sort)
+while IFS= read -r values; do
+  compare "$values"
+  for option in "${options[@]}"; do
+    compare "$values" "$option"
+  done
+done < <(find "${CHART_DIR}/ci" -name '*values.yaml' | sort)
 
 exit $rc

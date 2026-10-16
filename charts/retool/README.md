@@ -63,7 +63,7 @@ This table and `values.schema.json` are generated from the comments in [values.y
 | config.postgresql.passwordSecretKey | string | `postgresql-password` | Key in `passwordSecretName` holding the database password. |
 | config.postgresql.ssl_enabled | bool | `nil` | Connect to Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`; set it here rather than in `env`. |
 | image.repository | string | `"tryretool/backend"` | Retool backend image repository. |
-| image.tag | string | `""` | Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you. |
+| image.tag | string | none (required) | Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you. |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy for Retool containers. |
 | image.pullSecrets | list | `nil` | Image pull secrets for Retool pods, e.g. `[{name: my-registry}]`. |
 | initImage.repository | string | `"busybox"` | Utility image for the initContainers that install the nsjail seccomp profile on the host, used by the code executor and JS executor. Override it to pull from a private mirror, an air-gapped registry, or GCP Marketplace. |
