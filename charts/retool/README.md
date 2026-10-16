@@ -2,7 +2,7 @@
 
 Deploy self-hosted Retool on Kubernetes.
 
-For a full walkthrough, see the [Helm deployment guide](https://docs.retool.com/docs/deploy-with-helm) on docs.retool.com. Release notes are on the [releases page](https://github.com/tryretool/retool-helm/releases).
+Release notes are on the [releases page](https://github.com/tryretool/retool-helm/releases).
 
 ## Installing
 
