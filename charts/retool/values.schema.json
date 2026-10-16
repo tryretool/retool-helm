@@ -626,7 +626,7 @@
           "type": "object"
         },
         "enabled": {
-          "description": "Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector and workflows pods.",
+          "description": "Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector, MCP, multiplayer and git server pods.",
           "type": "boolean"
         },
         "existingClaim": {
@@ -638,14 +638,10 @@
           "type": "string"
         },
         "size": {
-          "allOf": [
-            {
-              "description": "Requested size of the created PVC.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/definitions.json/definitions/quantity"
-            }
+          "description": "Requested size of the created PVC.",
+          "type": [
+            "string",
+            "number"
           ]
         },
         "storageClass": {
@@ -847,7 +843,7 @@
     "resources": {
       "allOf": [
         {
-          "description": "Resources for the backend, jobs-runner, dbconnector and workflows-backend pods, unless they set their own.",
+          "description": "Resources for the backend pods. Also the default for the jobs-runner, dbconnector, workflows backend, workflow workers and git server pods when they don't set their own.",
           "type": "object"
         },
         {

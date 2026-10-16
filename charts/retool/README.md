@@ -19,7 +19,7 @@ helm install my-retool retool/retool -f values.yaml
 The chart ships a [`values.schema.json`](values.schema.json). Helm checks your values against it on every `helm install`, `helm upgrade`, `helm template` and `helm lint`, so a mistyped value fails before anything reaches the cluster. To check a values file without installing:
 
 ```bash
-helm lint retool/retool -f values.yaml
+helm template my-retool retool/retool -f values.yaml > /dev/null
 ```
 
 Editors that understand JSON Schema can use the same file for completion and inline docs. For example, with the VS Code YAML extension, add this to the top of your values file:
@@ -161,7 +161,7 @@ This table and `values.schema.json` are generated from the comments in [values.y
 | extraContainers | list | `[]` | Extra containers added to the backend pods. |
 | extraVolumeMounts | list | `[]` | Extra volume mounts added to Retool containers. |
 | extraVolumes | list | `[]` | Extra volumes added to Retool pods. |
-| resources | object | `{"limits":{"cpu":"4096m","memory":"8192Mi"},"requests":{"cpu":"2048m","memory":"4096Mi"}}` | Resources for the backend, jobs-runner, dbconnector and workflows-backend pods, unless they set their own. |
+| resources | object | `{"limits":{"cpu":"4096m","memory":"8192Mi"},"requests":{"cpu":"2048m","memory":"4096Mi"}}` | Resources for the backend pods. Also the default for the jobs-runner, dbconnector, workflows backend, workflow workers and git server pods when they don't set their own. |
 | priorityClassName | string | `""` | PriorityClass for Retool pods. |
 | affinity | object | `{"podAntiAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"app.kubernetes.io/name","operator":"In","values":["retool"]}]},"topologyKey":"kubernetes.io/hostname"},"weight":100}]}}` | Affinity for Retool pods. The default prefers spreading Retool pods across nodes. |
 | tolerations | list | `[]` | Tolerations for Retool pods. |
@@ -171,7 +171,7 @@ This table and `values.schema.json` are generated from the comments in [values.y
 | podDisruptionBudget | object | `{}` | PodDisruptionBudget spec for Retool deployments, with `minAvailable` or `maxUnavailable` as a pod count (`1`) or a percentage (`"50%"`). Empty creates none. |
 | podLabels | object | `{}` | Labels added to the backend and jobs-runner pods. |
 | replicaCount | int | `2` | Number of backend replicas. With more than 1, a separate jobs-runner pod is also deployed. |
-| persistentVolumeClaim.enabled | bool | `false` | Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector and workflows pods. |
+| persistentVolumeClaim.enabled | bool | `false` | Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector, MCP, multiplayer and git server pods. |
 | persistentVolumeClaim.existingClaim | string | `""` | Use this existing PVC instead of creating one. |
 | persistentVolumeClaim.annotations | object | `{}` | Annotations added to the created PVC. |
 | persistentVolumeClaim.accessModes | list | `["ReadWriteOnce"]` | Access modes of the created PVC. |

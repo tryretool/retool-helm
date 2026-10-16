@@ -554,8 +554,8 @@ extraVolumes: []
 
 # If you have more than 1 replica, the minimum recommended resources are
 # cpu: 2048m and memory: 4096Mi. With only 1 replica, double those.
-# @schema $ref: schema/definitions.json#/definitions/resources
-# -- Resources for the backend, jobs-runner, dbconnector and workflows-backend pods, unless they set their own.
+# @schema type: object; $ref: schema/definitions.json#/definitions/resources
+# -- Resources for the backend pods. Also the default for the jobs-runner, dbconnector, workflows backend, workflow workers and git server pods when they don't set their own.
 resources:
   # @schema hidden
   limits:
@@ -2033,7 +2033,7 @@ retool-temporal-services-helm:
 
 persistentVolumeClaim:
   # @schema type: boolean
-  # -- Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector and workflows pods.
+  # -- Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector, MCP, multiplayer and git server pods.
   enabled: false
   # @schema type: string
   # -- Use this existing PVC instead of creating one.
@@ -2045,7 +2045,7 @@ persistentVolumeClaim:
   # -- Access modes of the created PVC.
   accessModes:
     - ReadWriteOnce
-  # @schema $ref: schema/definitions.json#/definitions/quantity
+  # @schema type: [string, number]
   # -- Requested size of the created PVC.
   size: "15Gi"
   # @schema type: [string, null]

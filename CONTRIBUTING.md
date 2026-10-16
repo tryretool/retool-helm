@@ -36,7 +36,7 @@ Helm validates every install, upgrade, `template` and `lint` against `values.sch
 replicaCount: 2
 ```
 
-**Every documented key declares its type with `# @schema type:`** (or `$ref:`). Don't rely on the schema tool inferring a type from the default value: the type then changes whenever someone edits the default, and it's usually narrower than what the templates accept. `generate.sh` fails if a key with a `# --` description has no explicit type. Keys inside a top-level `# @schema hidden` section are exempt until that section is converted.
+**Every documented key declares its type with `# @schema type:`**, including keys that use `$ref:`. Don't rely on the schema tool inferring a type from the default value: the type then changes whenever someone edits the default, and it's usually narrower than what the templates accept. `generate.sh` fails if a key with a `# --` description has no explicit type. A `$ref:` doesn't count, because the generator still infers a type from the default and requires both. Keys inside a top-level `# @schema hidden` section are exempt until that section is converted.
 
 **Put `# @schema` lines above the `# --` line.** helm-docs reads everything from `# --` down to the key as the description, so an annotation below it would leak into the README.
 
@@ -61,7 +61,7 @@ licenseKeySecretName:
 - Resource requests and limits go through the shared definition, with the defaults hidden so they don't become the schema:
 
   ```yaml
-  # @schema $ref: schema/definitions.json#/definitions/resources
+  # @schema type: object; $ref: schema/definitions.json#/definitions/resources
   # -- Resources for the backend.
   resources:
     # @schema hidden
@@ -114,5 +114,5 @@ Top-level sections that haven't been converted yet are marked `# @schema hidden`
 1. Turn every commented-out option into a real key, and give every key a `# --` description and an explicit `# @schema type`.
 2. Read the templates that consume the section and set types per the conventions above.
 3. Remove the `# @schema hidden` marker and run `generate.sh`.
-4. Run `charts/retool/schema/compare-render.sh`. It renders the same combinations as CI (every `ci/` values file alone and with each option file) on `origin/main` and on your working tree; documentation changes must report every combination as `same`.
+4. Run `charts/retool/schema/compare-render.sh`. It renders the same combinations as CI (every `ci/` values file alone and with each option file) on the commit your branch started from (its merge base with `origin/main`) and on your working tree; documentation changes must report every combination as `same`.
 5. Check that the CI values files and the repo-root `values.yaml` from `main` still pass validation (`helm lint charts/retool -f <file>`).

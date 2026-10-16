@@ -11,7 +11,7 @@
 # ignored.
 #
 # Usage:
-#   ./compare-render.sh            # compare against origin/main
+#   ./compare-render.sh            # compare against the merge base with origin/main
 #   ./compare-render.sh <ref>      # compare against <ref>
 #
 set -euo pipefail
@@ -19,7 +19,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHART_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${CHART_DIR}/../.." && pwd)"
-BASE_REF="${1:-origin/main}"
+# The merge base, not origin/main itself: changes merged to main since this
+# branch was cut would otherwise show up as differences.
+BASE_REF="${1:-$(git -C "$REPO_ROOT" merge-base origin/main HEAD)}"
 
 tmp="$(mktemp -d)"
 cleanup() {
@@ -35,14 +37,21 @@ version="$(grep '^version:' "${CHART_DIR}/Chart.yaml")"
 sed -i.bak "s/^version:.*/${version}/" "${tmp}/base/charts/retool/Chart.yaml"
 
 # render <chart-dir> <out-file> <values-file>...
+#
+# Fails (and prints Helm's error) if the chart does not render, so two
+# identical errors are never reported as "same".
 render() {
   local chart="$1" out="$2"
   shift 2
   local args=()
   for f in "$@"; do args+=(-f "$f"); done
-  helm template retool "$chart" "${args[@]}" 2>&1 \
-    | grep -vE '(password|jwt-secret|encryption-key|oauthIntrospectionAuthToken)"?: ' \
-    > "$out" || true
+  if ! helm template retool "$chart" "${args[@]}" > "${out}.raw" 2> "${out}.err"; then
+    echo "ERROR    helm template failed for ${chart#"${tmp}/"} with: $*" >&2
+    sed 's/^/         /' "${out}.err" >&2
+    echo "         (missing subcharts? run: helm dependency build charts/retool)" >&2
+    exit 1
+  fi
+  grep -vE '(password|jwt-secret|encryption-key|oauthIntrospectionAuthToken)"?: ' "${out}.raw" > "$out" || true
 }
 
 # compare <values-file>...

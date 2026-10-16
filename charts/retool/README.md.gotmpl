@@ -19,7 +19,7 @@ helm install my-retool retool/retool -f values.yaml
 The chart ships a [`values.schema.json`](values.schema.json). Helm checks your values against it on every `helm install`, `helm upgrade`, `helm template` and `helm lint`, so a mistyped value fails before anything reaches the cluster. To check a values file without installing:
 
 ```bash
-helm lint retool/retool -f values.yaml
+helm template my-retool retool/retool -f values.yaml > /dev/null
 ```
 
 Editors that understand JSON Schema can use the same file for completion and inline docs. For example, with the VS Code YAML extension, add this to the top of your values file:

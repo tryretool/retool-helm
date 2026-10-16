@@ -115,8 +115,9 @@ install_tools() {
 # check_explicit_types <values.yaml>
 #
 # Every key with a `# --` description must declare its type with
-# `# @schema type:` (or `$ref:`) instead of relying on inference from its
-# default. Keys under a top-level `# @schema hidden` section are skipped.
+# `# @schema type:` instead of relying on inference from its default -- also
+# when it uses `$ref:`, since the generator still infers a type next to the
+# reference. Keys under a top-level `# @schema hidden` section are skipped.
 check_explicit_types() {
   awk '
     function indent_of(s) { match(s, /^ */); return RLENGTH }
@@ -128,7 +129,7 @@ check_explicit_types() {
           if (indent_of(block[i]) != ind) continue
           l = block[i]; sub(/^ */, "", l)
           if (l ~ /^# -- /) doc = 1
-          if (l ~ /^# @schema/ && l ~ /(@schema|;)[[:space:]]*(type|\$ref):/) typed = 1
+          if (l ~ /^# @schema/ && l ~ /(@schema|;)[[:space:]]*type:/) typed = 1
           if (l ~ /^# @schema hidden/) hidden = 1
         }
         if (ind == 0) hidden_section = hidden
