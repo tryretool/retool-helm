@@ -825,19 +825,21 @@ mcp:
   # Retool versions before 4.0.7 require the explicit MCP routes below,
   # rendered before the main Retool route. External ingress must preserve this
   # order and target mapping:
-  #   Exact  /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
-  #   Exact  /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
-  #   Prefix /mcp                                     -> <fullname>-mcp:4010
-  #   Prefix /                                         -> <fullname>:3000
+  #   ImplementationSpecific /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
+  #   ImplementationSpecific /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
+  #   Prefix /mcp -> <fullname>-mcp:4010
+  #   / -> <fullname>:3000 (uses ingress.pathType)
   ingress:
     # Also requires mcp.enabled.
+    # ingress-nginx rejects dots in Exact and Prefix paths when strict path
+    # validation is enabled, so the /.well-known routes use ImplementationSpecific.
     enabled: true
     paths:
       - path: /.well-known/oauth-authorization-server
-        pathType: Exact
+        pathType: ImplementationSpecific
         target: backendInternal
       - path: /.well-known/oauth-protected-resource
-        pathType: Exact
+        pathType: ImplementationSpecific
       - path: /mcp
         pathType: Prefix
 
