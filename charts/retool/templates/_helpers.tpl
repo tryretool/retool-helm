@@ -51,7 +51,7 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $domain))) -}}
 {{- end }}
 
-{{/* Validate the public MCP routing choice, including legacy opt-in flags. */}}
+{{/* Resolve MCP routing mode and reject incompatible explicit route flags. */}}
 {{- define "retool.mcp.routingMode" -}}
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $routing := $mcp.routing | default dict -}}

@@ -699,8 +699,8 @@ multiplayer:
 #     oauthIntrospectionAuthTokenSecretName: retool-mcp-oauth
 #     oauthIntrospectionAuthTokenSecretKey: token
 #
-# The chart injects the token into both MCP and the backend. Public MCP routing
-# is selected by mcp.routing.mode below.
+# The chart injects the token into both MCP and the backend. Choose how public
+# MCP requests are routed with mcp.routing.mode below.
 mcp:
   # Set to true to deploy the MCP server.
   enabled: false
@@ -818,7 +818,7 @@ mcp:
     limits:
       memory: "4096Mi"
 
-  # Backend API Service for the direct-mode OAuth authorization-server route.
+  # Backend API Service for OAuth authorization-server discovery in direct mode.
   backendMetadata:
     service:
       enabled: true
@@ -829,34 +829,39 @@ mcp:
       labels: {}
 
   routing:
-    # direct remains the default so older installations keep their public MCP
-    # routes. Retool before 4.0.7 requires direct because its main backend
-    # cannot relay /mcp. Retool 4.0.7 and later also support direct; set
-    # backendRelay explicitly to send every public path, including /mcp and
-    # both /.well-known OAuth discovery paths, to the main Retool Service
-    # (<fullname>:3000). Its backend relays /mcp to the MCP Service. The chart
-    # sets MCP_SERVICE_INGRESS_DOMAIN to the in-cluster MCP Service URL when MCP
-    # is enabled unless you override that backend env var.
-    # For ingress managed outside this chart, use these public mappings:
-    #   backendRelay: all paths, including /mcp and /.well-known/* -> <fullname>:3000
-    #   direct: ImplementationSpecific /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
-    #           ImplementationSpecific /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
-    #           Prefix /mcp -> <fullname>-mcp:4010
-    #           / uses ingress.pathType -> <fullname>:3000
-    # Replace <fullname> with this chart release's full name. Do not infer the
-    # mode from image.tag; PR and custom image tags may not identify a version.
-    # When upgrading an older chart, use helm upgrade --reset-then-reuse-values
-    # to load these new defaults and preserve saved overrides. Plain
-    # --reuse-values can retain the old chart defaults. If that flag is not
-    # available, pass your custom values file with -f and omit --reuse-values.
+    # direct (default): required before Retool 4.0.7; also works with newer
+    # versions. Public /mcp and OAuth discovery requests use dedicated routes.
+    # backendRelay (Retool 4.0.7+): send those requests through the main Retool
+    # Service on port 3000. Its backend relays /mcp to the MCP Service. When
+    # MCP is enabled, the chart sets MCP_SERVICE_INGRESS_DOMAIN to the in-cluster
+    # MCP Service URL unless you override that backend environment variable.
+    # The chart does not infer the mode from image.tag; custom and PR tags may
+    # not identify a Retool version.
+    #
+    # If you manage public routes outside this chart, configure them yourself:
+    # backendRelay needs a catchall / route to <fullname>:3000 that matches
+    # /mcp and both /.well-known OAuth discovery URLs. For direct, route:
+    #   /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
+    #   /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
+    #   /mcp                                     -> <fullname>-mcp:4010
+    #   / (remaining requests)                   -> <fullname>:3000
+    # With ingress-nginx strict path validation, use ImplementationSpecific on
+    # the /.well-known paths and Prefix on /mcp. Check path matching with your
+    # Ingress controller. For HTTPRoute, use Exact on the /.well-known paths
+    # and PathPrefix on /mcp. Replace <fullname> with this release's full name.
+    #
+    # When upgrading from an older chart, use helm upgrade
+    # --reset-then-reuse-values to load new defaults while keeping saved
+    # overrides. Plain --reuse-values can retain old chart defaults. If your
+    # Helm lacks that flag, use -f with your values file instead.
     mode: direct
 
   ingress:
-    # null follows routing.mode (on for direct, off for backendRelay). Set false
-    # when an external ingress owns direct routes. Explicit true conflicts with
-    # backendRelay; remove it or select direct when migrating old values files.
-    # ingress-nginx rejects dots in Exact and Prefix paths when strict path
-    # validation is enabled, so the /.well-known routes use ImplementationSpecific.
+    # null adds these paths to the chart's Ingress only in direct mode when MCP
+    # is enabled. Set false if an external Ingress supplies them. true with
+    # backendRelay is invalid; remove an older true override when switching.
+    # ingress-nginx with strict path validation rejects dots in Exact and
+    # Prefix paths, so the /.well-known paths use ImplementationSpecific.
     enabled: null
     paths:
       - path: /.well-known/oauth-authorization-server
@@ -869,9 +874,9 @@ mcp:
 
   # Equivalent Gateway API routes.
   httpRoute:
-    # null follows routing.mode (on for direct, off for backendRelay). Set false
-    # when an external HTTPRoute owns direct routes. Explicit true conflicts
-    # with backendRelay; remove it or select direct when migrating old values.
+    # null adds these rules to the chart's HTTPRoute only in direct mode when
+    # MCP is enabled. Set false if an external HTTPRoute supplies them. true
+    # with backendRelay is invalid; remove an older true override when switching.
     enabled: null
     rules:
       - path: /.well-known/oauth-authorization-server
