@@ -21,13 +21,14 @@ config:
   # -- (string) Key in `config.licenseKeySecretName` holding the license key.
   # @default -- `license-key`
   licenseKeySecretKey:
+  # @schema type: [boolean, string]; enum: [true, false, "true", "false"]
   # -- Serve the session cookie without the `Secure` flag. Only enable this when Retool is served over plain HTTP.
   useInsecureCookies: false
-  # @schema type: [integer, string, null]
+  # @schema type: [integer, string, null]; pattern: ^[0-9]+$
   # -- (int) Query timeout in milliseconds. Sets `DBCONNECTOR_QUERY_TIMEOUT_MS`.
   # @default -- Retool's built-in default (120000)
   dbConnectorTimeout:
-  # @schema type: [integer, string, null]
+  # @schema type: [integer, string, null]; pattern: ^[0-9]+$
   # -- Maximum Postgres pool connections for the backend. Sets `DBCONNECTOR_POSTGRES_POOL_MAX_SIZE`.
   postgresPoolMaxSize: 10
   auth:
@@ -74,7 +75,7 @@ config:
     # @schema type: [string, null]
     # -- (string) Hostname of the external Postgres database.
     host:
-    # @schema type: [integer, string, null]
+    # @schema type: [integer, string, null]; pattern: ^[0-9]+$
     # -- (int) Port of the external Postgres database.
     port:
     # @schema type: [string, null]
@@ -96,7 +97,7 @@ config:
     # -- (string) Key in `passwordSecretName` holding the database password.
     # @default -- `postgresql-password`
     passwordSecretKey:
-    # @schema type: [boolean, string, null]
+    # @schema type: [boolean, string, null]; enum: [true, false, "true", "false", null]
     # -- (bool) Connect to Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`; set it here rather than in `env`.
     ssl_enabled:
 
@@ -214,16 +215,16 @@ service:
   # @schema enum: [ClusterIP, NodePort, LoadBalancer]
   # -- Service type for the Retool backend.
   type: ClusterIP
-  # @schema type: [integer, string]
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Service port.
   externalPort: 3000
-  # @schema type: [integer, string]
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Container port the Service targets.
   internalPort: 3000
   # @schema type: [string, null]
   # -- (string) Fixed cluster IP. Only used with `type: ClusterIP`.
   clusterIP:
-  # @schema type: [integer, string, null]
+  # @schema type: [integer, string, null]; pattern: ^[0-9]+$
   # -- (int) Fixed node port. Only used with `type: NodePort`.
   nodePort:
   # @schema type: [array, null]
@@ -328,6 +329,7 @@ httpRoute:
 postgresql:
   # -- Deploy the bundled Postgres subchart. Not suitable for production.
   enabled: true
+  # @schema type: [boolean, string]; enum: [true, false, "true", "false"]
   # -- Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`.
   ssl_enabled: false
   auth:
@@ -339,7 +341,7 @@ postgresql:
     password: retool
     # postgresPassword: retool
   service:
-    # @schema type: [integer, string]
+    # @schema type: [integer, string]; pattern: ^[0-9]+$
     # -- Postgres service port.
     port: 5432
   # The official image rather than bitnami/postgresql, since Retool depends on
@@ -413,12 +415,16 @@ livenessProbe:
   # -- (string) Scheme the probe uses.
   # @default -- `HTTP`
   scheme:
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds after container start before the first probe.
   initialDelaySeconds: 30
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds before the probe times out.
   timeoutSeconds: 10
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds between probes.
   periodSeconds: 10
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Consecutive failures before the container is restarted.
   failureThreshold: 3
 
@@ -435,12 +441,16 @@ readinessProbe:
   # -- (string) Scheme the probe uses.
   # @default -- `HTTP`
   scheme:
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds after container start before the first probe.
   initialDelaySeconds: 30
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds before the probe times out.
   timeoutSeconds: 10
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds between probes.
   periodSeconds: 10
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Consecutive successes before the pod is marked ready.
   successThreshold: 5
 
@@ -463,14 +473,19 @@ startupProbe:
   # -- (string) Scheme the probe uses.
   # @default -- `HTTP`
   scheme:
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds after container start before the first probe.
   initialDelaySeconds: 0
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds before the probe times out.
   timeoutSeconds: 10
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Seconds between probes.
   periodSeconds: 10
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Consecutive successes before the probe passes.
   successThreshold: 1
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Consecutive failures before the container is restarted. With the defaults, the backend has 5 minutes to start.
   failureThreshold: 30
 
@@ -525,6 +540,7 @@ nodeSelector:
 # -- Annotations added to all Retool pods.
 podAnnotations: {}
 
+# @schema type: [integer, string]; pattern: ^[0-9]+$
 # -- Number of old ReplicaSets to keep for rollbacks.
 revisionHistoryLimit: 3
 
@@ -541,6 +557,7 @@ podLabels: {}
 #   jobRunner.enabled is true).
 # Example 2: 2 replicas give 2 backends + 1 jobs pod.
 # Example 3: 3 replicas give 3 backends + 1 jobs pod.
+# @schema type: [integer, string]; pattern: ^[0-9]+$
 # -- Number of backend replicas. With more than 1, a separate jobs-runner pod is also deployed.
 replicaCount: 2
 
@@ -1975,8 +1992,10 @@ persistentVolumeClaim:
 securityContext:
   # -- Set `runAsUser` and `fsGroup` on the main Retool pods.
   enabled: false
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- User ID to run as.
   runAsUser: 1000
+  # @schema type: [integer, string]; pattern: ^[0-9]+$
   # -- Group ID that owns mounted volumes.
   fsGroup: 2000
   # -- Additional pod security context fields for the main Retool pods, in Kubernetes `PodSecurityContext` form.

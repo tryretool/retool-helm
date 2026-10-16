@@ -53,8 +53,8 @@ licenseKeySecretName:
 
 **Give a key every type the templates accept.** The schema tool infers a key's type from its default, which is often narrower than what the templates handle. Check how the value is used before tightening anything:
 
-- A value rendered with `quote` or `toString` usually works as a number or a string: `# @schema type: [integer, string]`.
-- Booleans compared with `toString ... "true"` also accept the strings `"true"` and `"false"`.
+- Numbers rendered into a manifest work as an integer or a numeric string (`replicaCount: "2"` renders as `replicas: 2`), so accept both and reject anything else: `# @schema type: [integer, string]; pattern: ^[0-9]+$`. JSON Schema applies `pattern` only to strings.
+- Booleans rendered with `quote` (usually into an env var) work as a boolean or the strings `"true"`/`"false"`: `# @schema type: [boolean, string]; enum: [true, false, "true", "false"]`. Don't do this for switches the templates test with `if`, where the string `"false"` counts as true.
 - Resource requests and limits go through the shared definition, with the defaults hidden so they don't become the schema:
 
   ```yaml

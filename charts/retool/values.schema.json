@@ -70,7 +70,8 @@
             "integer",
             "string",
             "null"
-          ]
+          ],
+          "pattern": "^[0-9]+$"
         },
         "encryptionKey": {
           "description": "Key used to encrypt secrets stored in the Retool database. Required on first install unless `config.encryptionKeySecretName` is set. Never change it after install, or stored credentials become unreadable.",
@@ -138,7 +139,8 @@
             "integer",
             "string",
             "null"
-          ]
+          ],
+          "pattern": "^[0-9]+$"
         },
         "postgresql": {
           "type": "object",
@@ -191,7 +193,8 @@
                 "integer",
                 "string",
                 "null"
-              ]
+              ],
+              "pattern": "^[0-9]+$"
             },
             "ssl_enabled": {
               "description": "Connect to Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`; set it here rather than in `env`.",
@@ -199,6 +202,13 @@
                 "boolean",
                 "string",
                 "null"
+              ],
+              "enum": [
+                true,
+                false,
+                "true",
+                "false",
+                null
               ]
             },
             "user": {
@@ -212,7 +222,16 @@
         },
         "useInsecureCookies": {
           "description": "Serve the session cookie without the `Secure` flag. Only enable this when Retool is served over plain HTTP.",
-          "type": "boolean"
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "enum": [
+            true,
+            false,
+            "true",
+            "false"
+          ]
         }
       }
     },
@@ -501,7 +520,11 @@
         },
         "failureThreshold": {
           "description": "Consecutive failures before the container is restarted.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "host": {
           "description": "Host the probe connects to. On IPv6-primary or dual-stack clusters, set `127.0.0.1` so the kubelet probes the IPv4 loopback; some services (e.g. code-executor) listen on IPv4 only.",
@@ -512,7 +535,11 @@
         },
         "initialDelaySeconds": {
           "description": "Seconds after container start before the first probe.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "path": {
           "description": "HTTP path the probe requests.",
@@ -520,7 +547,11 @@
         },
         "periodSeconds": {
           "description": "Seconds between probes.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "scheme": {
           "description": "Scheme the probe uses.",
@@ -536,7 +567,11 @@
         },
         "timeoutSeconds": {
           "description": "Seconds before the probe times out.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         }
       }
     },
@@ -704,13 +739,23 @@
               "type": [
                 "integer",
                 "string"
-              ]
+              ],
+              "pattern": "^[0-9]+$"
             }
           }
         },
         "ssl_enabled": {
           "description": "Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`.",
-          "type": "boolean"
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "enum": [
+            true,
+            false,
+            "true",
+            "false"
+          ]
         }
       }
     },
@@ -743,7 +788,11 @@
         },
         "initialDelaySeconds": {
           "description": "Seconds after container start before the first probe.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "path": {
           "description": "HTTP path the probe requests.",
@@ -751,7 +800,11 @@
         },
         "periodSeconds": {
           "description": "Seconds between probes.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "scheme": {
           "description": "Scheme the probe uses.",
@@ -767,17 +820,29 @@
         },
         "successThreshold": {
           "description": "Consecutive successes before the pod is marked ready.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "timeoutSeconds": {
           "description": "Seconds before the probe times out.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         }
       }
     },
     "replicaCount": {
       "description": "Number of backend replicas. With more than 1, a separate jobs-runner pod is also deployed.",
-      "type": "integer"
+      "type": [
+        "integer",
+        "string"
+      ],
+      "pattern": "^[0-9]+$"
     },
     "resources": {
       "allOf": [
@@ -792,7 +857,11 @@
     },
     "revisionHistoryLimit": {
       "description": "Number of old ReplicaSets to keep for rollbacks.",
-      "type": "integer"
+      "type": [
+        "integer",
+        "string"
+      ],
+      "pattern": "^[0-9]+$"
     },
     "securityContext": {
       "type": "object",
@@ -807,11 +876,19 @@
         },
         "fsGroup": {
           "description": "Group ID that owns mounted volumes.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "runAsUser": {
           "description": "User ID to run as.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         }
       }
     },
@@ -854,14 +931,16 @@
           "type": [
             "integer",
             "string"
-          ]
+          ],
+          "pattern": "^[0-9]+$"
         },
         "internalPort": {
           "description": "Container port the Service targets.",
           "type": [
             "integer",
             "string"
-          ]
+          ],
+          "pattern": "^[0-9]+$"
         },
         "labels": {
           "description": "Labels added to the Service.",
@@ -887,7 +966,8 @@
             "integer",
             "string",
             "null"
-          ]
+          ],
+          "pattern": "^[0-9]+$"
         },
         "portName": {
           "description": "Name for the Service port.",
@@ -948,7 +1028,11 @@
         },
         "failureThreshold": {
           "description": "Consecutive failures before the container is restarted. With the defaults, the backend has 5 minutes to start.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "host": {
           "description": "Host the probe connects to. See `livenessProbe.host`.",
@@ -959,7 +1043,11 @@
         },
         "initialDelaySeconds": {
           "description": "Seconds after container start before the first probe.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "path": {
           "description": "HTTP path the probe requests.",
@@ -967,7 +1055,11 @@
         },
         "periodSeconds": {
           "description": "Seconds between probes.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "scheme": {
           "description": "Scheme the probe uses.",
@@ -983,11 +1075,19 @@
         },
         "successThreshold": {
           "description": "Consecutive successes before the probe passes.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         },
         "timeoutSeconds": {
           "description": "Seconds before the probe times out.",
-          "type": "integer"
+          "type": [
+            "integer",
+            "string"
+          ],
+          "pattern": "^[0-9]+$"
         }
       }
     },
