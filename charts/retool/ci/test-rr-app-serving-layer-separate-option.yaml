@@ -1,0 +1,62 @@
+# R2 app serving layer in its own deployment + service (separate.enabled). The
+# default, in-process on the main backend, is covered by
+# test-rr-app-serving-layer-option.yaml.
+#
+# Exercises the opt-in path: appServingLayer is deliberately NOT wired to the
+# rr.enabled master switch (it needs an apps domain and matching wildcard DNS
+# that the chart cannot supply), so it renders only from its own flag. The git
+# server is enabled because the serving layer reads published app assets from
+# the same blob storage, and the chart fails the render without it.
+podDisruptionBudget:
+  minAvailable: 1
+
+rr:
+  gitServer:
+    enabled: true
+    # The standalone git server builds CLI preview links, so it needs RR_APP_DOMAIN too.
+    separate:
+      enabled: true
+
+  appServingLayer:
+    enabled: true
+    domain: apps.example.retool.com
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      tls:
+        - secretName: retool-apps-tls
+          hosts:
+            - "*.apps.example.retool.com"
+            - "*.previews.example.retool.com"
+    separate:
+      enabled: true
+      replicaCount: 2
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      annotations:
+        test-pod-annotation: "true"
+      labels:
+        test-pod-label: "true"
+    service:
+      annotations:
+        test-service-annotation: "true"
+      labels:
+        test-service-label: "true"
+
+  # frontendWildcardDomain overrides the derived sandboxes.<appServingLayer.domain>.
+  agentSandbox:
+    enabled: true
+    externalSecret:
+      name: agent-sandbox-secrets
+    wildcardSandboxes: true
+    frontendWildcardDomain: previews.example.retool.com
+
+  blobStorage:
+    s3:
+      bucket: test-rr-bucket
+      region: us-east-1
+      accessKeyId: AKIATEST
+      secretAccessKeySecretName: rr-blob-storage
+      secretAccessKeySecretKey: secret-access-key
