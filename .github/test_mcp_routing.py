@@ -48,8 +48,8 @@ def http_routes(output):
 
 
 INGRESS_DIRECT = [
-    ("/.well-known/oauth-authorization-server", "Exact", BACKEND_API, "3001"),
-    ("/.well-known/oauth-protected-resource", "Exact", MCP, "4010"),
+    ("/.well-known/oauth-authorization-server", "ImplementationSpecific", BACKEND_API, "3001"),
+    ("/.well-known/oauth-protected-resource", "ImplementationSpecific", MCP, "4010"),
     ("/mcp", "Prefix", MCP, "4010"),
     ("/", "ImplementationSpecific", MAIN, "3000"),
 ]
@@ -124,6 +124,13 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(ingress_routes(output)[0], ("/.well-known/oauth-authorization-server", "Exact", BACKEND_API, "3002"))
         self.assertEqual(http_routes(output)[0], ("PathPrefix", "/mcp", MCP, "4020"))
 
+    def test_backend_internal_path_without_type_uses_nginx_compatible_default(self):
+        output = self.assert_rendered(
+            "mcp.ingress.paths[0].path=/.well-known/oauth-authorization-server",
+            "mcp.ingress.paths[0].target=backendInternal",
+        )
+        self.assertEqual(ingress_routes(output)[0], INGRESS_DIRECT[0])
+
     def test_explicit_false_is_accepted_in_backend_relay(self):
         output = self.assert_rendered("mcp.routing.mode=backendRelay", "mcp.ingress.enabled=false", "mcp.httpRoute.enabled=false")
         self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
@@ -160,6 +167,11 @@ class RoutingTests(unittest.TestCase):
             "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values",
             "mcp.routing=null",
         )
+
+    def test_missing_mode_is_ignored_when_mcp_is_disabled(self):
+        output = self.assert_rendered("mcp.routing=null", "mcp.enabled=false")
+        self.assertEqual(ingress_routes(output), [INGRESS_DIRECT[-1]])
+        self.assertEqual(http_routes(output), [HTTP_DIRECT[-1]])
 
 
 if __name__ == "__main__":

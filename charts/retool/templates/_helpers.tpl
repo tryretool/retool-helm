@@ -57,7 +57,11 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- $routing := $mcp.routing | default dict -}}
 {{- $mode := $routing.mode -}}
 {{- if not (hasKey $routing "mode") -}}
+{{- if $mcp.enabled -}}
 {{- fail "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values so Helm loads the new chart defaults, or explicitly set mcp.routing.mode=direct (compatible default) or backendRelay (Retool 4.0.7+)" -}}
+{{- else -}}
+{{- $mode = "direct" -}}
+{{- end -}}
 {{- end -}}
 {{- if not (has $mode (list "backendRelay" "direct")) -}}
 {{- fail (printf "mcp.routing.mode must be \"backendRelay\" or \"direct\" (got %q)" (toString $mode)) -}}
@@ -113,7 +117,6 @@ target: backendInternal routes to the backend API Service.
 {{- if eq $target "backendInternal" -}}
 {{- $serviceName = include "retool.backendInternal.name" $root -}}
 {{- $servicePort = $path.port | default (.backendInternalPort | default 3001) -}}
-{{- $pathType = $path.pathType | default "Exact" -}}
 {{- end -}}
 - path: {{ $path.path }}
   {{- if (semverCompare ">=1.18-0" $root.Capabilities.KubeVersion.Version) }}

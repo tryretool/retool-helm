@@ -839,10 +839,10 @@ mcp:
     # is enabled unless you override that backend env var.
     # For ingress managed outside this chart, use these public mappings:
     #   backendRelay: all paths, including /mcp and /.well-known/* -> <fullname>:3000
-    #   direct: Exact /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
-    #           Exact /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
-    #           Prefix /mcp                                     -> <fullname>-mcp:4010
-    #           Prefix /                                         -> <fullname>:3000
+    #   direct: ImplementationSpecific /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
+    #           ImplementationSpecific /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
+    #           Prefix /mcp -> <fullname>-mcp:4010
+    #           / uses ingress.pathType -> <fullname>:3000
     # Replace <fullname> with this chart release's full name. Do not infer the
     # mode from image.tag; PR and custom image tags may not identify a version.
     # When upgrading an older chart, use helm upgrade --reset-then-reuse-values
@@ -855,13 +855,15 @@ mcp:
     # null follows routing.mode (on for direct, off for backendRelay). Set false
     # when an external ingress owns direct routes. Explicit true conflicts with
     # backendRelay; remove it or select direct when migrating old values files.
+    # ingress-nginx rejects dots in Exact and Prefix paths when strict path
+    # validation is enabled, so the /.well-known routes use ImplementationSpecific.
     enabled: null
     paths:
       - path: /.well-known/oauth-authorization-server
-        pathType: Exact
+        pathType: ImplementationSpecific
         target: backendInternal
       - path: /.well-known/oauth-protected-resource
-        pathType: Exact
+        pathType: ImplementationSpecific
       - path: /mcp
         pathType: Prefix
 
