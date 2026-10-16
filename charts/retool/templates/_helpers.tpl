@@ -690,6 +690,22 @@ Usage: (include "retool.gitServer.enabled" .)
 {{- include "retool.rr.componentEnabled" (dict "root" . "component" "gitServer") -}}
 {{- end -}}
 
+{{/*
+Set RR app serving layer enabled. Unlike the other rr components this does NOT
+inherit rr.enabled: the serving layer needs an apps domain, wildcard DNS and a
+matching certificate that only the operator can supply, so it must be opted
+into explicitly (rr.appServingLayer.enabled: true). Same reasoning as mcp.
+Usage: (include "retool.appServingLayer.enabled" .)
+*/}}
+{{- define "retool.appServingLayer.enabled" -}}
+{{- $cfg := (.Values.rr | default dict).appServingLayer -}}
+{{- if kindIs "map" $cfg -}}
+  {{- if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- else if not (kindIs "invalid" $cfg) -}}
+  {{- fail (printf "rr.appServingLayer must be a mapping (got %s). To enable it set rr.appServingLayer.enabled: true." (kindOf $cfg)) -}}
+{{- end -}}
+{{- end -}}
+
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
@@ -1273,6 +1289,10 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
   value: {{ .Values.rr.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
+{{- with include "retool.agentSandbox.frontendWildcardDomain" . }}
+- name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
+  value: {{ . | quote }}
+{{- end }}
 {{- if .Values.rr.agentSandbox.jwtPrivateKey }}
 - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
   value: {{ .Values.rr.agentSandbox.jwtPrivateKey | quote }}
@@ -1325,6 +1345,105 @@ Set git server deployment/service name (only used when rr.gitServer.separate is 
 */}}
 {{- define "retool.gitServer.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "git-server") }}
+{{- end -}}
+
+{{/*
+Set app serving layer deployment/service name (only used when rr.appServingLayer is enabled)
+*/}}
+{{- define "retool.appServingLayer.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "app-serving-layer") }}
+{{- end -}}
+
+{{/*
+Selector labels for the separate app serving layer Deployment. Note changes here will
+require manual deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.appServingLayer.selectorLabels" -}}
+retoolService: {{ include "retool.appServingLayer.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for the app serving layer.
+*/}}
+{{- define "retool.appServingLayer.labels" -}}
+app.kubernetes.io/name: {{ include "retool.appServingLayer.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: rr-app-serving-layer
+{{- end }}
+
+{{/*
+Port the app serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and exposes
+via its service. Matches the backend default. rr.gitServer.separate.port defaults to the
+same number without colliding: that git server has its own pod, and the in-process one uses 3020.
+*/}}
+{{- define "retool.appServingLayer.port" -}}
+{{- (.Values.rr.appServingLayer | default dict).port | default 3010 -}}
+{{- end -}}
+
+{{/*
+Truthy when the app serving layer runs in its own deployment
+(rr.appServingLayer.separate.enabled). Otherwise it runs in-process on the main backend.
+*/}}
+{{- define "retool.appServingLayer.separateEnabled" -}}
+{{- if and (include "retool.appServingLayer.enabled" .) (.Values.rr.appServingLayer.separate | default dict).enabled -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Domain published R2 apps are served under (RR_APP_DOMAIN), e.g. apps.retool.example.com.
+Read by the serving layer to resolve a request hostname to an app, and by the main
+backend to build published-app URLs.
+*/}}
+{{- define "retool.appServingLayer.domain" -}}
+{{- $asl := .Values.rr.appServingLayer | default dict -}}
+{{- $domain := required "Please set a value for .Values.rr.appServingLayer.domain when the app serving layer is enabled" $asl.domain -}}
+{{- include "retool.validateHostname" (dict "key" "rr.appServingLayer.domain" "value" $domain) -}}
+{{- $domain -}}
+{{- end -}}
+
+{{/*
+RR_APP_DOMAIN for every workload that builds or resolves published-app URLs: the main
+backend (which runs the serving layer unless separate.enabled), the separate serving
+layer, and the standalone git server (CLI preview links).
+Usage: {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
+*/}}
+{{- define "retool.appServingLayer.domainEnv" -}}
+{{- if include "retool.appServingLayer.enabled" . }}
+- name: RR_APP_DOMAIN
+  value: {{ include "retool.appServingLayer.domain" . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Fails the render unless value is a lowercase hostname. The backend and the agent-sandbox
+proxy compare these domains against the request Host header, which browsers lowercase, so
+a scheme, port, path, uppercase letter, or trailing dot would never match.
+Usage: (include "retool.validateHostname" (dict "key" "rr.x.domain" "value" $domain))
+*/}}
+{{- define "retool.validateHostname" -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" (toString .value)) -}}
+{{- fail (printf "%s must be a lowercase hostname with no scheme, port, path, or trailing dot (got %q), e.g. apps.retool.example.com" .key (toString .value)) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Root domain for per-sandbox editor origins (sandbox-<id>.<root>), or empty when
+unset. rr.agentSandbox.frontendWildcardDomain wins; otherwise
+rr.agentSandbox.wildcardSandboxes derives sandboxes.<rr.appServingLayer.domain>.
+Usage: (include "retool.agentSandbox.frontendWildcardDomain" .)
+*/}}
+{{- define "retool.agentSandbox.frontendWildcardDomain" -}}
+{{- $as := .Values.rr.agentSandbox | default dict -}}
+{{- if $as.frontendWildcardDomain -}}
+{{- include "retool.validateHostname" (dict "key" "rr.agentSandbox.frontendWildcardDomain" "value" $as.frontendWildcardDomain) -}}
+{{- $as.frontendWildcardDomain -}}
+{{- else if eq (toString $as.wildcardSandboxes) "true" -}}
+{{- if not (include "retool.appServingLayer.enabled" .) -}}
+{{- fail "rr.agentSandbox.wildcardSandboxes puts sandboxes at sandboxes.<rr.appServingLayer.domain>, so it needs rr.appServingLayer enabled with a domain. To use a different sandbox domain, set rr.agentSandbox.frontendWildcardDomain instead." -}}
+{{- end -}}
+{{- printf "sandboxes.%s" (include "retool.appServingLayer.domain" .) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*

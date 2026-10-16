@@ -102,6 +102,7 @@ spec:
             value: RR_GIT_SERVER
           - name: RR_GIT_SERVER_PORT
             value: {{ $gitServerPort | quote }}
+          {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
           # The standalone git server does not run migrations; the main backend owns them.
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"

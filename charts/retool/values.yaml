@@ -1369,6 +1369,22 @@ rr:
     frontendWsProxyDomain: ''
     # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
     proxyDomain: ''
+    # Optional. Serves each editor sandbox on its own origin at
+    # sandbox-<id>.sandboxes.<rr.appServingLayer.domain> (e.g.
+    # sandbox-<id>.sandboxes.apps.retool.example.com) instead of the shared
+    # /sandbox/<id>/ path on the Retool host. On Retool versions that support it,
+    # the editor preview then loads on that origin instead of a sandboxed iframe.
+    # Requires rr.appServingLayer, a *.sandboxes.<domain> DNS record and
+    # certificate, and a route to the proxy Service on proxy.port
+    # (rr.appServingLayer.ingress renders one). Turn this on only after that route
+    # works; this moves every editor preview immediately.
+    wildcardSandboxes: false
+    # Overrides the derived sandboxes.<rr.appServingLayer.domain> root, e.g. to put
+    # sandboxes on a separate registrable domain. Setting it also turns per-sandbox
+    # origins on without rr.appServingLayer: the editor preview gets its own origin
+    # and the org's Permissions Policy settings, while published apps stay in the
+    # sandboxed iframe.
+    frontendWildcardDomain: ''
 
     # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
     # Strongly recommended for production to isolate sandbox egress.
@@ -1503,6 +1519,72 @@ rr:
       service:
         annotations: {}
         labels: {}
+
+  # Serves published React Retool apps on their own origins under `domain`
+  # (SERVICE_TYPE=RR_APP_SERVING_LAYER). When enabled, it runs in-process on the
+  # main backend pods and <fullname>-app-serving-layer is a Service pointing at
+  # them on `port`. Set separate.enabled to run it as its own Deployment
+  # instead. Requires the git server to be enabled: the serving layer reads
+  # published app assets from the same blob storage git_server writes to.
+  #
+  # Unlike the other rr components this does NOT inherit the rr.enabled master
+  # switch. It needs wildcard DNS and a wildcard certificate for *.<domain>,
+  # neither of which the chart can provide, so it must be opted into
+  # explicitly.
+  #
+  # Route the apps domain with `ingress` below, or with your own ingress or load
+  # balancer rule to <fullname>-app-serving-layer on `port`. Don't add the apps
+  # domain to the top-level `ingress.hosts`: that Ingress also adds multiplayer
+  # and MCP paths to every host it serves.
+  appServingLayer:
+    enabled: false
+    # Domain published apps are served under, e.g. apps.retool.example.com.
+    # Rendered as RR_APP_DOMAIN onto the main backend (and the serving layer
+    # Deployment when separate). Required when enabled.
+    domain: ~
+    # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and
+    # that its Service exposes.
+    port: 3010
+    # Renders an Ingress that routes *.<domain> to the serving layer and nothing
+    # else; <domain> itself isn't served, so it needs no DNS record or
+    # certificate. With per-sandbox origins on (wildcardSandboxes or
+    # frontendWildcardDomain) it also routes *.<sandbox domain> to the
+    # agent-sandbox proxy. DNS and certificates need only these wildcards. A
+    # *.<domain> certificate doesn't cover *.sandboxes.<domain>, so list both
+    # in tls.
+    ingress:
+      enabled: false
+      ingressClassName: ''
+      annotations: {}
+      # e.g. for domain apps.retool.example.com with wildcardSandboxes on:
+      # [{ secretName: retool-apps-tls, hosts: ["*.apps.retool.example.com", "*.sandboxes.apps.retool.example.com"] }]
+      tls: []
+    # Annotations/labels applied to the serving-layer Service.
+    service:
+      annotations: {}
+      labels: {}
+    # Runs the serving layer as its own <fullname>-app-serving-layer Deployment
+    # and PodDisruptionBudget instead of on the main backend pods.
+    separate:
+      enabled: false
+      replicaCount: 1
+      # The serving layer drains in-flight requests for up to 480s on shutdown.
+      terminationGracePeriodSeconds: 616
+      # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+      resources: {}
+      # Falls back to top-level `affinity` if unset.
+      affinity: {}
+      # Annotations/labels applied to the serving-layer pod template.
+      annotations: {}
+      labels: {}
+      startupProbe:
+        enabled: true
+        path: /api/checkHealth
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
 
   # Shared blob-storage config used by git_server, snapshots, and RetoolOS. Set
   # exactly one of s3, gcs, azure. RetoolOS puts its objects under the
