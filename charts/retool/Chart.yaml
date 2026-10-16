@@ -2,7 +2,7 @@ apiVersion: v2
 name: retool
 description: Deploy self-hosted Retool on Kubernetes.
 type: application
-version: 6.13.0
+version: 6.13.1
 maintainers:
   - name: Retool Engineering
     email: engineering+helm@retool.com

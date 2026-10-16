@@ -83,6 +83,32 @@ This table and `values.schema.json` are generated from the comments in [values.y
 | externalSecrets.externalSecretsOperator.secretRef | list | `[]` | ExternalSecrets to create, each also added to pod `envFrom`. Each item needs `name` and `path`; `creationPolicy`, `deletionPolicy` and `optional` are optional. |
 | externalSecrets.externalSecretsOperator.useLegacyCR | bool | `true` | Create `kubernetes-client.io/v1` (legacy) ExternalSecret resources instead of `external-secrets.io` ones. |
 | externalSecrets.externalSecretsOperator.backendType | string | `"secretsManager"` | Backend type for legacy ExternalSecret resources. |
+| service.type | string | `"ClusterIP"` | Service type for the Retool backend. |
+| service.externalPort | int | `3000` | Service port. |
+| service.internalPort | int | `3000` | Container port the Service targets. |
+| service.clusterIP | string | `nil` | Fixed cluster IP. Only used with `type: ClusterIP`. |
+| service.nodePort | int | `nil` | Fixed node port. Only used with `type: NodePort`. |
+| service.externalIPs | list | `nil` | External IPs for the Service. |
+| service.loadBalancerIP | string | `nil` | Requested load balancer IP. Only used with `type: LoadBalancer`. |
+| service.loadBalancerSourceRanges | list | `nil` | CIDRs allowed to reach the load balancer, where the provider supports it. |
+| service.portName | string | `nil` | Name for the Service port. |
+| service.annotations | object | `{}` | Annotations added to the Service. |
+| service.labels | object | `{}` | Labels added to the Service. |
+| service.selector | object | `{}` | Extra selector labels for the Service. |
+| ingress.enabled | bool | `true` | Create an Ingress for Retool. |
+| ingress.ingressClassName | string | `nil` | IngressClass to use. |
+| ingress.labels | object | `{}` | Labels added to the Ingress. |
+| ingress.annotations | object | `{}` | Annotations added to the Ingress. |
+| ingress.hostName | string | `nil` | Single host to route to Retool. When set, `hosts` is ignored. |
+| ingress.hosts | list | `nil` | Hosts to route. Each item has `host`, `paths` (each with a `path`) and optionally `extraPaths`, raw path entries placed first. |
+| ingress.tls | list | `nil` | TLS configuration for the Ingress, in Kubernetes `IngressTLS` form. |
+| ingress.pathType | string | `"ImplementationSpecific"` | Path type for the Retool paths. Set to null to omit it. |
+| httpRoute.enabled | bool | `false` | Create a Gateway API HTTPRoute for Retool, as an alternative to `ingress`. Requires a Gateway API implementation (e.g. GKE Gateway, Istio, Envoy Gateway, NGINX Gateway Fabric). |
+| httpRoute.labels | object | `{}` | Labels added to the HTTPRoute. |
+| httpRoute.annotations | object | `{}` | Annotations added to the HTTPRoute. |
+| httpRoute.parentRefs | list | `nil` | Gateways the route attaches to, in Gateway API `ParentReference` form. |
+| httpRoute.hostnames | list | `nil` | Hostnames the route matches. |
+| httpRoute.rules | list | `nil` | Full HTTPRoute rules. When unset, a catch-all rule routes all traffic to the Retool backend. |
 | postgresql.enabled | bool | `true` | Deploy the bundled Postgres subchart. Not suitable for production. |
 | postgresql.ssl_enabled | bool | `false` | Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`. |
 | postgresql.auth.database | string | `"hammerhead_production"` | Database name. |
@@ -94,6 +120,14 @@ This table and `values.schema.json` are generated from the comments in [values.y
 | postgresql.postgresqlDataDir | string | `"/data/pgdata"` | Postgres data directory. |
 | postgresql.primary.persistence.enabled | bool | `true` | Persist Postgres data in a PersistentVolumeClaim. |
 | postgresql.primary.persistence.mountPath | string | `"/data/"` | Mount path of the Postgres volume. |
+| serviceAccount.create | bool | `true` | Create a ServiceAccount for Retool. |
+| serviceAccount.name | string | `nil` | ServiceAccount to use. When `create` is true and this is unset, a name is generated from the full name. When `create` is false, it must already exist. |
+| serviceAccount.annotations | object | `{}` | Annotations added to the ServiceAccount, e.g. for IRSA or Workload Identity. |
+| serviceAccount.labels | object | `{}` | Labels added to the ServiceAccount. |
+| serviceAccount.automountToken | bool | `false` | Mount the ServiceAccount token into Retool pods. |
+| networkPolicy.blockCloudMetadataEgress | bool | null: on when blob storage is keyless (no static credential set), off otherwise | Block backend egress to the cloud metadata endpoint (169.254.169.254). `true`/`false` force it on or off. |
+| networkPolicy.blockedRanges | list | `[]` | Additional IPv4 CIDRs to deny in backend egress, e.g. private ranges user-defined requests should not reach. |
+| networkPolicy.blockedRanges6 | list | `[]` | IPv6 CIDRs to deny in backend egress. Empty leaves IPv6 egress fully allowed. |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

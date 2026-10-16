@@ -210,81 +210,114 @@ deployment:
   labels: {}
   annotations: {}
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
 service:
+  # @schema enum: [ClusterIP, NodePort, LoadBalancer]
+  # -- Service type for the Retool backend.
   type: ClusterIP
+  # @schema type: [integer, string]
+  # -- Service port.
   externalPort: 3000
+  # @schema type: [integer, string]
+  # -- Container port the Service targets.
   internalPort: 3000
-  # externalIPs:
-  # - 192.168.0.1
-  #
-  ## LoadBalancer IP if service.type is LoadBalancer
-  # loadBalancerIP: 10.2.2.2
+  # @schema type: [string, null]
+  # -- (string) Fixed cluster IP. Only used with `type: ClusterIP`.
+  clusterIP:
+  # @schema type: [integer, string, null]
+  # -- (int) Fixed node port. Only used with `type: NodePort`.
+  nodePort:
+  # @schema type: [array, null]
+  # -- (list) External IPs for the Service.
+  externalIPs:
+  # @schema type: [string, null]
+  # -- (string) Requested load balancer IP. Only used with `type: LoadBalancer`.
+  loadBalancerIP:
+  # @schema type: [array, null]
+  # -- (list) CIDRs allowed to reach the load balancer, where the provider supports it.
+  loadBalancerSourceRanges:
+  # @schema type: [string, null]
+  # -- (string) Name for the Service port.
+  portName:
+  # -- Annotations added to the Service.
   annotations: {}
+  # -- Labels added to the Service.
   labels: {}
-  ## Limit load balancer source ips to list of CIDRs (where available)
-  # loadBalancerSourceRanges: []
+  # -- Extra selector labels for the Service.
   selector: {}
-  # portName: service-port
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# Example:
+#   ingress:
+#     ingressClassName: nginx
+#     hosts:
+#       - host: retool.example.com
+#         paths:
+#           - path: /
+#     tls:
+#       - secretName: retool.example.com
+#         hosts:
+#           - retool.example.com
+#
+# For controllers that need extra rules ahead of the Retool path, such as the
+# AWS ALB ssl-redirect action, add `extraPaths` to a host:
+#       - host: retool.example.com
+#         extraPaths:
+#           - path: /*
+#             backend:
+#               service:
+#                 name: ssl-redirect
+#                 port:
+#                   name: use-annotation
+#             pathType: ImplementationSpecific
+#         paths:
+#           - path: /*
 ingress:
+  # -- Create an Ingress for Retool.
   enabled: true
-  # For k8s 1.18+
-  # ingressClassName:
+  # @schema type: [string, null]
+  # -- (string) IngressClass to use.
+  ingressClassName:
+  # -- Labels added to the Ingress.
   labels: {}
+  # -- Annotations added to the Ingress.
   annotations: {}
-  # kubernetes.io/ingress.class: nginx
-  # kubernetes.io/tls-acme: "true"
+  # @schema type: [string, null]
+  # -- (string) Single host to route to Retool. When set, `hosts` is ignored.
+  hostName:
+  # @schema type: [array, null]
+  # -- (list) Hosts to route. Each item has `host`, `paths` (each with a `path`) and optionally `extraPaths`, raw path entries placed first.
   hosts:
-  # - host: retool.example.com
-  #   paths:
-  #     - path: /
+  # @schema type: [array, null]
+  # -- (list) TLS configuration for the Ingress, in Kubernetes `IngressTLS` form.
   tls:
-  # - secretName: retool.example.com
-  #   hosts:
-  #     - retool.example.com
-  # servicePort: service-port
+  # @schema type: [string, null]
+  # -- Path type for the Retool paths. Set to null to omit it.
   pathType: ImplementationSpecific
-  # For supporting other ingress controllers that require customizing the .backend.service.name and .backend.service.port.name,
-  # like AWS ALB extraPaths allows that customization, and it takes precedence in the list of paths of for the host,
-  # this is in order to allow a rule like ssl-redirect from port 80-->443 to be first ( otherwise there wouldn't be a redirect )
-  #   extraPaths:
-  #     - path: /*
-  #       backend:
-  #         service:
-  #           name: ssl-redirect
-  #           port:
-  #             name: use-annotation
-  #       pathType: ImplementationSpecific
 
-# Gateway API HTTPRoute resource (alternative to ingress)
-# Requires a Gateway API implementation (e.g., GKE Gateway Controller, Istio, Envoy Gateway, NGINX Gateway Fabric)
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# Example:
+#   httpRoute:
+#     enabled: true
+#     parentRefs:
+#       - name: my-gateway
+#         namespace: default
+#         sectionName: https
+#     hostnames:
+#       - retool.example.com
 httpRoute:
+  # -- Create a Gateway API HTTPRoute for Retool, as an alternative to `ingress`. Requires a Gateway API implementation (e.g. GKE Gateway, Istio, Envoy Gateway, NGINX Gateway Fabric).
   enabled: false
+  # -- Labels added to the HTTPRoute.
   labels: {}
+  # -- Annotations added to the HTTPRoute.
   annotations: {}
-  # parentRefs defines which Gateway(s) this route attaches to
-  # parentRefs:
-  #   - name: my-gateway
-  #     namespace: default
-  #     sectionName: https
-  # hostnames:
-  #   - retool.example.com
-  # rules allows full customization of HTTPRoute rules; when omitted, a default
-  # catch-all rule routes all traffic to the retool backend service
-  # rules:
-  #   - matches:
-  #       - path:
-  #           type: PathPrefix
-  #           value: /
-  #     backendRefs:
-  #       - name: my-service
-  #         port: 3000
+  # @schema type: [array, null]
+  # -- (list) Gateways the route attaches to, in Gateway API `ParentReference` form.
+  parentRefs:
+  # @schema type: [array, null]
+  # -- (list) Hostnames the route matches.
+  hostnames:
+  # @schema type: [array, null]
+  # -- (list) Full HTTPRoute rules. When unset, a catch-all rule routes all traffic to the Retool backend.
+  rules:
 
 # Bundled Postgres (Bitnami postgresql subchart). We highly recommend you do
 # NOT use it for a production instance of Retool; it is only suitable for
@@ -326,53 +359,45 @@ postgresql:
       # -- Mount path of the Postgres volume.
       mountPath: "/data/"
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
 serviceAccount:
-  # Specifies whether a service account should be created
+  # -- Create a ServiceAccount for Retool.
   create: true
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  # If set and create is false, the service account must be existing
+  # @schema type: [string, null]
+  # -- (string) ServiceAccount to use. When `create` is true and this is unset, a name is generated from the full name. When `create` is false, it must already exist.
   name:
+  # -- Annotations added to the ServiceAccount, e.g. for IRSA or Workload Identity.
   annotations: {}
+  # -- Labels added to the ServiceAccount.
   labels: {}
+  # -- Mount the ServiceAccount token into Retool pods.
   automountToken: false
 
 # NetworkPolicy applied to the main Retool backend pods. Enforced only by CNIs
-# that implement egress NetworkPolicy (Cilium, Calico, AWS VPC CNI network-policy
-# agent); a no-op on CNIs that don't.
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# that implement egress NetworkPolicy (Cilium, Calico, AWS VPC CNI
+# network-policy agent); a no-op on CNIs that don't.
+#
+# blockCloudMetadataEgress closes the SSRF -> cloud metadata credential theft
+# vector: backend pods execute user-defined resource requests and are the
+# primary SSRF surface. All other egress stays allowed.
+#
+# Auto-on is safe for token-federated identities (EKS IRSA, GKE Workload
+# Identity, Azure Workload Identity): they get credentials from a projected
+# token file and the provider's STS/IAM endpoint, not the metadata service.
+#
+# But "no static credential" also covers metadata-based identities that the
+# block breaks. Set it to false if blob storage authenticates via an EC2
+# instance profile, a GCE default service account, or an Azure IMDS-based
+# managed identity, or if a data source connection relies on the metadata
+# endpoint (e.g. an IAM-role connection using the instance profile). Pair with
+# IMDS hop-limit=1 at the node level and the application-layer SSRF filter.
 networkPolicy:
-  # Block egress to the cloud instance-metadata endpoint (169.254.169.254 -- AWS
-  # IMDS, GCP metadata.google.internal, Azure IMDS) from the backend pods. They
-  # execute user-defined resource requests and are the primary SSRF surface, so
-  # this closes the SSRF -> metadata credential-theft vector. Allows all other
-  # egress (only that one IP is denied).
-  #
-  # Tri-state:
-  #   null (default) -> auto: ON when blob storage is keyless (no static
-  #                     credential set), OFF otherwise.
-  #   true / false   -> force on/off.
-  #
-  # Auto-ON is safe for TOKEN-FEDERATED identities (EKS IRSA, GKE Workload
-  # Identity, Azure Workload Identity): they resolve credentials via a projected
-  # token file + the provider STS/IAM endpoint, not the metadata service.
-  #
-  # But "no static credential" also covers METADATA-BASED identities that the
-  # block breaks. Set this to false if blob storage authenticates via an EC2
-  # instance profile, a GCE default service account, or an Azure IMDS-based
-  # managed identity -- those read credentials from 169.254.169.254 and are
-  # misdetected as keyless. Also set false if a data source connection relies on
-  # the metadata endpoint (e.g. an IAM-role connection using the instance profile).
-  # Defense in depth -- pair with IMDS hop-limit=1 at the node level and the
-  # application-layer SSRF filter.
-  blockCloudMetadataEgress: null
-  # Additional CIDRs to deny in backend egress (beyond the metadata IP). e.g.
-  # private ranges you don't want reachable from user-defined requests.
+  # @schema type: [boolean, null]
+  # -- (bool) Block backend egress to the cloud metadata endpoint (169.254.169.254). `true`/`false` force it on or off.
+  # @default -- null: on when blob storage is keyless (no static credential set), off otherwise
+  blockCloudMetadataEgress:
+  # -- Additional IPv4 CIDRs to deny in backend egress, e.g. private ranges user-defined requests should not reach.
   blockedRanges: []
-  # IPv6 CIDRs to deny. Empty leaves IPv6 egress fully allowed (metadata is IPv4).
+  # -- IPv6 CIDRs to deny in backend egress. Empty leaves IPv6 egress fully allowed.
   blockedRanges6: []
 
 # Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.

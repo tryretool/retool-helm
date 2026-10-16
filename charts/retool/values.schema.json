@@ -282,6 +282,44 @@
         "null"
       ]
     },
+    "httpRoute": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the HTTPRoute.",
+          "type": "object"
+        },
+        "enabled": {
+          "description": "Create a Gateway API HTTPRoute for Retool, as an alternative to `ingress`. Requires a Gateway API implementation (e.g. GKE Gateway, Istio, Envoy Gateway, NGINX Gateway Fabric).",
+          "type": "boolean"
+        },
+        "hostnames": {
+          "description": "Hostnames the route matches.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "labels": {
+          "description": "Labels added to the HTTPRoute.",
+          "type": "object"
+        },
+        "parentRefs": {
+          "description": "Gateways the route attaches to, in Gateway API `ParentReference` form.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "rules": {
+          "description": "Full HTTPRoute rules. When unset, a catch-all rule routes all traffic to the Retool backend.",
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      }
+    },
     "image": {
       "type": "object",
       "properties": {
@@ -308,6 +346,58 @@
         "tag": {
           "description": "Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.",
           "type": "string"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the Ingress.",
+          "type": "object"
+        },
+        "enabled": {
+          "description": "Create an Ingress for Retool.",
+          "type": "boolean"
+        },
+        "hostName": {
+          "description": "Single host to route to Retool. When set, `hosts` is ignored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hosts": {
+          "description": "Hosts to route. Each item has `host`, `paths` (each with a `path`) and optionally `extraPaths`, raw path entries placed first.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "ingressClassName": {
+          "description": "IngressClass to use.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "labels": {
+          "description": "Labels added to the Ingress.",
+          "type": "object"
+        },
+        "pathType": {
+          "description": "Path type for the Retool paths. Set to null to omit it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tls": {
+          "description": "TLS configuration for the Ingress, in Kubernetes `IngressTLS` form.",
+          "type": [
+            "array",
+            "null"
+          ]
         }
       }
     },
@@ -340,6 +430,26 @@
         "string",
         "null"
       ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "blockCloudMetadataEgress": {
+          "description": "Block backend egress to the cloud metadata endpoint (169.254.169.254). `true`/`false` force it on or off.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "blockedRanges": {
+          "description": "Additional IPv4 CIDRs to deny in backend egress, e.g. private ranges user-defined requests should not reach.",
+          "type": "array"
+        },
+        "blockedRanges6": {
+          "description": "IPv6 CIDRs to deny in backend egress. Empty leaves IPv6 egress fully allowed.",
+          "type": "array"
+        }
+      }
     },
     "postgresql": {
       "type": "object",
@@ -418,6 +528,117 @@
         "ssl_enabled": {
           "description": "Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`.",
           "type": "boolean"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the Service.",
+          "type": "object"
+        },
+        "clusterIP": {
+          "description": "Fixed cluster IP. Only used with `type: ClusterIP`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "externalIPs": {
+          "description": "External IPs for the Service.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "externalPort": {
+          "description": "Service port.",
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "internalPort": {
+          "description": "Container port the Service targets.",
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "labels": {
+          "description": "Labels added to the Service.",
+          "type": "object"
+        },
+        "loadBalancerIP": {
+          "description": "Requested load balancer IP. Only used with `type: LoadBalancer`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "loadBalancerSourceRanges": {
+          "description": "CIDRs allowed to reach the load balancer, where the provider supports it.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "nodePort": {
+          "description": "Fixed node port. Only used with `type: NodePort`.",
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "portName": {
+          "description": "Name for the Service port.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selector": {
+          "description": "Extra selector labels for the Service.",
+          "type": "object"
+        },
+        "type": {
+          "description": "Service type for the Retool backend.",
+          "type": "string",
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the ServiceAccount, e.g. for IRSA or Workload Identity.",
+          "type": "object"
+        },
+        "automountToken": {
+          "description": "Mount the ServiceAccount token into Retool pods.",
+          "type": "boolean"
+        },
+        "create": {
+          "description": "Create a ServiceAccount for Retool.",
+          "type": "boolean"
+        },
+        "labels": {
+          "description": "Labels added to the ServiceAccount.",
+          "type": "object"
+        },
+        "name": {
+          "description": "ServiceAccount to use. When `create` is true and this is unset, a name is generated from the full name. When `create` is false, it must already exist.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     }
