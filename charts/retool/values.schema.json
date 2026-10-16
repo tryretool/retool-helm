@@ -1,0 +1,1041 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Retool Helm chart values",
+  "type": "object",
+  "properties": {
+    "affinity": {
+      "description": "Affinity for Retool pods. The default prefers spreading Retool pods across nodes.",
+      "type": "object"
+    },
+    "commandline": {
+      "type": "object",
+      "properties": {
+        "args": {
+          "description": "Extra arguments for the backend container.",
+          "type": "array"
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "auth": {
+          "type": "object",
+          "properties": {
+            "google": {
+              "type": "object",
+              "properties": {
+                "clientId": {
+                  "description": "Google OAuth client ID.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clientSecret": {
+                  "description": "Google OAuth client secret. Ignored when `clientSecretSecretName` is set.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clientSecretSecretKey": {
+                  "description": "Key in `clientSecretSecretName` holding the Google client secret.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clientSecretSecretName": {
+                  "description": "Name of an existing Secret holding the Google client secret. Use instead of `clientSecret`.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "enabled": {
+                  "description": "Set the `CLIENT_ID` and `CLIENT_SECRET` env vars for Google SSO. Defaults to true for backwards compatibility.",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "dbConnectorTimeout": {
+          "description": "Query timeout in milliseconds. Sets `DBCONNECTOR_QUERY_TIMEOUT_MS`.",
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "encryptionKey": {
+          "description": "Key used to encrypt secrets stored in the Retool database. Required on first install unless `config.encryptionKeySecretName` is set. Never change it after install, or stored credentials become unreadable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "encryptionKeySecretKey": {
+          "description": "Key in `config.encryptionKeySecretName` holding the encryption key.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "encryptionKeySecretName": {
+          "description": "Name of an existing Secret holding the encryption key. Use instead of `config.encryptionKey`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jwtSecret": {
+          "description": "Secret used to sign session JWTs. When unset, one is generated on first install and reused on upgrade. Reuse relies on Helm `lookup`, so set it explicitly with tools that render via `helm template`, such as Argo CD.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jwtSecretSecretKey": {
+          "description": "Key in `config.jwtSecretSecretName` holding the JWT secret.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jwtSecretSecretName": {
+          "description": "Name of an existing Secret holding the JWT secret. Use instead of `config.jwtSecret`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "licenseKey": {
+          "description": "Retool license key. Ignored when `config.licenseKeySecretName` is set.",
+          "type": "string"
+        },
+        "licenseKeySecretKey": {
+          "description": "Key in `config.licenseKeySecretName` holding the license key.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "licenseKeySecretName": {
+          "description": "Name of an existing Secret holding the license key. Use instead of `config.licenseKey`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "postgresPoolMaxSize": {
+          "description": "Maximum Postgres pool connections for the backend. Sets `DBCONNECTOR_POSTGRES_POOL_MAX_SIZE`.",
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "postgresql": {
+          "type": "object",
+          "properties": {
+            "database": {
+              "description": "Alias for `config.postgresql.db`, used when `db` is unset.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "db": {
+              "description": "Database name.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "host": {
+              "description": "Hostname of the external Postgres database.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "password": {
+              "description": "Database password. Ignored when `passwordSecretName` is set.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "passwordSecretKey": {
+              "description": "Key in `passwordSecretName` holding the database password.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "passwordSecretName": {
+              "description": "Name of an existing Secret holding the database password. Use instead of `password`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "port": {
+              "description": "Port of the external Postgres database.",
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "ssl_enabled": {
+              "description": "Connect to Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`; set it here rather than in `env`.",
+              "type": [
+                "boolean",
+                "string",
+                "null"
+              ]
+            },
+            "user": {
+              "description": "Database user.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "useInsecureCookies": {
+          "description": "Serve the session cookie without the `Secure` flag. Only enable this when Retool is served over plain HTTP.",
+          "type": "boolean"
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to Retool Deployments.",
+          "type": "object"
+        },
+        "labels": {
+          "description": "Labels added to Retool Deployments.",
+          "type": "object"
+        }
+      }
+    },
+    "env": {
+      "description": "Environment variables for Retool containers, as `NAME: value`. A value can also be a map with `value` and/or `valueFrom`.",
+      "type": "object"
+    },
+    "environmentSecrets": {
+      "description": "Environment variables populated from Kubernetes Secrets. Each item has `name` and `secretKeyRef` (`name`, `key`).",
+      "type": "array"
+    },
+    "environmentVariables": {
+      "description": "Environment variables in Kubernetes `EnvVar` form, for values `env` cannot express such as `valueFrom.fieldRef`.",
+      "type": "array"
+    },
+    "externalSecrets": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Read env vars from the legacy [kubernetes-external-secrets](https://github.com/godaddy/kubernetes-external-secrets) controller. Deprecated in favour of `externalSecrets.externalSecretsOperator`.",
+          "type": "boolean"
+        },
+        "externalSecretsOperator": {
+          "type": "object",
+          "properties": {
+            "backendType": {
+              "description": "Backend type for legacy ExternalSecret resources.",
+              "type": "string"
+            },
+            "enabled": {
+              "description": "Read env vars through [External Secrets Operator](https://github.com/external-secrets/external-secrets).",
+              "type": "boolean"
+            },
+            "refreshInterval": {
+              "description": "How often to re-read secrets from the provider, as a Go duration (`1m`, `1h`). `0` fetches once.",
+              "type": "string"
+            },
+            "secretRef": {
+              "description": "ExternalSecrets to create, each also added to pod `envFrom`. Each item needs `name` and `path`; `creationPolicy`, `deletionPolicy` and `optional` are optional.",
+              "type": "array"
+            },
+            "secretStoreRef": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "description": "Kind of the store.",
+                  "type": "string",
+                  "enum": [
+                    "SecretStore",
+                    "ClusterSecretStore"
+                  ]
+                },
+                "name": {
+                  "description": "Name of the SecretStore to read from.",
+                  "type": "string"
+                }
+              }
+            },
+            "useLegacyCR": {
+              "description": "Create `kubernetes-client.io/v1` (legacy) ExternalSecret resources instead of `external-secrets.io` ones.",
+              "type": "boolean"
+            }
+          }
+        },
+        "includeConfigSecrets": {
+          "description": "Also create the chart's config Secret while external secrets are enabled. It is skipped by default so it can't clobber keys supplied by the external secret.",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "Name of the legacy external secret to read env vars from.",
+          "type": "string"
+        },
+        "secrets": {
+          "description": "Additional legacy external secrets to read env vars from. Each item has a `name`.",
+          "type": "array"
+        }
+      }
+    },
+    "extraConfigMapMounts": {
+      "description": "ConfigMaps to mount into Retool containers. Each item needs `name`, `configMap` and `mountPath`, and optionally `subPath`.",
+      "type": "array"
+    },
+    "extraContainers": {
+      "description": "Extra containers added to the backend pods.",
+      "type": "array"
+    },
+    "extraManifests": {
+      "description": "Extra Kubernetes manifests to deploy with the chart. Each is rendered with `tpl`, so it can use template expressions.",
+      "type": "array"
+    },
+    "extraVolumeMounts": {
+      "description": "Extra volume mounts added to Retool containers.",
+      "type": "array"
+    },
+    "extraVolumes": {
+      "description": "Extra volumes added to Retool pods.",
+      "type": "array"
+    },
+    "files": {
+      "description": "Legacy. Config file mounts under `/usr/share/retool/config`, keyed by filename.",
+      "type": "object"
+    },
+    "fullnameOverride": {
+      "description": "Override the full name used for resource names. Truncated to 63 characters.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "hostAliases": {
+      "description": "Host aliases for the backend pods, in Kubernetes `HostAlias` form.",
+      "type": [
+        "array",
+        "object"
+      ]
+    },
+    "httpRoute": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the HTTPRoute.",
+          "type": "object"
+        },
+        "enabled": {
+          "description": "Create a Gateway API HTTPRoute for Retool, as an alternative to `ingress`. Requires a Gateway API implementation (e.g. GKE Gateway, Istio, Envoy Gateway, NGINX Gateway Fabric).",
+          "type": "boolean"
+        },
+        "hostnames": {
+          "description": "Hostnames the route matches.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "labels": {
+          "description": "Labels added to the HTTPRoute.",
+          "type": "object"
+        },
+        "parentRefs": {
+          "description": "Gateways the route attaches to, in Gateway API `ParentReference` form.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "rules": {
+          "description": "Full HTTPRoute rules. When unset, a catch-all rule routes all traffic to the Retool backend.",
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "pullPolicy": {
+          "description": "Image pull policy for Retool containers.",
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "pullSecrets": {
+          "description": "Image pull secrets for Retool pods, e.g. `[{name: my-registry}]`.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "repository": {
+          "description": "Retool backend image repository.",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.",
+          "type": "string"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the Ingress.",
+          "type": "object"
+        },
+        "enabled": {
+          "description": "Create an Ingress for Retool.",
+          "type": "boolean"
+        },
+        "hostName": {
+          "description": "Single host to route to Retool. When set, `hosts` is ignored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hosts": {
+          "description": "Hosts to route. Each item has `host`, `paths` (each with a `path`) and optionally `extraPaths`, raw path entries placed first.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "ingressClassName": {
+          "description": "IngressClass to use.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "labels": {
+          "description": "Labels added to the Ingress.",
+          "type": "object"
+        },
+        "pathType": {
+          "description": "Path type for the Retool paths. Set to null to omit it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tls": {
+          "description": "TLS configuration for the Ingress, in Kubernetes `IngressTLS` form.",
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      }
+    },
+    "initContainers": {
+      "description": "Init containers for Retool pods, as a map of container name to container spec.",
+      "type": "object"
+    },
+    "initImage": {
+      "type": "object",
+      "properties": {
+        "digest": {
+          "description": "Digest to pin a mirrored init image by, e.g. `sha256:...`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repository": {
+          "description": "Utility image for the initContainers that install the nsjail seccomp profile on the host, used by the code executor and JS executor. Override it to pull from a private mirror, an air-gapped registry, or GCP Marketplace.",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Tag of the init image.",
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      }
+    },
+    "livenessProbe": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable the backend liveness probe.",
+          "type": "boolean"
+        },
+        "failureThreshold": {
+          "description": "Consecutive failures before the container is restarted.",
+          "type": "integer"
+        },
+        "host": {
+          "description": "Host the probe connects to. On IPv6-primary or dual-stack clusters, set `127.0.0.1` so the kubelet probes the IPv4 loopback; some services (e.g. code-executor) listen on IPv4 only.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "initialDelaySeconds": {
+          "description": "Seconds after container start before the first probe.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "HTTP path the probe requests.",
+          "type": "string"
+        },
+        "periodSeconds": {
+          "description": "Seconds between probes.",
+          "type": "integer"
+        },
+        "scheme": {
+          "description": "Scheme the probe uses.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "HTTP",
+            "HTTPS",
+            null
+          ]
+        },
+        "timeoutSeconds": {
+          "description": "Seconds before the probe times out.",
+          "type": "integer"
+        }
+      }
+    },
+    "nameOverride": {
+      "description": "Override the chart name used in resource names.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "blockCloudMetadataEgress": {
+          "description": "Block backend egress to the cloud metadata endpoint (169.254.169.254). `true`/`false` force it on or off.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "blockedRanges": {
+          "description": "Additional IPv4 CIDRs to deny in backend egress, e.g. private ranges user-defined requests should not reach.",
+          "type": "array"
+        },
+        "blockedRanges6": {
+          "description": "IPv6 CIDRs to deny in backend egress. Empty leaves IPv6 egress fully allowed.",
+          "type": "array"
+        }
+      }
+    },
+    "nodeSelector": {
+      "description": "Node selector for Retool pods.",
+      "type": "object",
+      "properties": {
+        "kubernetes.io/arch": {
+          "type": "string"
+        }
+      }
+    },
+    "persistentVolumeClaim": {
+      "type": "object",
+      "properties": {
+        "accessModes": {
+          "description": "Access modes of the created PVC.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "description": "Annotations added to the created PVC.",
+          "type": "object"
+        },
+        "enabled": {
+          "description": "Mount a PersistentVolumeClaim into the backend, jobs-runner, dbconnector and workflows pods.",
+          "type": "boolean"
+        },
+        "existingClaim": {
+          "description": "Use this existing PVC instead of creating one.",
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "Path the volume is mounted at.",
+          "type": "string"
+        },
+        "size": {
+          "allOf": [
+            {
+              "description": "Requested size of the created PVC.",
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/definitions.json/definitions/quantity"
+            }
+          ]
+        },
+        "storageClass": {
+          "description": "StorageClass of the created PVC. `\"-\"` sets `storageClassName: \"\"`, which disables dynamic provisioning; empty uses the cluster default.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "podAnnotations": {
+      "description": "Annotations added to all Retool pods.",
+      "type": "object"
+    },
+    "podDisruptionBudget": {
+      "description": "PodDisruptionBudget spec for Retool deployments, with `minAvailable` or `maxUnavailable` as a pod count (`1`) or a percentage (`\"50%\"`). Empty creates none.",
+      "type": "object"
+    },
+    "podLabels": {
+      "description": "Labels added to the backend and jobs-runner pods.",
+      "type": "object"
+    },
+    "postgresql": {
+      "type": "object",
+      "properties": {
+        "auth": {
+          "type": "object",
+          "properties": {
+            "database": {
+              "description": "Database name.",
+              "type": "string"
+            },
+            "password": {
+              "description": "Database password.",
+              "type": "string"
+            },
+            "username": {
+              "description": "Database user. With `postgres`, a random admin password is generated unless `postgresPassword` is set.",
+              "type": "string"
+            }
+          }
+        },
+        "enabled": {
+          "description": "Deploy the bundled Postgres subchart. Not suitable for production.",
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "description": "Postgres image repository.",
+              "type": "string"
+            },
+            "tag": {
+              "description": "Postgres image tag.",
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          }
+        },
+        "postgresqlDataDir": {
+          "description": "Postgres data directory.",
+          "type": "string"
+        },
+        "primary": {
+          "type": "object",
+          "properties": {
+            "persistence": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "description": "Persist Postgres data in a PersistentVolumeClaim.",
+                  "type": "boolean"
+                },
+                "mountPath": {
+                  "description": "Mount path of the Postgres volume.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "port": {
+              "description": "Postgres service port.",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        },
+        "ssl_enabled": {
+          "description": "Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`.",
+          "type": "boolean"
+        }
+      }
+    },
+    "preStopHook": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Sleep 30 seconds before the backend container stops, so load balancers drain it first.",
+          "type": "boolean"
+        }
+      }
+    },
+    "priorityClassName": {
+      "description": "PriorityClass for Retool pods.",
+      "type": "string"
+    },
+    "readinessProbe": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable the backend readiness probe.",
+          "type": "boolean"
+        },
+        "host": {
+          "description": "Host the probe connects to. See `livenessProbe.host`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "initialDelaySeconds": {
+          "description": "Seconds after container start before the first probe.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "HTTP path the probe requests.",
+          "type": "string"
+        },
+        "periodSeconds": {
+          "description": "Seconds between probes.",
+          "type": "integer"
+        },
+        "scheme": {
+          "description": "Scheme the probe uses.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "HTTP",
+            "HTTPS",
+            null
+          ]
+        },
+        "successThreshold": {
+          "description": "Consecutive successes before the pod is marked ready.",
+          "type": "integer"
+        },
+        "timeoutSeconds": {
+          "description": "Seconds before the probe times out.",
+          "type": "integer"
+        }
+      }
+    },
+    "replicaCount": {
+      "description": "Number of backend replicas. With more than 1, a separate jobs-runner pod is also deployed.",
+      "type": "integer"
+    },
+    "resources": {
+      "allOf": [
+        {
+          "description": "Resources for the backend, jobs-runner, dbconnector and workflows-backend pods, unless they set their own.",
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/definitions.json/definitions/resources"
+        }
+      ]
+    },
+    "revisionHistoryLimit": {
+      "description": "Number of old ReplicaSets to keep for rollbacks.",
+      "type": "integer"
+    },
+    "securityContext": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Set `runAsUser` and `fsGroup` on the main Retool pods.",
+          "type": "boolean"
+        },
+        "extraSecurityContext": {
+          "description": "Additional pod security context fields for the main Retool pods, in Kubernetes `PodSecurityContext` form.",
+          "type": "object"
+        },
+        "fsGroup": {
+          "description": "Group ID that owns mounted volumes.",
+          "type": "integer"
+        },
+        "runAsUser": {
+          "description": "User ID to run as.",
+          "type": "integer"
+        }
+      }
+    },
+    "securityGroupPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Create an AWS SecurityGroupPolicy for Retool pods (EKS security groups for pods).",
+          "type": "boolean"
+        },
+        "groupIds": {
+          "description": "Security group IDs to attach.",
+          "type": "array"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the Service.",
+          "type": "object"
+        },
+        "clusterIP": {
+          "description": "Fixed cluster IP. Only used with `type: ClusterIP`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "externalIPs": {
+          "description": "External IPs for the Service.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "externalPort": {
+          "description": "Service port.",
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "internalPort": {
+          "description": "Container port the Service targets.",
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "labels": {
+          "description": "Labels added to the Service.",
+          "type": "object"
+        },
+        "loadBalancerIP": {
+          "description": "Requested load balancer IP. Only used with `type: LoadBalancer`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "loadBalancerSourceRanges": {
+          "description": "CIDRs allowed to reach the load balancer, where the provider supports it.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "nodePort": {
+          "description": "Fixed node port. Only used with `type: NodePort`.",
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "portName": {
+          "description": "Name for the Service port.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selector": {
+          "description": "Extra selector labels for the Service.",
+          "type": "object"
+        },
+        "type": {
+          "description": "Service type for the Retool backend.",
+          "type": "string",
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations added to the ServiceAccount, e.g. for IRSA or Workload Identity.",
+          "type": "object"
+        },
+        "automountToken": {
+          "description": "Mount the ServiceAccount token into Retool pods.",
+          "type": "boolean"
+        },
+        "create": {
+          "description": "Create a ServiceAccount for Retool.",
+          "type": "boolean"
+        },
+        "labels": {
+          "description": "Labels added to the ServiceAccount.",
+          "type": "object"
+        },
+        "name": {
+          "description": "ServiceAccount to use. When `create` is true and this is unset, a name is generated from the full name. When `create` is false, it must already exist.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "startupProbe": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable the backend startup probe.",
+          "type": "boolean"
+        },
+        "failureThreshold": {
+          "description": "Consecutive failures before the container is restarted. With the defaults, the backend has 5 minutes to start.",
+          "type": "integer"
+        },
+        "host": {
+          "description": "Host the probe connects to. See `livenessProbe.host`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "initialDelaySeconds": {
+          "description": "Seconds after container start before the first probe.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "HTTP path the probe requests.",
+          "type": "string"
+        },
+        "periodSeconds": {
+          "description": "Seconds between probes.",
+          "type": "integer"
+        },
+        "scheme": {
+          "description": "Scheme the probe uses.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "HTTP",
+            "HTTPS",
+            null
+          ]
+        },
+        "successThreshold": {
+          "description": "Consecutive successes before the probe passes.",
+          "type": "integer"
+        },
+        "timeoutSeconds": {
+          "description": "Seconds before the probe times out.",
+          "type": "integer"
+        }
+      }
+    },
+    "tolerations": {
+      "description": "Tolerations for Retool pods.",
+      "type": "array"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "definitions.json": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$comment": "Shared definitions referenced from values.yaml with `# @schema $ref: schema/definitions.json#/definitions/\u003cname\u003e`. generate.sh bundles them into values.schema.json.",
+      "definitions": {
+        "quantity": {
+          "description": "A Kubernetes resource quantity, e.g. `500m`, `2`, or `4Gi`.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "resources": {
+          "description": "Container resource requests and limits (core/v1 ResourceRequirements).",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "claims": {
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "limits": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "$ref": "#/$defs/definitions.json/definitions/quantity"
+              }
+            },
+            "requests": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "$ref": "#/$defs/definitions.json/definitions/quantity"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

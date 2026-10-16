@@ -71,20 +71,6 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config .github/ct.yaml
 
-  # We don't use helm-docs yet, can set this up later
-  #
-  # lint-docs:
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - changed
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Run helm-docs
-  #       run: .github/helm-docs.sh
-
   kubeconform-chart:
     runs-on: ubuntu-latest
     needs:

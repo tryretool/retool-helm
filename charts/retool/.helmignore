@@ -26,3 +26,7 @@
 /ci
 # Try not to package past versions into new chart bundles
 retool*.tgz
+
+# Inputs to schema/generate.sh; the generated README.md and values.schema.json are packaged
+README.md.gotmpl
+/schema
