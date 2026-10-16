@@ -4,85 +4,126 @@
 # values.schema.json; both are generated from this file by
 # charts/retool/schema/generate.sh. See CONTRIBUTING.md for the conventions.
 
-# nameOverride:
-# fullnameOverride:
+# @schema type: [string, null]
+# -- (string) Override the chart name used in resource names.
+nameOverride:
+# @schema type: [string, null]
+# -- (string) Override the full name used for resource names. Truncated to 63 characters.
+fullnameOverride:
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
 config:
+  # -- Retool license key. Ignored when `config.licenseKeySecretName` is set.
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
-  # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
-  # licenseKeySecretName:
-  # licenseKeySecretKey is the key in the k8s secret, default: license-key
-  # licenseKeySecretKey:
+  # @schema type: [string, null]
+  # -- (string) Name of an existing Secret holding the license key. Use instead of `config.licenseKey`.
+  licenseKeySecretName:
+  # @schema type: [string, null]
+  # -- (string) Key in `config.licenseKeySecretName` holding the license key.
+  # @default -- `license-key`
+  licenseKeySecretKey:
+  # -- Serve the session cookie without the `Secure` flag. Only enable this when Retool is served over plain HTTP.
   useInsecureCookies: false
-  # Timeout for queries, in ms.
-  # dbConnectorTimeout: 120000
-  # max postgres pool connections for backend
+  # @schema type: [integer, string, null]
+  # -- (int) Query timeout in milliseconds. Sets `DBCONNECTOR_QUERY_TIMEOUT_MS`.
+  # @default -- Retool's built-in default (120000)
+  dbConnectorTimeout:
+  # @schema type: [integer, string, null]
+  # -- Maximum Postgres pool connections for the backend. Sets `DBCONNECTOR_POSTGRES_POOL_MAX_SIZE`.
   postgresPoolMaxSize: 10
   auth:
     google:
-      # whether to populate CLIENT_ID and CLIENT_SECRET env vars (default: true for backwards compatibility)
+      # -- Set the `CLIENT_ID` and `CLIENT_SECRET` env vars for Google SSO. Defaults to true for backwards compatibility.
       enabled: true
+      # @schema type: [string, null]
+      # -- (string) Google OAuth client ID.
       clientId:
+      # @schema type: [string, null]
+      # -- (string) Google OAuth client secret. Ignored when `clientSecretSecretName` is set.
       clientSecret:
-      # clientSecretSecretName is the name of the secret where the google client secret is stored (can be used instead of clientSecret)
-      # clientSecretSecretName:
-      # clientSecretSecretKey is the key in the k8s secret, default: google-client-secret
-      # clientSecretSecretKey:
+      # @schema type: [string, null]
+      # -- (string) Name of an existing Secret holding the Google client secret. Use instead of `clientSecret`.
+      clientSecretSecretName:
+      # @schema type: [string, null]
+      # -- (string) Key in `clientSecretSecretName` holding the Google client secret.
+      # @default -- `google-client-secret`
+      clientSecretSecretKey:
+  # @schema type: [string, null]
+  # -- (string) Key used to encrypt secrets stored in the Retool database. Required on first install unless `config.encryptionKeySecretName` is set. Never change it after install, or stored credentials become unreadable.
   encryptionKey:
-  # encryptionKeySecretName is the name of the secret where the encryption key is stored (can be used instead of encryptionKey)
-  # encryptionKeySecretName:
-  # encryptionKeySecretKey is the key in the k8s secret, default: encryption-key
-  # encryptionKeySecretKey:
+  # @schema type: [string, null]
+  # -- (string) Name of an existing Secret holding the encryption key. Use instead of `config.encryptionKey`.
+  encryptionKeySecretName:
+  # @schema type: [string, null]
+  # -- (string) Key in `config.encryptionKeySecretName` holding the encryption key.
+  # @default -- `encryption-key`
+  encryptionKeySecretKey:
+  # @schema type: [string, null]
+  # -- (string) Secret used to sign session JWTs. When unset, one is generated on first install and reused on upgrade. Reuse relies on Helm `lookup`, so set it explicitly with tools that render via `helm template`, such as Argo CD.
   jwtSecret:
-  # jwtSecretSecretName is the name of the secret where the jwt secret is stored (can be used instead of jwtSecret)
-  # jwtSecretSecretName:
-  # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
-  # jwtSecretSecretKey:
+  # @schema type: [string, null]
+  # -- (string) Name of an existing Secret holding the JWT secret. Use instead of `config.jwtSecret`.
+  jwtSecretSecretName:
+  # @schema type: [string, null]
+  # -- (string) Key in `config.jwtSecretSecretName` holding the JWT secret.
+  # @default -- `jwt-secret`
+  jwtSecretSecretKey:
 
-  # IMPORTANT: Incompatible with postgresql subchart
-  # Please disable the subchart in order to use a managed or external postgres instance.
+  # Connection to an external Postgres database. Only used when the bundled
+  # postgresql subchart is disabled (postgresql.enabled: false).
   postgresql:
-    {}
-    # Specify if postgresql subchart is disabled
-    # host:
-    # port:
-    # db:
-    # user:
-    # password:
-    # ssl_enabled: whether to enable SSL for connecting to the Retool Postgres database, equivalent to the POSTGRES_SSL_ENABLED environment variable. Place here instead of in the env block.
-    # passwordSecretName is the name of the secret where the pg password is stored (can be used instead of password)
-    # passwordSecretName:
-    # passwordSecretKey is the key in the k8s secret, default: postgresql-password
-    # passwordSecretKey:
+    # @schema type: [string, null]
+    # -- (string) Hostname of the external Postgres database.
+    host:
+    # @schema type: [integer, string, null]
+    # -- (int) Port of the external Postgres database.
+    port:
+    # @schema type: [string, null]
+    # -- (string) Database name.
+    db:
+    # @schema type: [string, null]
+    # -- (string) Alias for `config.postgresql.db`, used when `db` is unset.
+    database:
+    # @schema type: [string, null]
+    # -- (string) Database user.
+    user:
+    # @schema type: [string, null]
+    # -- (string) Database password. Ignored when `passwordSecretName` is set.
+    password:
+    # @schema type: [string, null]
+    # -- (string) Name of an existing Secret holding the database password. Use instead of `password`.
+    passwordSecretName:
+    # @schema type: [string, null]
+    # -- (string) Key in `passwordSecretName` holding the database password.
+    # @default -- `postgresql-password`
+    passwordSecretKey:
+    # @schema type: [boolean, string, null]
+    # -- (bool) Connect to Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`; set it here rather than in `env`.
+    ssl_enabled:
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
 image:
+  # -- Retool backend image repository.
   repository: "tryretool/backend"
-  # You need to pick a specific tag here, this chart will not make a decision for you
+  # -- Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.
   tag: ""
+  # @schema enum: [Always, IfNotPresent, Never]
+  # -- Image pull policy for Retool containers.
   pullPolicy: "IfNotPresent"
+  # @schema type: [array, null]
+  # -- (list) Image pull secrets for Retool pods, e.g. `[{name: my-registry}]`.
+  pullSecrets:
 
-# Small utility image for the initContainers that install the nsjail seccomp
-# profile onto the host, on the code executor and JS executor. Only used when
-# seccomp is in play.
-#
-# Override repository if every image has to come from one registry -- a private
-# mirror, an air-gapped install, or GCP Marketplace, which rejects any artifact
-# a consumer pulls from outside its own Artifact Registry.
-#
 # The upstream busybox image is pinned to a known-good digest internally, but
-# only while repository and tag are left at their defaults below. Overriding
-# either drops that pin automatically (a copied image gets a new digest, so the
-# original would pin you back to the source registry and fail the pull). Set
-# digest here to pin your own mirrored image by digest.
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# only while repository and tag are left at their defaults. Overriding either
+# drops that pin automatically (a copied image gets a new digest, so the
+# original would pin you back to the source registry and fail the pull).
 initImage:
+  # -- Utility image for the initContainers that install the nsjail seccomp profile on the host, used by the code executor and JS executor. Override it to pull from a private mirror, an air-gapped registry, or GCP Marketplace.
   repository: busybox
+  # @schema type: [string, number]
+  # -- Tag of the init image.
   tag: '1.37.0'
+  # @schema type: [string, null]
+  # -- Digest to pin a mirrored init image by, e.g. `sha256:...`.
   digest: ''
 
 # Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
@@ -90,102 +131,73 @@ initImage:
 commandline:
   args: []
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# Example:
+#   env:
+#     BASE_DOMAIN: https://retool.example.com
+#     DISABLE_GIT_SYNCING: "true"
+# -- Environment variables for Retool containers, as `NAME: value`. A value can also be a map with `value` and/or `valueFrom`.
 env: {}
 
-# Optionally specify additional environment variables to be populated from Kubernetes secrets.
-# Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
-environmentSecrets:
-  []
-  # - name: SCIM_AUTH_TOKEN
-  #   secretKeyRef:
-  #     name: retool-scim-auth-token
-  #     key: auth-token
-  # - name: GITHUB_APP_PRIVATE_KEY
-  #   secretKeyRef:
-  #     name: retool-github-app-private-key
-  #     key: private-key
+# Example:
+#   environmentSecrets:
+#     - name: SCIM_AUTH_TOKEN
+#       secretKeyRef:
+#         name: retool-scim-auth-token
+#         key: auth-token
+# -- Environment variables populated from Kubernetes Secrets. Each item has `name` and `secretKeyRef` (`name`, `key`).
+environmentSecrets: []
 
-# Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
-# Can also include environment secrets here instead of in environmentSecrets
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
-environmentVariables:
-  []
-  #   - name: SCIM_AUTH_TOKEN
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: retool-scim-auth-token
-  #         key: auth-token
-  #   - name: GITHUB_APP_PRIVATE_KEY
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: retool-github-app-private-key
-  #         key: private-key
-  #   - name: POD_HOST_IP
-  #     valueFrom:
-  #       fieldRef:
-  #         fieldPath: status.hostIP
+# Example:
+#   environmentVariables:
+#     - name: GITHUB_APP_PRIVATE_KEY
+#       valueFrom:
+#         secretKeyRef:
+#           name: retool-github-app-private-key
+#           key: private-key
+#     - name: POD_HOST_IP
+#       valueFrom:
+#         fieldRef:
+#           fieldPath: status.hostIP
+# -- Environment variables in Kubernetes `EnvVar` form, for values `env` cannot express such as `valueFrom.fieldRef`.
+environmentVariables: []
 
-# Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
-# These are mutually exclusive as both enable reading in environments variables via External Secrets.
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# Load environment variables from External Secrets. `enabled` (legacy
+# kubernetes-external-secrets) and `externalSecretsOperator.enabled` are
+# mutually exclusive.
 externalSecrets:
-  # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
-  # This mode only allows a single secret name to be provided.
+  # -- Read env vars from the legacy [kubernetes-external-secrets](https://github.com/godaddy/kubernetes-external-secrets) controller. Deprecated in favour of `externalSecrets.externalSecretsOperator`.
   enabled: false
-  # If external secrets are currently enabled, it is disallowed to specify regular configuration secrets as a safeguard from clobbering.
-  # This flag allows bypassing that check and specifying both an ExternalSecret and a regular secret for different secrets.
+  # -- Also create the chart's config Secret while external secrets are enabled. It is skipped by default so it can't clobber keys supplied by the external secret.
   includeConfigSecrets: false
+  # -- Name of the legacy external secret to read env vars from.
   name: retool-config
-  # Array of secrets to be use as env variables. (Optional)
-  secrets:
-    []
-    # - name: retool-config
-    # - name: retool-db
-  # Support for External Secrets Operator: https://github.com/external-secrets/external-secrets
+  # -- Additional legacy external secrets to read env vars from. Each item has a `name`.
+  secrets: []
   externalSecretsOperator:
+    # -- Read env vars through [External Secrets Operator](https://github.com/external-secrets/external-secrets).
     enabled: false
-
-    # RefreshInterval is the amount of time before the values reading again from the SecretStore provider
-    # Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (from time.ParseDuration)
-    # May be set to zero to fetch and create it once
+    # -- How often to re-read secrets from the provider, as a Go duration (`1m`, `1h`). `0` fetches once.
     refreshInterval: "1m"
-
-    # SecretStoreRef defines the default SecretStore to use when fetching the secret data.
     secretStoreRef:
+      # -- Name of the SecretStore to read from.
       name: aws-secretsmanager
-      kind: SecretStore  # or ClusterSecretStore
-
-    # Array of options to use for the ExternalSecret objects and their
-    # corresponding secretRef in pod envFrom.
-    #
-    # Example with only required fields:
-    #
+      # @schema enum: [SecretStore, ClusterSecretStore]
+      # -- Kind of the store.
+      kind: SecretStore
+    # Example:
     #   secretRef:
     #     - name: retool-config
     #       path: global-retool-config
-    #
-    # Example with all optional fields:
-    #
-    #   secretRef
     #     - name: extra-secrets
     #       path: global-extra-secrets
     #       creationPolicy: Owner
     #       deletionPolicy: Retain
     #       optional: true
-    #
+    # -- ExternalSecrets to create, each also added to pod `envFrom`. Each item needs `name` and `path`; `creationPolicy`, `deletionPolicy` and `optional` are optional.
     secretRef: []
-
-    # When true, uses kubernetes-client CRDs and not external-secrets CRDs
-    # Defaults to true
+    # -- Create `kubernetes-client.io/v1` (legacy) ExternalSecret resources instead of `external-secrets.io` ones.
     useLegacyCR: true
-    # Legacy External Secrets Backend Types: https://github.com/external-secrets/kubernetes-external-secrets
-    # Default set to AWS Secrets Manager.
+    # -- Backend type for legacy ExternalSecret resources.
     backendType: secretsManager
 
 # Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
@@ -274,31 +286,44 @@ httpRoute:
   #       - name: my-service
   #         port: 3000
 
-# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
-# @schema hidden
+# Bundled Postgres (Bitnami postgresql subchart). We highly recommend you do
+# NOT use it for a production instance of Retool; it is only suitable for
+# proofs of concept. Use a managed Postgres instead: set enabled: false and
+# configure config.postgresql.
+#
+# Any other value of the Bitnami postgresql chart can also be set here.
 postgresql:
-  # We highly recommend you do NOT use this subchart as is to run Postgres in a container
-  # for your production instance of Retool; it is a default. Please use a managed Postgres,
-  # or self-host more permanently. Use enabled: false and set in config above to do so.
+  # -- Deploy the bundled Postgres subchart. Not suitable for production.
   enabled: true
+  # -- Connect to the bundled Postgres over SSL. Sets `POSTGRES_SSL_ENABLED`.
   ssl_enabled: false
   auth:
+    # -- Database name.
     database: hammerhead_production
+    # -- Database user. With `postgres`, a random admin password is generated unless `postgresPassword` is set.
     username: postgres
+    # -- Database password.
     password: retool
-    # IMPORTANT: When setting username to `postgres` a random password will be generated unless the postgresPassword field is uncommented
     # postgresPassword: retool
   service:
+    # @schema type: [integer, string]
+    # -- Postgres service port.
     port: 5432
-  # Use the offical docker image rather than bitnami/docker
-  # since Retool depends on the uuid-ossp extension
+  # The official image rather than bitnami/postgresql, since Retool depends on
+  # the uuid-ossp extension.
   image:
+    # -- Postgres image repository.
     repository: "postgres"
+    # @schema type: [string, number]
+    # -- Postgres image tag.
     tag: "13"
+  # -- Postgres data directory.
   postgresqlDataDir: "/data/pgdata"
   primary:
     persistence:
+      # -- Persist Postgres data in a PersistentVolumeClaim.
       enabled: true
+      # -- Mount path of the Postgres volume.
       mountPath: "/data/"
 
 # Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
