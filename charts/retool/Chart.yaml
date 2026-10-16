@@ -1,8 +1,8 @@
 apiVersion: v2
 name: retool
-description: A Helm chart for Kubernetes
+description: Deploy self-hosted Retool on Kubernetes.
 type: application
-version: 6.12.4
+version: 6.12.5
 maintainers:
   - name: Retool Engineering
     email: engineering+helm@retool.com

@@ -1,6 +1,14 @@
+# Retool Helm chart values.
+#
+# Keys with a `# --` comment are documented in README.md and validated by
+# values.schema.json; both are generated from this file by
+# charts/retool/schema/generate.sh. See CONTRIBUTING.md for the conventions.
+
 # nameOverride:
 # fullnameOverride:
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
   # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
@@ -49,6 +57,8 @@ config:
     # passwordSecretKey is the key in the k8s secret, default: postgresql-password
     # passwordSecretKey:
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 image:
   repository: "tryretool/backend"
   # You need to pick a specific tag here, this chart will not make a decision for you
@@ -68,18 +78,26 @@ image:
 # either drops that pin automatically (a copied image gets a new digest, so the
 # original would pin you back to the source registry and fail the pull). Set
 # digest here to pin your own mirrored image by digest.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 initImage:
   repository: busybox
   tag: '1.37.0'
   digest: ''
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 commandline:
   args: []
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 env: {}
 
 # Optionally specify additional environment variables to be populated from Kubernetes secrets.
 # Useful for passing in SCIM_AUTH_TOKEN or other secret environment variables from Kubernetes secrets.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 environmentSecrets:
   []
   # - name: SCIM_AUTH_TOKEN
@@ -93,6 +111,8 @@ environmentSecrets:
 
 # Optionally specify environmental variables. Useful for variables that are not key-value, as env: {} above requires.
 # Can also include environment secrets here instead of in environmentSecrets
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 environmentVariables:
   []
   #   - name: SCIM_AUTH_TOKEN
@@ -112,6 +132,8 @@ environmentVariables:
 
 # Enables support for the legacy external secrets (enabled) and the modern External Secrets Operator (externalSecretsOperator.enabled).
 # These are mutually exclusive as both enable reading in environments variables via External Secrets.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 externalSecrets:
   # Support for legacy external secrets, note this is deprecated in favour of External Secrets Operator: https://github.com/godaddy/kubernetes-external-secrets
   # This mode only allows a single secret name to be provided.
@@ -166,12 +188,18 @@ externalSecrets:
     # Default set to AWS Secrets Manager.
     backendType: secretsManager
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 files: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 deployment:
   labels: {}
   annotations: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 service:
   type: ClusterIP
   externalPort: 3000
@@ -188,6 +216,8 @@ service:
   selector: {}
   # portName: service-port
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 ingress:
   enabled: true
   # For k8s 1.18+
@@ -220,6 +250,8 @@ ingress:
 
 # Gateway API HTTPRoute resource (alternative to ingress)
 # Requires a Gateway API implementation (e.g., GKE Gateway Controller, Istio, Envoy Gateway, NGINX Gateway Fabric)
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 httpRoute:
   enabled: false
   labels: {}
@@ -242,6 +274,8 @@ httpRoute:
   #       - name: my-service
   #         port: 3000
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 postgresql:
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
@@ -267,6 +301,8 @@ postgresql:
       enabled: true
       mountPath: "/data/"
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
@@ -281,6 +317,8 @@ serviceAccount:
 # NetworkPolicy applied to the main Retool backend pods. Enforced only by CNIs
 # that implement egress NetworkPolicy (Cilium, Calico, AWS VPC CNI network-policy
 # agent); a no-op on CNIs that don't.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 networkPolicy:
   # Block egress to the cloud instance-metadata endpoint (169.254.169.254 -- AWS
   # IMDS, GCP metadata.google.internal, Azure IMDS) from the backend pods. They
@@ -312,6 +350,8 @@ networkPolicy:
   # IPv6 CIDRs to deny. Empty leaves IPv6 egress fully allowed (metadata is IPv4).
   blockedRanges6: []
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 livenessProbe:
   enabled: true
   path: /api/checkHealth
@@ -327,6 +367,8 @@ livenessProbe:
   periodSeconds: 10
   failureThreshold: 3
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 readinessProbe:
   enabled: true
   path: /api/checkHealth
@@ -338,12 +380,16 @@ readinessProbe:
   periodSeconds: 10
   successThreshold: 5
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 preStopHook:
   enabled: true
 
 # Startup probe for the main backend. Other deployments have their own
 # <component>.startupProbe, also enabled by default. Set enabled: false to
 # disable a given deployment. Optional host/scheme: see livenessProbe.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 startupProbe:
   enabled: true
   path: /api/checkHealth
@@ -356,13 +402,21 @@ startupProbe:
   successThreshold: 1
   failureThreshold: 30
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 extraContainers: []
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 extraVolumeMounts: []
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 extraVolumes: []
 
 # These resource specifications will apply to the main backend, jobs-runner, dbconnector, and workflows-backend pods unless container specific resources are set.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 resources:
   # If you have more than 1 replica, the minimum recommended resources configuration is as follows:
   # - cpu: 2048m
@@ -375,10 +429,14 @@ resources:
     cpu: 2048m
     memory: 4096Mi
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 priorityClassName: ""
 
 # Affinity for pod assignment
 # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 affinity:
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
@@ -394,16 +452,24 @@ affinity:
 
 # Tolerations for pod assignment
 # Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 tolerations: []
 
 # Node labels for pod assignment
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 nodeSelector:
   kubernetes.io/arch: amd64
 
 # Common annotations for all pods.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 podAnnotations: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 revisionHistoryLimit: 3
 
 # Optional pod disruption budget, for ensuring higher availability of the
@@ -416,14 +482,20 @@ revisionHistoryLimit: 3
 #   maxUnavailable: 1
 
 # Common labels for all pods (backend and job runner) for pod assignment
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 podLabels: {}
 
 # Increasing replica count will deploy a separate pod for backend and jobs
 # Example 1: with 1 replicas, you will end up with 1 combined backend and jobs pod (unless jobRunner.enabled is true, see below)
 # Example 2: with 2 replicas, you will end up with 2 backends + 1 jobs pod
 # Example 3: with 3 replicas, you will end up with 3 backends + 1 jobs pod
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 replicaCount: 2
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 jobRunner:
   # explicitly enable this pod if exactly 1 api backend container and
   # 1 jobs runner container is desired. otherwise a replicaCount of 2
@@ -455,6 +527,8 @@ jobRunner:
     successThreshold: 1
     failureThreshold: 18
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 backend:
   # Annotations for backend pods
   annotations: {}
@@ -466,6 +540,8 @@ backend:
   # By default this is a 6 minutes + 30 seconds + 1 second (391) grace period to allow outstanding queries to complete
   terminationGracePeriodSeconds: 391
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 ui:
   # Annotations for ui pods
   annotations: {}
@@ -473,6 +549,8 @@ ui:
   # Labels for ui pods
   labels: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 workflows:
   # enabled by default from Chart version 6.0.2 and Retool image 3.6.11 onwards
   # explicitly set other fields as needed
@@ -571,6 +649,8 @@ workflows:
       memory: 2048Mi
 
 # Config for optional standalone dbconnector deployment.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 dbconnector:
   # By default (disabled), the main backend makes resource queries directly; if
   # enabled, only dbconnector pods will make resource queries on behalf of main
@@ -624,6 +704,8 @@ dbconnector:
     failureThreshold: 30
 
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 multiplayer:
   # Enable this to use Retool's experimental multiplayer editing feature.
   # This feature is not ready for production use; please check with the Retool team before enablement.
@@ -702,6 +784,8 @@ multiplayer:
 # The chart injects the token into both MCP and the backend. The MCP ingress
 # routes below are enabled by default; reproduce their mapping when ingress is
 # managed outside this chart.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 mcp:
   # Set to true to deploy the MCP server.
   enabled: false
@@ -859,6 +943,8 @@ mcp:
     annotations: {}
     labels: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 codeExecutor:
   # Code executor normally tracks the top-level `image` parameters. Override the
   # tag only when you need a one-off or patched build (e.g. a support build whose
@@ -947,6 +1033,8 @@ codeExecutor:
 # this switch; set a component's `enabled` to true/false to override the master
 # for that component only. The gitServer and blobStorage blocks below
 # provide the React Retool git server and the object storage the stack needs.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 rr:
   enabled: false
 
@@ -1552,6 +1640,8 @@ rr:
     #   connectionStringSecretKey: connection-string
     #   accountUrl: ""                            # e.g. https://<account>.blob.core.windows.net
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 agents:
   # Enable AI Agents
   enabled: false
@@ -1607,6 +1697,8 @@ agents:
   # Annotations for agent worker pods
   annotations: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 retoolos:
   # Enable the RetoolOS worker. A single worker pod runs the agent loop,
   # messaging ingress and egress, search indexing and refresh, and pg-boss
@@ -1682,6 +1774,8 @@ retoolos:
 
 # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
 # Set enabled to true if using a pre-existing temporal cluster instead of deploying a new one.
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 temporal:
   # set enabled to true if using a pre-existing temporal cluster
   enabled: false
@@ -1701,6 +1795,8 @@ temporal:
   # sslKeySecretName:
   # sslKeySecretKey
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 retool-temporal-services-helm:
   # Enable to spin up a new Temporal Cluster alongside Retool
   enabled: false
@@ -1807,6 +1903,8 @@ retool-temporal-services-helm:
   admintools:
     enabled: false
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 persistentVolumeClaim:
   # set to true to use pvc
   enabled: false
@@ -1826,6 +1924,8 @@ persistentVolumeClaim:
   mountPath: /retool_backend/pv-data
 
 # default security context
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 securityContext:
   enabled: false
   runAsUser: 1000
@@ -1834,10 +1934,16 @@ securityContext:
   # See this doc for options allowed here (ensure the Kubernetes version matches the version of the Kubernetes cluster you are deploying to): https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podsecuritycontext-v1-core
   extraSecurityContext: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 extraConfigMapMounts: []
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 initContainers: {}
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 extraManifests: []
 # extraManifests:
 #  - apiVersion: cloud.google.com/v1beta1
@@ -1850,10 +1956,14 @@ extraManifests: []
 
 # Support for AWS Security groups for pods
 # Ref: https://docs.aws.amazon.com/eks/latest/userguide/security-groups-for-pods.html
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 securityGroupPolicy:
   enabled: false
   groupIds: []
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 hostAliases: {}
 # Support hostAliases on the backend deployment
 # hostAliases:
@@ -1862,6 +1972,8 @@ hostAliases: {}
 #     - test.com
 #     - anothertest.com
 
+# Not yet annotated: excluded from values.schema.json and README.md. See CONTRIBUTING.md.
+# @schema hidden
 telemetry:
   # When enabled, will collect metrics and logs from the other pods in the
   # chart. These will be forwarded to Retool for proactive monitoring and bug

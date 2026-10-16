@@ -15,4 +15,8 @@ Find deployment instructions in the [official Helm deployment guide](https://doc
 
 This is the repository for the official Retool Helm chart. For release notes, see the [releases section](https://github.com/tryretool/retool-helm/releases) of this repo.
 
+Configuration options are documented inline in [values.yaml](charts/retool/values.yaml). The [chart README](charts/retool/README.md) lists the options annotated so far, and Helm validates them against the chart's `values.schema.json`.
+
+To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 For any inquiries regarding deploying Retool on Helm, please feel free to reach out to us at support@retool.com or search our [Community Forums](https://community.retool.com/) and post your question there.
