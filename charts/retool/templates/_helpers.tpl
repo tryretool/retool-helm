@@ -1405,7 +1405,8 @@ backend to build published-app URLs.
 {{/*
 RR_APP_DOMAIN for every workload that builds or resolves published-app URLs: the main
 backend (which runs the serving layer unless separate.enabled), the separate serving
-layer, and the standalone git server (CLI preview links).
+layer, the standalone git server (CLI preview links), and the jobs runner (Source Control
+sync and the space hostname ID backfill).
 Usage: {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
 */}}
 {{- define "retool.appServingLayer.domainEnv" -}}
