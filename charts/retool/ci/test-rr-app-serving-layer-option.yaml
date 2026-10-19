@@ -33,7 +33,3 @@ rr:
       accessKeyId: AKIATEST
       secretAccessKeySecretName: rr-blob-storage
       secretAccessKeySecretKey: secret-access-key
-
-# Exercise the separate Jobs Runner path, which also needs RR_APP_DOMAIN.
-jobRunner:
-  enabled: true
