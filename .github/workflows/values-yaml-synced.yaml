@@ -14,7 +14,7 @@ on:
       - main
 
 jobs:
-  check:
+  values-yaml-synced:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

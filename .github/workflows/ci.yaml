@@ -6,8 +6,6 @@ name: Lint and Test Charts
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - "charts/**"
   push:
     branches:
       - main
@@ -17,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       charts: ${{ steps.list-changed.outputs.changed }}
+      # Whether the chart jobs should run. False for PRs that don't touch any
+      # chart (the workflow still runs so the kube-install-validated required
+      # check always reports).
+      run: ${{ steps.list-changed.outputs.run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -37,24 +39,30 @@ jobs:
           CT_DEBUG: "false"
         run: |
           if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            changed=""
-            echo "$changed"
-            echo "::set-output name=changed::$changed"
+            # On main, run everything against all charts
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "changed=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           changed=$(ct list-changed --config .github/ct.yaml)
           if [[ -n "$changed" ]]; then
-            echo -n "Charts changed:"
-            echo "$changed"
-            echo "::set-output name=changed::$changed"
+            echo "Charts changed: $changed"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed<<EOF_CHANGED"
+              echo "$changed"
+              echo "EOF_CHANGED"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "PR without any chart changes - failing"
-          exit 1
+          echo "No chart changes - skipping chart jobs"
+          echo "run=false" >> "$GITHUB_OUTPUT"
+          echo "changed=" >> "$GITHUB_OUTPUT"
 
   lint-chart:
+    if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-latest
     needs:
       - changed
@@ -86,6 +94,7 @@ jobs:
   #       run: .github/helm-docs.sh
 
   kubeconform-chart:
+    if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-latest
     needs:
       - changed
@@ -94,12 +103,13 @@ jobs:
         # When changing versions here, check that the version exists at:
         # https://github.com/yannh/kubernetes-json-schema
         k8s:
-          - v1.32.2
-          - v1.31.6
-          - v1.30.10
-          - v1.29.10
-          - v1.28.15
-          - v1.27.16
+          - v1.37.1
+          - v1.36.5
+          - v1.35.9
+          - v1.34.12
+          - v1.33.13
+          - v1.32.13
+          - v1.31.14
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -113,25 +123,28 @@ jobs:
 
   install-chart:
     name: install-chart
+    if: needs.changed.outputs.run == 'true'
     runs-on:
       group: retool-helm-kind-runners
     needs:
+      - changed
       - lint-chart
       - kubeconform-chart
     strategy:
       max-parallel: 1
       matrix:
-        # Only keep a couple because they take ~5 min each to run :(
+        # Only keep the newest and oldest kubeconform versions because these take
+        # ~5 min each to run :(
         k8s:
-          - v1.31.6
-          - v1.27.16
+          - v1.37.0
+          - v1.31.14
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Create kind ${{ matrix.k8s }} cluster
-        uses: helm/kind-action@v1.5.0
+        uses: helm/kind-action@v1.15.1
         with:
           node_image: kindest/node:${{ matrix.k8s }}
       - name: Set up chart-testing
@@ -141,8 +154,10 @@ jobs:
 
   test-apparmor:
     name: test-apparmor
+    if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-latest
     needs:
+      - changed
       - lint-chart
       - kubeconform-chart
     steps:
@@ -157,12 +172,26 @@ jobs:
       - name: Run AppArmor integration test
         run: sudo .github/test-apparmor.sh --cleanup
 
-  pr-validated:
-    name: pr-validated
+  # Single required status check for branch protection. Required checks treat
+  # skipped jobs as passing, so this job runs unconditionally and fails
+  # explicitly unless everything upstream succeeded (or was intentionally
+  # skipped because the PR has no chart changes).
+  kube-install-validated:
+    name: kube-install-validated
+    if: always()
     runs-on: ubuntu-latest
     needs:
+      - changed
+      - lint-chart
+      - kubeconform-chart
       - install-chart
       - test-apparmor
     steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: Fail if chart jobs were skipped unexpectedly
+        if: needs.changed.outputs.run == 'true' && contains(needs.*.result, 'skipped')
+        run: exit 1
       - name: validate
         run: echo "PR OK"

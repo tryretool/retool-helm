@@ -3,18 +3,12 @@ name: Ensure seccomp profiles match generator output
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - "charts/retool/files/*seccomp*.json"
-      - "charts/retool/seccomp/**"
   push:
     branches:
       - main
-    paths:
-      - "charts/retool/files/*seccomp*.json"
-      - "charts/retool/seccomp/**"
 
 jobs:
-  check:
+  seccomp-synced:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
