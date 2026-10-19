@@ -111,6 +111,26 @@ jobs:
           CHANGED_CHARTS: ${{needs.changed.outputs.charts}}
         run: .github/kubeconform.sh
 
+  test-env-vars:
+    name: test-env-vars
+    runs-on: ubuntu-latest
+    needs:
+      - changed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+      - name: Install PyYAML
+        run: pip install pyyaml==6.0.2
+      - name: Fetch chart dependencies
+        run: helm dep up charts/retool
+      - name: Check rendered env vars
+        run: python .github/test-env-vars.py
+
   install-chart:
     name: install-chart
     runs-on:
@@ -163,6 +183,7 @@ jobs:
     needs:
       - install-chart
       - test-apparmor
+      - test-env-vars
     steps:
       - name: validate
         run: echo "PR OK"
