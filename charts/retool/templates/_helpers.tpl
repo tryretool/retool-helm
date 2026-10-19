@@ -763,8 +763,7 @@ R² orchestration backend env var. R² sandbox workflows run on either Temporal
 (the code default) or pg-boss (a Postgres-backed durable job queue). When no
 Temporal cluster is enabled, fall back to pg-boss so self-hosted deployments
 without Temporal can still run R² tasks. Requires Retool >= 4.47.0. Skipped when
-the user sets R2_ORCHESTRATION_BACKEND. Retool-managed Temporal installs look like
-no-Temporal installs here, so they set it to "temporal".
+the user sets R2_ORCHESTRATION_BACKEND.
 Usage: {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
 */}}
 {{- define "retool.r2.orchestrationBackendEnv" -}}

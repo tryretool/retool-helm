@@ -1,18 +1,9 @@
 #!/usr/bin/env python3
-"""Renders the chart and checks the env vars each container gets.
-
-1. No container gets the same env var twice. Helm 4's server-side apply rejects the
-   upgrade, and client-side apply keeps one copy, not always the same one. Checked for
-   every ci values file, alone and with each ci option file, like kubeconform.sh.
-2. R2_ORCHESTRATION_BACKEND: the chart sets "postgres" when it can't see a Temporal
-   cluster, and a value set in env, environmentVariables or environmentSecrets
-   replaces it.
+"""Checks the chart's rendered env vars: no container gets one twice, and a user-set
+R2_ORCHESTRATION_BACKEND replaces the chart's default.
 
 Needs helm, PyYAML and the chart's dependencies (helm dep up charts/retool).
-
-Usage:
-  .github/test-env-vars.py
-  HELM=/path/to/helm CHART_DIR=/path/to/chart .github/test-env-vars.py
+Usage: [HELM=/path/to/helm] [CHART_DIR=/path/to/chart] .github/test-env-vars.py
 """
 
 import os
@@ -30,12 +21,10 @@ CHART_DIR = Path(os.environ.get("CHART_DIR", SCRIPT_DIR.parent / "charts" / "ret
 CI_DIR = CHART_DIR / "ci"
 HELM = os.environ.get("HELM", "helm")
 
-# R² on, a Retool version with the pg-boss fallback, and no Temporal cluster.
-# replicaCount 2 also renders the separate jobs-runner.
+# R² on, no Temporal cluster. replicaCount 2 adds the separate jobs-runner.
 R2_BASE_FILES = [CI_DIR / "test-install-values.yaml", CI_DIR / "test-rr-enabled-option.yaml"]
 R2_BASE_VALUES = {"image": {"tag": "4.51.0"}, "replicaCount": 2, "workflows": {"enabled": True}}
-# Every container that runs R² work with the base values. Each must get the chart's R² env vars,
-# or it runs on the code default backend while the others follow the chart.
+# Containers that must get the chart's R² env vars with the base values.
 R2_CONTAINERS = {
     "Deployment/test-retool/main-backend",
     "Deployment/test-retool-jobs-runner/jobs-runner",
@@ -59,8 +48,7 @@ TEMPORAL_SUBCHART = {
 }
 SECRET_REF = {"name": "retool-r2", "key": "orchestration-backend"}
 
-# (case, values layered on the R² base, the R2_ORCHESTRATION_BACKEND entries each R² container
-# must have: a value, or "secretKeyRef" for one read from a secret)
+# (case, values added to the R² base, expected R2_ORCHESTRATION_BACKEND entries per R² container)
 R2_CASES = [
     ("no Temporal cluster", {}, ["postgres"]),
     ("set in env", {"env": {"R2_ORCHESTRATION_BACKEND": "temporal"}}, ["temporal"]),
@@ -87,7 +75,6 @@ R2_CASES = [
 
 
 def render(files, values=()):
-    """Runs helm template with the values files, then the values dicts, in that order."""
     with tempfile.TemporaryDirectory() as tmp:
         args = [HELM, "template", "test", str(CHART_DIR)]
         for path in files:
@@ -115,7 +102,6 @@ def pod_specs(node):
 
 
 def containers(docs):
-    """Yields (label, container) for every container and init container in every workload."""
     for doc in docs:
         for spec in pod_specs(doc):
             for container in (spec.get("initContainers") or []) + (spec.get("containers") or []):
@@ -168,7 +154,7 @@ def check_ci_renders():
 
 def check_r2_case(case, values, expected):
     docs = render(R2_BASE_FILES, [R2_BASE_VALUES, values])
-    # Containers that get the chart's R² env vars (retool.agentSandbox.backendEnvVars).
+    # RR_AGENT_PUBSUB_BACKEND marks the containers that get the chart's R² env vars.
     r2_containers = [
         (label, container) for label, container in containers(docs) if "RR_AGENT_PUBSUB_BACKEND" in env_names(container)
     ]

@@ -1764,12 +1764,8 @@ retoolos:
 
 # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
 # Set enabled to true if using a pre-existing temporal cluster instead of deploying a new one.
-#
-# rr (R²) runs its sandbox tasks on Temporal only when the chart can see a Temporal cluster:
-# this block or the retool-temporal-services-helm subchart. Otherwise, with Retool 4.47.0 or
-# later, the chart sets R2_ORCHESTRATION_BACKEND=postgres so R² uses pg-boss. The chart can't
-# see Retool-managed Temporal (it's set up in the Retool UI), so those installs set
-# env.R2_ORCHESTRATION_BACKEND: "temporal" to keep R² on Temporal.
+# With neither this nor the subchart enabled, R² runs on pg-boss. To keep R² on Retool-managed
+# Temporal, set env.R2_ORCHESTRATION_BACKEND: "temporal".
 temporal:
   # set enabled to true if using a pre-existing temporal cluster
   enabled: false
