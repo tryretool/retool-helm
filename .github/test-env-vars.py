@@ -34,6 +34,15 @@ HELM = os.environ.get("HELM", "helm")
 # replicaCount 2 also renders the separate jobs-runner.
 R2_BASE_FILES = [CI_DIR / "test-install-values.yaml", CI_DIR / "test-rr-enabled-option.yaml"]
 R2_BASE_VALUES = {"image": {"tag": "4.51.0"}, "replicaCount": 2, "workflows": {"enabled": True}}
+# Every container that runs R² work with the base values. Each must get the chart's R² env vars,
+# or it runs on the code default backend while the others follow the chart.
+R2_CONTAINERS = {
+    "Deployment/test-retool/main-backend",
+    "Deployment/test-retool-jobs-runner/jobs-runner",
+    "Deployment/test-retool-workflow-backend/workflow-backend",
+    "Deployment/test-retool-workflow-worker/workflow-worker",
+    "Deployment/test-retool-r2-agent-worker/r2-agent-worker",
+}
 
 TEMPORAL = {"enabled": True, "host": "temporal.example.com", "port": 7233, "namespace": "workflows"}
 TEMPORAL_SQL = {"host": "postgres.example.com", "port": 5432, "user": "temporal", "password": "temporal"}
@@ -164,8 +173,9 @@ def check_r2_case(case, values, expected):
         (label, container) for label, container in containers(docs) if "RR_AGENT_PUBSUB_BACKEND" in env_names(container)
     ]
     problems = duplicate_env_problems(docs)
-    if not r2_containers:
-        problems.append("no container got the R² env vars")
+    missing = R2_CONTAINERS - {label for label, _ in r2_containers}
+    if missing:
+        problems.append(f"missing the R² env vars: {', '.join(sorted(missing))}")
     for label, container in r2_containers:
         entries = r2_backend_entries(container)
         if entries != expected:

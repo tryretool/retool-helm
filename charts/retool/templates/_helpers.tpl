@@ -763,19 +763,12 @@ R² orchestration backend env var. R² sandbox workflows run on either Temporal
 (the code default) or pg-boss (a Postgres-backed durable job queue). When no
 Temporal cluster is enabled, fall back to pg-boss so self-hosted deployments
 without Temporal can still run R² tasks. Requires Retool >= 4.47.0. Skipped when
-R2_ORCHESTRATION_BACKEND is set in env, environmentSecrets or environmentVariables,
-since two entries with the same name break upgrades. Retool-managed Temporal
-installs look like no-Temporal installs here, so they set it to "temporal".
+the user sets R2_ORCHESTRATION_BACKEND. Retool-managed Temporal installs look like
+no-Temporal installs here, so they set it to "temporal".
 Usage: {{- include "retool.r2.orchestrationBackendEnv" . | nindent 10 }}
 */}}
 {{- define "retool.r2.orchestrationBackendEnv" -}}
-{{- $userSet := hasKey (.Values.env | default dict) "R2_ORCHESTRATION_BACKEND" -}}
-{{- range concat (.Values.environmentSecrets | default list) (.Values.environmentVariables | default list) -}}
-{{- if eq .name "R2_ORCHESTRATION_BACKEND" -}}
-{{- $userSet = true -}}
-{{- end -}}
-{{- end -}}
-{{- if and (not $userSet) (ne (include "retool.temporal.enabled" .) "1") -}}
+{{- if and (ne (include "retool.envVarIsExplicit" (dict "root" . "name" "R2_ORCHESTRATION_BACKEND")) "1") (ne (include "retool.temporal.enabled" .) "1") -}}
 {{- $valid_retool_version_regexp := "([0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-zA-Z0-9]+)?)" }}
 {{- $semver_version_regexp := "[0-9]+\\.[0-9]+(\\.[0-9]+)?" }}
 {{- $retool_version_supports_r2_postgres := ( and ( regexMatch $valid_retool_version_regexp .Values.image.tag ) ( semverCompare ">= 4.47.0-0" ( regexFind $semver_version_regexp .Values.image.tag ) ) ) }}
