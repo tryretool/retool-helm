@@ -1540,8 +1540,8 @@ rr:
   appServingLayer:
     enabled: false
     # Domain published apps are served under, e.g. apps.retool.example.com.
-    # Rendered as RR_APP_DOMAIN onto the main backend (and the serving layer
-    # Deployment when separate). Required when enabled.
+    # Rendered as RR_APP_DOMAIN onto the main backend, the jobs runner, and the
+    # serving layer Deployment when separate. Required when enabled.
     domain: ~
     # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and
     # that its Service exposes.
