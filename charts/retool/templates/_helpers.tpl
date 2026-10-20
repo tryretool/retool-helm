@@ -711,17 +711,13 @@ Usage: (include "retool.appServingLayer.enabled" .)
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
 {{- end -}}
 
-{{/*
-Set Temporal frontend host
-*/}}
-{{/*
-DNS suffix that makes a Service name in the release namespace fully
-qualified: <namespace>.svc.<clusterDomain>.
-*/}}
 {{- define "retool.serviceDomain" -}}
 {{- printf "%s.svc.%s" .Release.Namespace (.Values.clusterDomain | default "cluster.local") -}}
 {{- end -}}
 
+{{/*
+Set Temporal frontend host
+*/}}
 {{- define "retool.temporal.host" -}}
 {{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
 {{- if $temporalConfig.enabled -}}
