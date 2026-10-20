@@ -177,12 +177,12 @@ spec:
             value: {{ $workerPoolMaxSize | quote }}
           {{- if $.Values.dbconnector.enabled }}
           - name: DB_CONNECTOR_HOST
-            value: http://{{ include "retool.dbconnector.name" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+            value: http://{{ include "retool.dbconnector.name" $ }}.{{ include "retool.serviceDomain" $ }}
           - name: DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.port | quote }}
           {{- if $.Values.dbconnector.java.enabled }}
           - name: JAVA_DB_CONNECTOR_HOST
-            value: http://{{ include "retool.dbconnector.name" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+            value: http://{{ include "retool.dbconnector.name" $ }}.{{ include "retool.serviceDomain" $ }}
           - name: JAVA_DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
@@ -229,7 +229,7 @@ spec:
             value: "{{ $healthcheckPort }}"
           {{- end }}
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ include "retool.workflowBackend.name" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+            value: http://{{ include "retool.workflowBackend.name" $ }}.{{ include "retool.serviceDomain" $ }}
           {{- if $.Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" $.Values.config.auth.google.clientId }}
@@ -247,10 +247,10 @@ spec:
           - name: POSTGRES_SSL_ENABLED
             value: {{ template "retool.postgresql.ssl_enabled" $ }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.codeExecutor.name" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+            value: http://{{ template "retool.codeExecutor.name" $ }}.{{ include "retool.serviceDomain" $ }}
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.jsExecutor.name" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+            value: http://{{ template "retool.jsExecutor.name" $ }}.{{ include "retool.serviceDomain" $ }}
           {{- end }}
           {{- include "retool.agentSandbox.backendEnvVars" $ | nindent 10 }}
           {{- if eq (include "retool.gitServer.enabled" $) "1" }}

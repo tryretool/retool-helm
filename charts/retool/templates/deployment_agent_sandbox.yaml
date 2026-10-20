@@ -218,7 +218,7 @@ data:
                   ,{"name": "BACKEND_DOMAIN_SUFFIXES", "value": "{{ $as.proxy.backendDomainSuffixes }}"}
                   {{- end }}
                   {{- if $as.sandboxNetwork.enabled }}
-                  ,{"name": "SANDBOX_HTTP_PROXY", "value": "{{ $as.sandboxNetwork.httpProxy | default (printf "http://%s.%s.svc.cluster.local:%s" (include "retool.agentSandbox.proxy.name" .) .Release.Namespace (toString $as.proxy.port)) }}"}
+                  ,{"name": "SANDBOX_HTTP_PROXY", "value": "{{ $as.sandboxNetwork.httpProxy | default (printf "http://%s.%s:%s" (include "retool.agentSandbox.proxy.name" .) (include "retool.serviceDomain" .) (toString $as.proxy.port)) }}"}
                   {{- end }}
                   {{- if $as.snapshotStorage.s3Bucket }}
                   ,{"name": "S3_BUCKET", "value": "{{ $as.snapshotStorage.s3Bucket }}"}
@@ -561,7 +561,7 @@ spec:
               value: {{ $as.proxy.allowedDomains | quote }}
             {{- end }}
             - name: BACKEND_URL
-              value: {{ $as.proxy.backendUrl | default (printf "http://%s.%s.svc.cluster.local:%s" (include "retool.fullname" .) .Release.Namespace (toString .Values.service.internalPort)) | quote }}
+              value: {{ $as.proxy.backendUrl | default (printf "http://%s.%s:%s" (include "retool.fullname" .) (include "retool.serviceDomain" .) (toString .Values.service.internalPort)) | quote }}
             {{- if $as.proxy.backendDomainSuffixes }}
             - name: BACKEND_DOMAIN_SUFFIXES
               value: {{ $as.proxy.backendDomainSuffixes | quote }}

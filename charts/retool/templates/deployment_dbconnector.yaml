@@ -107,7 +107,7 @@ spec:
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ include "retool.workflowBackend.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            value: http://{{ include "retool.workflowBackend.name" . }}.{{ include "retool.serviceDomain" . }}
           {{- if .Values.config.auth.google.enabled }}
           - name: CLIENT_ID
             value: {{ default "" .Values.config.auth.google.clientId }}
