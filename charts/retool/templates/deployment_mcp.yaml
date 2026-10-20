@@ -151,7 +151,7 @@ spec:
           - name: MCP_PORT
             value: {{ $mcpInternalPort | quote }}
           - name: RETOOL_BACKEND_URL
-            value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s:%v" (include "retool.fullname" .) .Values.service.externalPort) | quote }}
+            value: {{ $mcpConfig.retoolBackendUrl | default (printf "http://%s.%s.svc.cluster.local:%v" (include "retool.fullname" .) .Release.Namespace .Values.service.externalPort) | quote }}
           {{- include "retool.agentSandbox.proxyEnvVars" . | nindent 10 }}
           {{- /* Route git API calls directly to the split Service unless overridden. */}}
           {{- $retoolGitServerUrl := $mcpConfig.retoolGitServerUrl }}
