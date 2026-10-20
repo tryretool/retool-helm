@@ -1526,6 +1526,7 @@ rr:
   # them on `port`. Set separate.enabled to run it as its own Deployment
   # instead. Requires the git server to be enabled: the serving layer reads
   # published app assets from the same blob storage git_server writes to.
+  # Requires Retool 4.78.0 or later.
   #
   # Unlike the other rr components this does NOT inherit the rr.enabled master
   # switch. It needs wildcard DNS and a wildcard certificate for *.<domain>,
