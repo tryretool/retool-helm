@@ -1,0 +1,100 @@
+# Jobs runner: cron-style background jobs. Exactly one replica.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-jobs-runner
+  namespace: retool
+  labels:
+    retoolService: retool-jobs-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-jobs-runner
+  template:
+    metadata:
+      labels:
+        retoolService: retool-jobs-runner
+    spec:
+      containers:
+        - name: jobs-runner
+          image: tryretool/backend:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          args:
+            - bash
+            - -c
+            - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 $(POSTGRES_HOST):$(POSTGRES_PORT); ./docker_scripts/start_api.sh
+          ports:
+            - name: http-server
+              containerPort: 3003
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: SERVICE_TYPE
+              value: JOBS_RUNNER
+            - name: COOKIE_INSECURE
+              value: "false"
+            - name: BASE_DOMAIN
+              value: https://retool.example.com
+
+            - name: POSTGRES_HOST
+              value: retool-db.abc123.us-east-1.rds.amazonaws.com
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hammerhead_production
+            - name: POSTGRES_USER
+              value: retool
+            - name: POSTGRES_SSL_ENABLED
+              value: "true"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+
+            - name: LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: license-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: encryption-key
+          startupProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3003
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3003
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

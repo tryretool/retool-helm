@@ -1,0 +1,176 @@
+# Main Retool backend. Runs the API, the DB connectors and the RR git server in one
+# process. It also answers workflow-backend calls from the workers (WORKFLOW_BACKEND_HOST
+# points back at this Service) and relays /sandbox/* traffic to the agent-sandbox proxy,
+# so the browser only ever talks to this Service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool
+  namespace: retool
+  labels:
+    retoolService: retool
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool
+  template:
+    metadata:
+      labels:
+        retoolService: retool
+    spec:
+      terminationGracePeriodSeconds: 391
+      containers:
+        - name: main-backend
+          image: tryretool/backend:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          args:
+            - bash
+            - -c
+            - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 $(POSTGRES_HOST):$(POSTGRES_PORT); ./docker_scripts/start_api.sh
+          ports:
+            - name: http-server
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: SERVICE_TYPE
+              value: MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,RR_GIT_SERVER
+            - name: DISABLE_JAVA_DBCONNECTOR
+              value: "true"
+            - name: COOKIE_INSECURE
+              value: "false"
+            # Public URL of this deployment, including scheme. Must match ingress.yaml.
+            - name: BASE_DOMAIN
+              value: https://retool.example.com
+
+            # External Postgres (e.g. RDS)
+            - name: POSTGRES_HOST
+              value: retool-db.abc123.us-east-1.rds.amazonaws.com
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hammerhead_production
+            - name: POSTGRES_USER
+              value: retool
+            - name: POSTGRES_SSL_ENABLED
+              value: "true"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+            - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+              value: "10"
+
+            - name: LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: license-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: encryption-key
+
+            # Workflows. Temporal itself is Retool-managed (enabled in Settings > Advanced),
+            # so no WORKFLOW_TEMPORAL_* env vars are set anywhere.
+            - name: WORKFLOW_BACKEND_HOST
+              value: http://retool:3000
+            - name: CODE_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-code-executor
+
+            # R2 / RR
+            - name: JS_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-js-executor
+            - name: RR_AGENT_PUBSUB_BACKEND
+              value: postgres
+            - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
+              value: http://retool-agent-sandbox-controller:3018
+            - name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
+              value: http://retool-agent-sandbox-proxy.retool.svc.cluster.local:3019
+            - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-private-key
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-public-key
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-encryption-key
+
+            # Blob storage for the RR git server (objects/packs) and R2 snapshots.
+            - name: RR_BLOB_STORAGE_PROVIDER
+              value: s3
+            - name: RR_DEFAULT_S3_BUCKET
+              value: my-retool-rr-bucket
+            - name: RR_DEFAULT_S3_REGION
+              value: us-east-1
+            - name: RR_DEFAULT_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: rr-s3-access-key-id
+            - name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: rr-s3-secret-access-key
+          startupProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 5
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retool
+  namespace: retool
+spec:
+  type: ClusterIP
+  selector:
+    retoolService: retool
+  ports:
+    - name: http-server
+      port: 3000
+      targetPort: 3000

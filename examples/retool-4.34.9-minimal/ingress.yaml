@@ -1,0 +1,35 @@
+# One ingress, one host, one backend Service. Everything else is in-cluster:
+#   browser -> ingress -> retool:3000
+#   retool (main backend) -> retool-code-executor, retool-js-executor,
+#                            retool-agent-sandbox-controller, retool-agent-sandbox-proxy
+#   workers -> retool:3000 (workflow backend), executors, agent-sandbox controller/proxy
+#   sandbox pods -> retool-agent-sandbox-proxy -> retool:3000
+# The main backend reverse-proxies the R2 editor's /sandbox/* WebSocket and Vite traffic to
+# the agent-sandbox proxy Service, so the proxy needs no public hostname of its own.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retool
+  namespace: retool
+  annotations:
+    # Long-lived WebSockets (multiplayer, R2 sandbox agent-ws / Vite HMR) and large uploads.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - retool.example.com
+      secretName: retool-tls
+  rules:
+    - host: retool.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: retool
+                port:
+                  number: 3000

@@ -1,0 +1,119 @@
+# Workflows Temporal worker. Polls the Retool-managed Temporal namespace (configured in the
+# Retool UI under Settings > Advanced; the worker reads the connection from the database, so
+# no WORKFLOW_TEMPORAL_* env vars are needed). Block execution is delegated to
+# WORKFLOW_BACKEND_HOST (the main backend) and code blocks to the code executor.
+# Outbound HTTPS to *.tmprl.cloud must be allowed from this pod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-workflow-worker
+  namespace: retool
+  labels:
+    retoolService: retool-workflow-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-workflow-worker
+  template:
+    metadata:
+      labels:
+        retoolService: retool-workflow-worker
+    spec:
+      containers:
+        - name: workflow-worker
+          image: tryretool/backend:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          args:
+            - bash
+            - -c
+            - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 $(POSTGRES_HOST):$(POSTGRES_PORT); ./docker_scripts/start_api.sh
+          ports:
+            - name: http-server
+              containerPort: 3005
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: NODE_OPTIONS
+              value: --max_old_space_size=1024
+            - name: SERVICE_TYPE
+              value: WORKFLOW_TEMPORAL_WORKER
+            - name: WORKFLOW_WORKER_HEALTHCHECK_PORT
+              value: "3005"
+            - name: DISABLE_DATABASE_MIGRATIONS
+              value: "true"
+            - name: COOKIE_INSECURE
+              value: "false"
+            - name: DBCONNECTOR_POSTGRES_POOL_MAX_SIZE
+              value: "100"
+            - name: DBCONNECTOR_QUERY_TIMEOUT_MS
+              value: "5400000"
+
+            - name: POSTGRES_HOST
+              value: retool-db.abc123.us-east-1.rds.amazonaws.com
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hammerhead_production
+            - name: POSTGRES_USER
+              value: retool
+            - name: POSTGRES_SSL_ENABLED
+              value: "true"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+
+            - name: LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: license-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: encryption-key
+
+            - name: WORKFLOW_BACKEND_HOST
+              value: http://retool:3000
+            - name: CODE_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-code-executor
+            - name: JS_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-js-executor
+          startupProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3005
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3005
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3005
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

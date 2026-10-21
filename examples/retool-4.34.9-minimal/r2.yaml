@@ -1,0 +1,1420 @@
+# R2 (React Retool) services: JS executor, Agent Sandbox (controller + proxy + per-sandbox
+# Jobs) and the R2 agent Temporal worker. Depends on secrets.yaml, backend.yaml and the
+# retool-nsjail-seccomp ConfigMap from code-executor.yaml.
+#
+# How the Agent Sandbox pieces fit together (see agent_executor/RUNBOOK.md):
+#   - The R2 agent worker runs retoolReactSandboxAgentWorkflow. It asks the controller
+#     (:3018) to /assign a sandbox pod, stores the user's credentials with it, then calls
+#     the pod's /run-agent (:3017) directly through the headless Service.
+#   - The controller is leader-elected over the Postgres state store and creates/retires
+#     Kubernetes Jobs from the job-template ConfigMap, keeping PREWARM_POOL_SIZE idle pods.
+#   - Each Job runs the executor host, which boots one gVisor (runsc, rootless, systrap)
+#     sandbox. The gVisor seccomp profile from gvisor-seccomp.json is installed on every
+#     node by the node-installer DaemonSet, and /dev/net/tun is handed out by the
+#     smarter-device-manager DaemonSet so pasta can give the sandbox a network.
+#   - All sandbox egress goes through the proxy (:3019). The proxy swaps the sandbox's
+#     facade token for real credentials on requests to BACKEND_URL and filters everything
+#     else. The browser reaches the proxy for agent-ws/Vite through the main backend's
+#     /sandbox/* relay (AGENT_SANDBOX_PROXY_INGRESS_DOMAIN on the backend).
+#   - Controller, proxy and backend share the ES256 keypair + encryption key in
+#     retool-secrets; the sandbox state lives in the `agent_executor` schema of the
+#     Retool Postgres database (STATE_BACKEND=postgres, no Redis needed).
+
+# =============================================================================
+# JS Executor: runs R2 serverless functions in nsjail
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-js-executor
+  namespace: retool
+  labels:
+    retoolService: retool-js-executor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-js-executor
+  template:
+    metadata:
+      labels:
+        retoolService: retool-js-executor
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/js-executor: unconfined
+    spec:
+      terminationGracePeriodSeconds: 391
+      initContainers:
+        - name: install-seccomp
+          image: busybox:1.37.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              DEST=/host-seccomp/profiles/nsjail-seccomp.json
+              mkdir -p "$(dirname "$DEST")"
+              cp /seccomp-profile/nsjail-seccomp.json "$DEST"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: seccomp-profile
+              mountPath: /seccomp-profile
+            - name: host-seccomp
+              mountPath: /host-seccomp
+      containers:
+        - name: js-executor
+          image: tryretool/js-executor-service:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-server
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+              add: ["NET_ADMIN", "NET_RAW", "SETUID", "SETGID"]
+            seccompProfile:
+              type: Localhost
+              localhostProfile: profiles/nsjail-seccomp.json
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/readiness
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          # Request == limit for memory: the executor sheds load at 80% of its limit.
+          resources:
+            requests:
+              cpu: "2"
+              memory: 6Gi
+            limits:
+              cpu: "2"
+              memory: 6Gi
+      volumes:
+        - name: seccomp-profile
+          configMap:
+            name: retool-nsjail-seccomp
+        - name: host-seccomp
+          hostPath:
+            path: /var/lib/kubelet/seccomp
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retool-js-executor
+  namespace: retool
+spec:
+  type: ClusterIP
+  selector:
+    retoolService: retool-js-executor
+  ports:
+    - name: http-server
+      port: 80
+      targetPort: 3000
+---
+# =============================================================================
+# Agent Sandbox: gVisor seccomp profile, installed on every node
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retool-agent-sandbox-seccomp
+  namespace: retool
+data:
+  gvisor-seccomp.json: |
+    {
+      "comment": "Docker default seccomp profile extended with syscalls required by gVisor runsc (systrap platform, rootless mode). Use with: docker run --security-opt seccomp=gvisor-seccomp.json",
+      "defaultAction": "SCMP_ACT_ERRNO",
+      "defaultErrnoRet": 1,
+      "archMap": [
+        {
+          "architecture": "SCMP_ARCH_X86_64",
+          "subArchitectures": [
+            "SCMP_ARCH_X86",
+            "SCMP_ARCH_X32"
+          ]
+        },
+        {
+          "architecture": "SCMP_ARCH_AARCH64",
+          "subArchitectures": []
+        }
+      ],
+      "syscalls": [
+        {
+          "comment": "Docker default allowlist (Docker 27.x, x86_64 + aarch64)",
+          "names": [
+            "_llseek",
+            "_newselect",
+            "accept",
+            "accept4",
+            "access",
+            "acct",
+            "adjtimex",
+            "alarm",
+            "arch_prctl",
+            "bind",
+            "bpf",
+            "brk",
+            "cachestat",
+            "capget",
+            "capset",
+            "chdir",
+            "chmod",
+            "chown",
+            "chown32",
+            "chroot",
+            "clock_adjtime",
+            "clock_adjtime64",
+            "clock_getres",
+            "clock_getres_time64",
+            "clock_gettime",
+            "clock_gettime64",
+            "clock_nanosleep",
+            "clock_nanosleep_time64",
+            "clock_settime",
+            "clock_settime64",
+            "close",
+            "close_range",
+            "connect",
+            "copy_file_range",
+            "creat",
+            "delete_module",
+            "dup",
+            "dup2",
+            "dup3",
+            "epoll_create",
+            "epoll_create1",
+            "epoll_ctl",
+            "epoll_ctl_old",
+            "epoll_pwait",
+            "epoll_pwait2",
+            "epoll_wait",
+            "epoll_wait_old",
+            "eventfd",
+            "eventfd2",
+            "execve",
+            "execveat",
+            "exit",
+            "exit_group",
+            "faccessat",
+            "faccessat2",
+            "fadvise64",
+            "fadvise64_64",
+            "fallocate",
+            "fanotify_init",
+            "fanotify_mark",
+            "fchdir",
+            "fchmod",
+            "fchmodat",
+            "fchmodat2",
+            "fchown",
+            "fchown32",
+            "fchownat",
+            "fcntl",
+            "fcntl64",
+            "fdatasync",
+            "fgetxattr",
+            "finit_module",
+            "flistxattr",
+            "flock",
+            "fork",
+            "fremovexattr",
+            "fsconfig",
+            "fsetxattr",
+            "fsmount",
+            "fsopen",
+            "fspick",
+            "fstat",
+            "fstat64",
+            "fstatat64",
+            "fstatfs",
+            "fstatfs64",
+            "fsync",
+            "ftruncate",
+            "ftruncate64",
+            "futex",
+            "futex_requeue",
+            "futex_time64",
+            "futex_wait",
+            "futex_waitv",
+            "futex_wake",
+            "futimesat",
+            "get_mempolicy",
+            "get_robust_list",
+            "get_thread_area",
+            "getcpu",
+            "getcwd",
+            "getdents",
+            "getdents64",
+            "getegid",
+            "getegid32",
+            "geteuid",
+            "geteuid32",
+            "getgid",
+            "getgid32",
+            "getgroups",
+            "getgroups32",
+            "getitimer",
+            "getpeername",
+            "getpgid",
+            "getpgrp",
+            "getpid",
+            "getppid",
+            "getpriority",
+            "getrandom",
+            "getresgid",
+            "getresgid32",
+            "getresuid",
+            "getresuid32",
+            "getrlimit",
+            "getrusage",
+            "getsid",
+            "getsockname",
+            "getsockopt",
+            "gettid",
+            "gettimeofday",
+            "getuid",
+            "getuid32",
+            "getxattr",
+            "init_module",
+            "inotify_add_watch",
+            "inotify_init",
+            "inotify_init1",
+            "inotify_rm_watch",
+            "io_cancel",
+            "io_destroy",
+            "io_getevents",
+            "io_pgetevents",
+            "io_pgetevents_time64",
+            "io_setup",
+            "io_submit",
+            "io_uring_enter",
+            "io_uring_register",
+            "io_uring_setup",
+            "ioctl",
+            "ioperm",
+            "iopl",
+            "ioprio_get",
+            "ioprio_set",
+            "ipc",
+            "kcmp",
+            "kill",
+            "landlock_add_rule",
+            "landlock_create_ruleset",
+            "landlock_restrict_self",
+            "lchown",
+            "lchown32",
+            "lgetxattr",
+            "link",
+            "linkat",
+            "listen",
+            "listxattr",
+            "llistxattr",
+            "lookup_dcookie",
+            "lremovexattr",
+            "lseek",
+            "lsetxattr",
+            "lstat",
+            "lstat64",
+            "madvise",
+            "map_shadow_stack",
+            "mbind",
+            "membarrier",
+            "memfd_create",
+            "memfd_secret",
+            "mincore",
+            "mkdir",
+            "mkdirat",
+            "mknod",
+            "mknodat",
+            "mlock",
+            "mlock2",
+            "mlockall",
+            "mmap",
+            "mmap2",
+            "modify_ldt",
+            "mount_setattr",
+            "move_mount",
+            "mprotect",
+            "mq_getsetattr",
+            "mq_notify",
+            "mq_open",
+            "mq_timedreceive",
+            "mq_timedreceive_time64",
+            "mq_timedsend",
+            "mq_timedsend_time64",
+            "mq_unlink",
+            "mremap",
+            "msgctl",
+            "msgget",
+            "msgrcv",
+            "msgsnd",
+            "msync",
+            "munlock",
+            "munlockall",
+            "munmap",
+            "name_to_handle_at",
+            "nanosleep",
+            "newfstatat",
+            "open",
+            "open_by_handle_at",
+            "open_tree",
+            "openat",
+            "openat2",
+            "pause",
+            "perf_event_open",
+            "pidfd_getfd",
+            "pidfd_open",
+            "pidfd_send_signal",
+            "pipe",
+            "pipe2",
+            "pkey_alloc",
+            "pkey_free",
+            "pkey_mprotect",
+            "poll",
+            "ppoll",
+            "ppoll_time64",
+            "prctl",
+            "pread64",
+            "preadv",
+            "preadv2",
+            "prlimit64",
+            "process_madvise",
+            "process_mrelease",
+            "process_vm_readv",
+            "process_vm_writev",
+            "pselect6",
+            "pselect6_time64",
+            "pwrite64",
+            "pwritev",
+            "pwritev2",
+            "quotactl",
+            "quotactl_fd",
+            "read",
+            "readahead",
+            "readlink",
+            "readlinkat",
+            "readv",
+            "reboot",
+            "recv",
+            "recvfrom",
+            "recvmmsg",
+            "recvmmsg_time64",
+            "recvmsg",
+            "remap_file_pages",
+            "removexattr",
+            "rename",
+            "renameat",
+            "renameat2",
+            "restart_syscall",
+            "rmdir",
+            "rseq",
+            "rt_sigaction",
+            "rt_sigpending",
+            "rt_sigprocmask",
+            "rt_sigqueueinfo",
+            "rt_sigreturn",
+            "rt_sigsuspend",
+            "rt_sigtimedwait",
+            "rt_sigtimedwait_time64",
+            "rt_tgsigqueueinfo",
+            "sched_get_priority_max",
+            "sched_get_priority_min",
+            "sched_getaffinity",
+            "sched_getattr",
+            "sched_getparam",
+            "sched_getscheduler",
+            "sched_rr_get_interval",
+            "sched_rr_get_interval_time64",
+            "sched_setaffinity",
+            "sched_setattr",
+            "sched_setparam",
+            "sched_setscheduler",
+            "sched_yield",
+            "seccomp",
+            "select",
+            "semctl",
+            "semget",
+            "semop",
+            "semtimedop",
+            "semtimedop_time64",
+            "send",
+            "sendfile",
+            "sendfile64",
+            "sendmmsg",
+            "sendmsg",
+            "sendto",
+            "set_mempolicy",
+            "set_mempolicy_home_node",
+            "set_robust_list",
+            "set_thread_area",
+            "set_tid_address",
+            "set_tls",
+            "setdomainname",
+            "setfsgid",
+            "setfsgid32",
+            "setfsuid",
+            "setfsuid32",
+            "setgid",
+            "setgid32",
+            "setgroups",
+            "setgroups32",
+            "setitimer",
+            "setpgid",
+            "setpriority",
+            "setregid",
+            "setregid32",
+            "setresgid",
+            "setresgid32",
+            "setresuid",
+            "setresuid32",
+            "setreuid",
+            "setreuid32",
+            "setrlimit",
+            "setsid",
+            "setsockopt",
+            "settimeofday",
+            "setuid",
+            "setuid32",
+            "setxattr",
+            "shmat",
+            "shmctl",
+            "shmdt",
+            "shmget",
+            "shutdown",
+            "sigaltstack",
+            "signalfd",
+            "signalfd4",
+            "sigprocmask",
+            "sigreturn",
+            "socket",
+            "socketcall",
+            "socketpair",
+            "splice",
+            "stat",
+            "stat64",
+            "statfs",
+            "statfs64",
+            "statx",
+            "stime",
+            "symlink",
+            "symlinkat",
+            "sync",
+            "sync_file_range",
+            "sync_file_range2",
+            "syncfs",
+            "sysinfo",
+            "syslog",
+            "tee",
+            "tgkill",
+            "time",
+            "timer_create",
+            "timer_delete",
+            "timer_getoverrun",
+            "timer_gettime",
+            "timer_gettime64",
+            "timer_settime",
+            "timer_settime64",
+            "timerfd_create",
+            "timerfd_gettime",
+            "timerfd_gettime64",
+            "timerfd_settime",
+            "timerfd_settime64",
+            "times",
+            "tkill",
+            "truncate",
+            "truncate64",
+            "ugetrlimit",
+            "umask",
+            "umount",
+            "uname",
+            "unlink",
+            "unlinkat",
+            "utime",
+            "utimensat",
+            "utimensat_time64",
+            "utimes",
+            "vfork",
+            "vhangup",
+            "vmsplice",
+            "wait4",
+            "waitid",
+            "waitpid",
+            "write",
+            "writev"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        },
+        {
+          "comment": "gVisor + pasta: namespace creation and entry (clone/unshare with CLONE_NEW* flags, setns to join namespaces)",
+          "names": [
+            "clone",
+            "clone3",
+            "unshare",
+            "setns"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        },
+        {
+          "comment": "pasta: set hostname inside namespace (cosmetic, avoids warning)",
+          "names": [
+            "sethostname"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        },
+        {
+          "comment": "gVisor: sandbox filesystem setup (tmpfs, proc, bind mounts)",
+          "names": [
+            "mount",
+            "umount2"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        },
+        {
+          "comment": "gVisor: filesystem root isolation for sentry and gofer",
+          "names": [
+            "pivot_root"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        },
+        {
+          "comment": "gVisor systrap platform: workload executor thread initialization",
+          "names": [
+            "ptrace"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: retool-agent-sandbox-node-installer
+  namespace: retool
+  labels:
+    retoolService: retool-agent-sandbox-node-installer
+spec:
+  selector:
+    matchLabels:
+      retoolService: retool-agent-sandbox-node-installer
+  template:
+    metadata:
+      labels:
+        retoolService: retool-agent-sandbox-node-installer
+    spec:
+      automountServiceAccountToken: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        - name: install-seccomp
+          image: busybox:1.37.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              DEST=/host-seccomp/retool/gvisor-seccomp.json
+              mkdir -p "$(dirname "$DEST")"
+              cp /seccomp-profile/gvisor-seccomp.json "$DEST"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: seccomp-profile
+              mountPath: /seccomp-profile
+            - name: host-seccomp
+              mountPath: /host-seccomp
+      containers:
+        - name: pause
+          image: busybox:1.37.0
+          command: ["sleep", "infinity"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+      volumes:
+        - name: seccomp-profile
+          configMap:
+            name: retool-agent-sandbox-seccomp
+        - name: host-seccomp
+          hostPath:
+            path: /var/lib/kubelet/seccomp
+            type: DirectoryOrCreate
+---
+# =============================================================================
+# Agent Sandbox: /dev/net/tun device plugin (sandbox networking via pasta)
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retool-agent-sandbox-device-plugin
+  namespace: retool
+data:
+  conf.yaml: |
+    - devicematch: ^net/tun$
+      nummaxdevices: 130
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: retool-agent-sandbox-device-plugin
+  namespace: retool
+  labels:
+    retoolService: retool-agent-sandbox-device-plugin
+spec:
+  selector:
+    matchLabels:
+      retoolService: retool-agent-sandbox-device-plugin
+  template:
+    metadata:
+      labels:
+        retoolService: retool-agent-sandbox-device-plugin
+    spec:
+      automountServiceAccountToken: false
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: smarter-device-manager
+          image: ghcr.io/smarter-project/smarter-device-manager:v1.20.12
+          imagePullPolicy: IfNotPresent
+          terminationMessagePath: /tmp/termination-log
+          terminationMessagePolicy: FallbackToLogsOnError
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: config
+              mountPath: /root/config
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: config
+          configMap:
+            name: retool-agent-sandbox-device-plugin
+---
+# =============================================================================
+# Agent Sandbox: image prepuller (the controller also reads it to detect image rollouts)
+# =============================================================================
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: retool-agent-sandbox-image-prepuller
+  namespace: retool
+  labels:
+    retoolService: retool-agent-sandbox-image-prepuller
+spec:
+  selector:
+    matchLabels:
+      retoolService: retool-agent-sandbox-image-prepuller
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 100%
+  template:
+    metadata:
+      labels:
+        retoolService: retool-agent-sandbox-image-prepuller
+    spec:
+      automountServiceAccountToken: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 5
+      initContainers:
+        - name: pull-image
+          image: tryretool/agent-sandbox-service:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          command: ["true"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+      containers:
+        - name: pause
+          image: busybox:1.37.0
+          command: ["sleep", "infinity"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+---
+# =============================================================================
+# Agent Sandbox: controller RBAC (creates/deletes sandbox Jobs, reads pods and the template)
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retool-agent-sandbox-controller
+  namespace: retool
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: retool-agent-sandbox-controller
+  namespace: retool
+rules:
+  - apiGroups: ["apps"]
+    resources: ["daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: retool-agent-sandbox-controller
+  namespace: retool
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: retool-agent-sandbox-controller
+subjects:
+  - kind: ServiceAccount
+    name: retool-agent-sandbox-controller
+    namespace: retool
+---
+# =============================================================================
+# Agent Sandbox: Job template the controller stamps out for every sandbox pod.
+# The controller replaces __IMAGE_TAG__ with its DEPLOYED_IMAGE_TAG env var.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retool-agent-sandbox-job-template
+  namespace: retool
+data:
+  job-template.json: |
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "labels": {
+          "retoolService": "retool-agent-sandbox",
+          "app.kubernetes.io/name": "retool-agent-sandbox"
+        }
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "ttlSecondsAfterFinished": 300,
+        "template": {
+          "metadata": {
+            "annotations": {
+              "karpenter.sh/do-not-disrupt": "true",
+              "cluster-autoscaler.kubernetes.io/safe-to-evict": "false"
+            },
+            "labels": {
+              "retoolService": "retool-agent-sandbox",
+              "app.kubernetes.io/name": "retool-agent-sandbox"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "subdomain": "retool-agent-sandbox-pods",
+            "automountServiceAccountToken": false,
+            "initContainers": [
+              {
+                "name": "rootfs-etc-copy",
+                "image": "tryretool/agent-sandbox-service:__IMAGE_TAG__",
+                "command": ["/bin/sh", "-c", "cd /opt/sandbox-env/rootfs/etc && find . -maxdepth 1 -mindepth 1 ! -name shadow -exec cp -R {} /mnt/etc/ \\;"],
+                "securityContext": {
+                  "runAsUser": 1001,
+                  "runAsGroup": 1001,
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"]}
+                },
+                "volumeMounts": [
+                  {"name": "rootfs-etc", "mountPath": "/mnt/etc"}
+                ],
+                "resources": {
+                  "requests": {"cpu": "10m", "memory": "16Mi"},
+                  "limits": {"cpu": "100m", "memory": "32Mi"}
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "agent-sandbox",
+                "image": "tryretool/agent-sandbox-service:__IMAGE_TAG__",
+                "ports": [{"containerPort": 3017, "protocol": "TCP"}],
+                "securityContext": {
+                  "runAsUser": 1001,
+                  "runAsGroup": 1001,
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {"drop": ["ALL"]},
+                  "seccompProfile": {"type": "Localhost", "localhostProfile": "retool/gvisor-seccomp.json"},
+                  "appArmorProfile": {"type": "Unconfined"}
+                },
+                "env": [
+                  {"name": "NODE_ENV", "value": "production"},
+                  {"name": "EXECUTOR_PORT", "value": "3017"},
+                  {"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}},
+                  {"name": "POD_UID", "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}}},
+                  {"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}},
+                  {"name": "SANDBOX_NETWORK_ENABLED", "value": "true"},
+                  {"name": "SANDBOX_HTTP_PROXY", "value": "http://retool-agent-sandbox-proxy:3019"},
+                  {"name": "SANDBOX_BACKEND_URL", "value": "http://retool:3000"},
+                  {"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "600000"},
+                  {"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "9000000"},
+                  {"name": "SANDBOX_READY_TIMEOUT_MS", "value": "20000"},
+                  {"name": "SANDBOX_CPU_LIMIT", "valueFrom": {"resourceFieldRef": {"resource": "limits.cpu", "divisor": "1"}}},
+                  {"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "valueFrom": {"secretKeyRef": {"name": "retool-secrets", "key": "agent-sandbox-jwt-public-key"}}},
+                  {"name": "EXECUTOR_API_SECRET", "valueFrom": {"secretKeyRef": {"name": "retool-secrets", "key": "agent-sandbox-api-secret"}}}
+                ],
+                "volumeMounts": [
+                  {"name": "run", "mountPath": "/run"},
+                  {"name": "tmp", "mountPath": "/tmp"},
+                  {"name": "rootfs-appjob", "mountPath": "/opt/sandbox-env/rootfs/app/job"},
+                  {"name": "rootfs-etc", "mountPath": "/opt/sandbox-env/rootfs/etc"}
+                ],
+                "resources": {
+                  "requests": {"cpu": "1", "memory": "2Gi"},
+                  "limits": {"cpu": "2", "memory": "4Gi", "smarter-devices/net_tun": 1}
+                }
+              }
+            ],
+            "volumes": [
+              {"name": "run", "emptyDir": {"medium": "Memory", "sizeLimit": "64Mi"}},
+              {"name": "tmp", "emptyDir": {"sizeLimit": "20Gi"}},
+              {"name": "rootfs-appjob", "emptyDir": {"sizeLimit": "2Gi"}},
+              {"name": "rootfs-etc", "emptyDir": {"medium": "Memory", "sizeLimit": "4Mi"}}
+            ]
+          }
+        }
+      }
+    }
+---
+# Headless Service: sandbox pods register as <pod>.retool-agent-sandbox-pods.retool.svc so
+# the controller, proxy and R2 worker can address a specific pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: retool-agent-sandbox-pods
+  namespace: retool
+spec:
+  clusterIP: None
+  selector:
+    retoolService: retool-agent-sandbox
+  ports:
+    - name: http
+      port: 3017
+      targetPort: 3017
+---
+# =============================================================================
+# Agent Sandbox: controller
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-agent-sandbox-controller
+  namespace: retool
+  labels:
+    retoolService: retool-agent-sandbox-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-agent-sandbox-controller
+  template:
+    metadata:
+      labels:
+        retoolService: retool-agent-sandbox-controller
+    spec:
+      serviceAccountName: retool-agent-sandbox-controller
+      automountServiceAccountToken: true
+      containers:
+        - name: controller
+          image: tryretool/agent-sandbox-service:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3018
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AGENT_SANDBOX_ROLE
+              value: controller
+            - name: CONTROLLER_PORT
+              value: "3018"
+
+            # State store: the Retool Postgres database, separate schema. The password is
+            # passed via PGPASSWORD so it never appears in the URL.
+            - name: STATE_BACKEND
+              value: postgres
+            - name: AGENT_SANDBOX_POSTGRES_URL
+              value: postgres://retool@retool-db.abc123.us-east-1.rds.amazonaws.com:5432/hammerhead_production?sslmode=no-verify
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
+              value: agent_executor
+
+            # Kubernetes orchestration
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: JOB_NAME_PREFIX
+              value: retool-agent-sandbox-job
+            - name: JOB_APP_LABEL
+              value: retool-agent-sandbox
+            - name: EXECUTOR_SERVICE_NAME
+              value: retool-agent-sandbox-pods
+            - name: JOB_TEMPLATE_CONFIGMAP
+              value: retool-agent-sandbox-job-template
+            - name: DAEMONSET_NAME
+              value: retool-agent-sandbox-image-prepuller
+            # Must match the sandbox image tag; substituted into the job template.
+            - name: DEPLOYED_IMAGE_TAG
+              value: 4.34.9-stable
+
+            # Capacity
+            - name: PREWARM_POOL_SIZE
+              value: "2"
+            - name: MAX_TOTAL_JOBS
+              value: "20"
+            - name: MAX_CONCURRENT_CREATES
+              value: "3"
+            - name: JOB_RETENTION_SECONDS
+              value: "300"
+
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-public-key
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            failureThreshold: 18
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retool-agent-sandbox-controller
+  namespace: retool
+spec:
+  type: ClusterIP
+  selector:
+    retoolService: retool-agent-sandbox-controller
+  ports:
+    - name: http
+      port: 3018
+      targetPort: http
+---
+# =============================================================================
+# Agent Sandbox: proxy (sandbox egress filter, credential injection, WebSocket relay)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-agent-sandbox-proxy
+  namespace: retool
+  labels:
+    retoolService: retool-agent-sandbox-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-agent-sandbox-proxy
+  template:
+    metadata:
+      labels:
+        retoolService: retool-agent-sandbox-proxy
+    spec:
+      terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
+      containers:
+        - name: proxy
+          image: tryretool/agent-sandbox-service:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3019
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AGENT_SANDBOX_ROLE
+              value: proxy
+            - name: PROXY_PORT
+              value: "3019"
+
+            - name: STATE_BACKEND
+              value: postgres
+            - name: AGENT_SANDBOX_POSTGRES_URL
+              value: postgres://retool@retool-db.abc123.us-east-1.rds.amazonaws.com:5432/hammerhead_production?sslmode=no-verify
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+            - name: AGENT_SANDBOX_POSTGRES_SCHEMA
+              value: agent_executor
+
+            # Requests from sandboxes to this origin get the real credentials swapped in.
+            - name: BACKEND_URL
+              value: http://retool:3000
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-encryption-key
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-public-key
+
+            # Reaching sandbox pods
+            - name: EXECUTOR_PORT
+              value: "3017"
+            - name: EXECUTOR_SERVICE_NAME
+              value: retool-agent-sandbox-pods
+            - name: K8S_NAMESPACE
+              value: retool
+            - name: SANDBOX_PROXY_TIMEOUT_MS
+              value: "180000"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            failureThreshold: 18
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retool-agent-sandbox-proxy
+  namespace: retool
+spec:
+  type: ClusterIP
+  selector:
+    retoolService: retool-agent-sandbox-proxy
+  ports:
+    - name: tcp-proxy
+      port: 3019
+      targetPort: http
+---
+# =============================================================================
+# R2 agent Temporal worker: orchestrates sandbox provisioning, publishing, snapshots.
+# Polls the `r2-agent` task queue on the Retool-managed Temporal namespace.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-r2-agent-worker
+  namespace: retool
+  labels:
+    retoolService: retool-r2-agent-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-r2-agent-worker
+  template:
+    metadata:
+      labels:
+        retoolService: retool-r2-agent-worker
+    spec:
+      containers:
+        - name: r2-agent-worker
+          image: tryretool/backend:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          args:
+            - bash
+            - -c
+            - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 $(POSTGRES_HOST):$(POSTGRES_PORT); ./docker_scripts/start_api.sh
+          ports:
+            - name: http-server
+              containerPort: 3016
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: NODE_OPTIONS
+              value: --max_old_space_size=1024
+            - name: SERVICE_TYPE
+              value: R2_AGENT_TEMPORAL_WORKER
+            - name: WORKER_TEMPORAL_TASKQUEUE
+              value: r2-agent
+            - name: DISABLE_DATABASE_MIGRATIONS
+              value: "true"
+            - name: COOKIE_INSECURE
+              value: "false"
+
+            - name: POSTGRES_HOST
+              value: retool-db.abc123.us-east-1.rds.amazonaws.com
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hammerhead_production
+            - name: POSTGRES_USER
+              value: retool
+            - name: POSTGRES_SSL_ENABLED
+              value: "true"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+
+            - name: LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: license-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: encryption-key
+
+            - name: WORKFLOW_BACKEND_HOST
+              value: http://retool:3000
+            - name: CODE_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-code-executor
+            - name: JS_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-js-executor
+
+            # Agent Sandbox: same values as the main backend.
+            - name: RR_AGENT_PUBSUB_BACKEND
+              value: postgres
+            - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
+              value: http://retool-agent-sandbox-controller:3018
+            - name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
+              value: http://retool-agent-sandbox-proxy.retool.svc.cluster.local:3019
+            - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-private-key
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-public-key
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-encryption-key
+
+            # Snapshot storage: the worker mints presigned URLs that sandbox pods upload to
+            # and download from, so only the worker needs blob-store credentials.
+            - name: RR_BLOB_STORAGE_PROVIDER
+              value: s3
+            - name: RR_DEFAULT_S3_BUCKET
+              value: my-retool-rr-bucket
+            - name: RR_DEFAULT_S3_REGION
+              value: us-east-1
+            - name: RR_DEFAULT_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: rr-s3-access-key-id
+            - name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: rr-s3-secret-access-key
+          startupProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3016
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3016
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3016
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
