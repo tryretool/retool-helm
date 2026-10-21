@@ -66,7 +66,7 @@ take precedence over the chart-generated in-cluster Service URL.
 {{- if not $backendHasMcpServiceIngressDomain }}
 {{- $mcpService := .Values.mcp.service | default dict }}
 - name: MCP_SERVICE_INGRESS_DOMAIN
-  value: {{ printf "http://%s:%v" (include "retool.mcp.name" .) ($mcpService.externalPort | default 4010) | quote }}
+  value: {{ printf "http://%s.%s:%v" (include "retool.mcp.name" .) (include "retool.serviceDomain" .) ($mcpService.externalPort | default 4010) | quote }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -717,6 +717,10 @@ Usage: (include "retool.appServingLayer.enabled" .)
 {{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
 {{- end -}}
 
+{{- define "retool.serviceDomain" -}}
+{{- printf "%s.svc.%s" .Release.Namespace (.Values.clusterDomain | default "cluster.local") -}}
+{{- end -}}
+
 {{/*
 Set Temporal frontend host
 */}}
@@ -725,7 +729,7 @@ Set Temporal frontend host
 {{- if $temporalConfig.enabled -}}
 {{- $temporalConfig.host | quote -}}
 {{- else -}}
-{{- printf "%s-%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" -}}
+{{- printf "%s-%s.%s" (include "temporal.fullname" (index .Subcharts "retool-temporal-services-helm")) "frontend" (include "retool.serviceDomain" .) -}}
 {{- end -}}
 {{- end -}}
 
@@ -947,7 +951,7 @@ The fully-qualified cluster DNS name keeps this default valid even when callers
 run outside the proxy Service's namespace.
 */}}
 {{- define "retool.agentSandbox.proxyUrl" -}}
-{{- .Values.rr.agentSandbox.proxyUrl | default (printf "http://%s.%s.svc.cluster.local:%s" (include "retool.agentSandbox.proxy.name" .) .Release.Namespace (toString .Values.rr.agentSandbox.proxy.port)) -}}
+{{- .Values.rr.agentSandbox.proxyUrl | default (printf "http://%s.%s:%s" (include "retool.agentSandbox.proxy.name" .) (include "retool.serviceDomain" .) (toString .Values.rr.agentSandbox.proxy.port)) -}}
 {{- end -}}
 
 {{/*
@@ -1289,7 +1293,7 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
   value: "postgres"
 {{ include "retool.r2.orchestrationBackendEnv" . }}
 - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
-  value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s:%s" (include "retool.agentSandbox.controller.name" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
+  value: {{ .Values.rr.agentSandbox.controllerUrl | default (printf "http://%s.%s:%s" (include "retool.agentSandbox.controller.name" .) (include "retool.serviceDomain" .) (toString .Values.rr.agentSandbox.controller.port)) | quote }}
 {{- include "retool.agentSandbox.proxyEnvVars" . }}
 {{- if .Values.rr.agentSandbox.frontendWsProxyDomain }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
@@ -1476,7 +1480,7 @@ In-cluster URL of the standalone git server service, e.g. http://<fullname>-git-
 Used to point the MCP server (and any other consumer) at the split-out git server.
 */}}
 {{- define "retool.gitServer.url" -}}
-http://{{ template "retool.gitServer.name" . }}:{{ include "retool.gitServer.port" . }}
+http://{{ template "retool.gitServer.name" . }}.{{ include "retool.serviceDomain" . }}:{{ include "retool.gitServer.port" . }}
 {{- end -}}
 
 {{/*

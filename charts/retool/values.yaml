@@ -1945,6 +1945,11 @@ hostAliases: {}
 #     - test.com
 #     - anothertest.com
 
+# The cluster's DNS domain. The chart passes Retool fully qualified Service
+# addresses (<service>.<namespace>.svc.<clusterDomain>) because Retool resolves
+# them without the pod's DNS search list.
+clusterDomain: cluster.local
+
 telemetry:
   # When enabled, will collect metrics and logs from the other pods in the
   # chart. These will be forwarded to Retool for proactive monitoring and bug
