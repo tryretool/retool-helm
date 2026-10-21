@@ -4,6 +4,8 @@
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $mcpBackendMetadata := $mcp.backendMetadata | default dict -}}
 {{- $mcpHttpRoute := $mcp.httpRoute | default dict -}}
+{{- $mcpRoutingMode := include "retool.mcp.routingMode" . -}}
+{{- $mcpDirectHttpRoute := and $mcp.enabled (eq $mcpRoutingMode "direct") (or (not (kindIs "bool" $mcpHttpRoute.enabled)) $mcpHttpRoute.enabled) -}}
 {{- $backendInternalService := $mcpBackendMetadata.service | default dict -}}
 {{- $backendInternalPort := $backendInternalService.externalPort | default 3001 -}}
 apiVersion: gateway.networking.k8s.io/v1
@@ -40,7 +42,7 @@ spec:
           port: {{ .port }}
     {{- end }}
     {{- end }}
-    {{- if ( and ((.Values.mcp).enabled) $mcpHttpRoute.enabled ) }}
+    {{- if $mcpDirectHttpRoute }}
     {{- range $mcpHttpRoute.rules }}
     {{- include "retool.httpRoute.mcpRule" (dict "root" $ "rule" . "backendInternalPort" $backendInternalPort) | nindent 4 }}
     {{- end }}
