@@ -144,12 +144,18 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 
+{{/*
+DEPLOYMENT_TEMPLATE_{TYPE,VERSION} reporting. Both default to the plain chart
+identity. The top-level `deploymentTemplateType` / `deploymentTemplateVersion`
+values are reserved overrides for first-party wrappers (Retool's self-hosted
+blueprints) and are deliberately not documented in values.yaml.
+*/}}
 {{- define "retool.deploymentTemplateType" -}}
-{{- "k8s-helm" | quote -}}
+{{- .Values.deploymentTemplateType | default "k8s-helm" | quote -}}
 {{- end -}}
 
 {{- define "retool.deploymentTemplateVersion" -}}
-{{- .Chart.Version | quote -}}
+{{- .Values.deploymentTemplateVersion | default .Chart.Version | quote -}}
 {{- end -}}
 
 {{/*
@@ -1409,7 +1415,8 @@ backend to build published-app URLs.
 {{/*
 RR_APP_DOMAIN for every workload that builds or resolves published-app URLs: the main
 backend (which runs the serving layer unless separate.enabled), the separate serving
-layer, and the standalone git server (CLI preview links).
+layer, the standalone git server (CLI preview links), and the jobs runner (Source Control
+sync and the space hostname ID backfill).
 Usage: {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
 */}}
 {{- define "retool.appServingLayer.domainEnv" -}}
