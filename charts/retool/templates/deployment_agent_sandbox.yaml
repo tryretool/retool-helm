@@ -127,6 +127,7 @@ data:
             "restartPolicy": "Never",
             "subdomain": "{{ include "retool.agentSandbox.name" . }}-pods",
             "automountServiceAccountToken": false,
+            "enableServiceLinks": false,
             {{- if $nodeSelector }}
             "nodeSelector": {{ toJson $nodeSelector }},
             {{- end }}
