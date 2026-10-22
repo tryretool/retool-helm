@@ -2,7 +2,7 @@
 #   browser -> ingress -> retool:3000
 #   retool (main backend) -> retool-code-executor, retool-js-executor,
 #                            retool-agent-sandbox-controller, retool-agent-sandbox-proxy
-#   workers -> retool:3000 (workflow backend), executors, agent-sandbox controller/proxy
+#   R2 agent worker -> retool:3000 (workflow backend), executors, agent-sandbox controller/proxy
 #   sandbox pods -> retool-agent-sandbox-proxy -> retool:3000
 # The main backend reverse-proxies the R2 editor's /sandbox/* WebSocket and Vite traffic to
 # the agent-sandbox proxy Service, so the proxy needs no public hostname of its own.

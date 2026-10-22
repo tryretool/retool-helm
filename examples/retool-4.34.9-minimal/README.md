@@ -9,7 +9,6 @@ service, with every environment variable inlined where it is used.
 | `secrets.yaml`          | One Secret with every Retool secret: license, JWT, encryption key, DB password, agent-sandbox keys, S3 keys |
 | `backend.yaml`          | `SERVICE_TYPE=MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,RR_GIT_SERVER` + Service `retool:3000`  |
 | `jobs-runner.yaml`      | `SERVICE_TYPE=JOBS_RUNNER`                                                                       |
-| `workflows-worker.yaml` | `SERVICE_TYPE=WORKFLOW_TEMPORAL_WORKER`                                                          |
 | `code-executor.yaml`    | Code executor (nsjail, seccomp) + the shared `retool-nsjail-seccomp` ConfigMap                   |
 | `r2.yaml`               | JS executor, agent-sandbox controller / proxy / Job template / DaemonSets, R2 agent worker      |
 | `ingress.yaml`          | One ingress for the main backend; every other hop is in-cluster                                  |
@@ -33,14 +32,16 @@ create that schema.
 
 ### Temporal: Retool-managed cluster
 
-Workflows and R2 both run on Temporal, but no Temporal cluster is deployed and no
+R2 sandbox orchestration runs on Temporal, but no Temporal cluster is deployed and no
 `WORKFLOW_TEMPORAL_*` env vars are set anywhere. The deployment is expected to use a
 Retool-managed Temporal namespace, enabled from the Retool admin UI under Settings >
-Advanced. Once enabled, the workflows worker and the R2 agent worker read the namespace and
-its TLS credentials from the database and connect to `<namespace>.tmprl.cloud`, so both worker
-pods need outbound HTTPS to `*.tmprl.cloud`. The two workers share that one namespace: the
-workflows worker polls the default Workflows task queue, and the R2 agent worker polls the
-`r2-agent` task queue.
+Advanced. Once enabled, the R2 agent worker reads the namespace and its TLS credentials from
+the database and connects to `<namespace>.tmprl.cloud`, so that pod needs outbound HTTPS to
+`*.tmprl.cloud`. It polls the `r2-agent` task queue.
+
+No Retool Workflows worker is deployed, so Workflows will not execute. Adding one is a copy of
+the R2 agent worker Deployment with `SERVICE_TYPE=WORKFLOW_TEMPORAL_WORKER`, no
+`WORKER_TEMPORAL_TASKQUEUE`, and health checks on port 3005.
 
 Because Retool 4.34 has no Postgres-backed R2 orchestration, Temporal is required for R2;
 the R2 agent worker will not pick up sandbox work until Retool-managed Temporal is enabled.
@@ -67,8 +68,9 @@ PUT/GET URLs, so the sandbox pods only need HTTPS egress to the bucket.
   backend Service on port 3000. `BASE_DOMAIN` on the backend and jobs runner must match
   that host.
 - The main backend serves the API, runs the DB connectors and the RR git server in-process,
-  and also answers the workflow-backend calls from the workers (`WORKFLOW_BACKEND_HOST`
-  points back at `retool:3000`), so there is no separate workflow-backend Deployment.
+  and also answers the workflow-backend calls from the R2 agent worker
+  (`WORKFLOW_BACKEND_HOST` points back at `retool:3000`), so there is no separate
+  workflow-backend Deployment.
 - The browser never talks to the agent-sandbox proxy directly. The main backend relays
   `/sandbox/*` WebSocket and Vite traffic to the proxy Service via
   `AGENT_SANDBOX_PROXY_INGRESS_DOMAIN`, so the proxy needs no public hostname, certificate or

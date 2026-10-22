@@ -1,7 +1,7 @@
 # Main Retool backend. Runs the API, the DB connectors and the RR git server in one
-# process. It also answers workflow-backend calls from the workers (WORKFLOW_BACKEND_HOST
-# points back at this Service) and relays /sandbox/* traffic to the agent-sandbox proxy,
-# so the browser only ever talks to this Service.
+# process. It also answers workflow-backend calls from the R2 agent worker
+# (WORKFLOW_BACKEND_HOST points back at this Service) and relays /sandbox/* traffic to the
+# agent-sandbox proxy, so the browser only ever talks to this Service.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
