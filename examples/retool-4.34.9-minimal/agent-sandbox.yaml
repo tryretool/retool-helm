@@ -1,136 +1,35 @@
-# R2 (React Retool) services: JS executor, Agent Sandbox (controller + proxy + per-sandbox
-# Jobs) and the R2 agent Temporal worker. Depends on secrets.yaml, backend.yaml and the
-# retool-nsjail-seccomp ConfigMap from code-executor.yaml.
+# Agent Sandbox: the infrastructure that runs the R2 coding agent for each user in an
+# isolated gVisor sandbox. See agent_executor/RUNBOOK.md in retool_development for the full
+# picture. Depends on secrets.yaml (ES256 keypair, encryption key, API secret, DB password)
+# and on the `retool` Service from backend.yaml.
 #
-# How the Agent Sandbox pieces fit together (see agent_executor/RUNBOOK.md):
-#   - The R2 agent worker runs retoolReactSandboxAgentWorkflow. It asks the controller
-#     (:3018) to /assign a sandbox pod, stores the user's credentials with it, then calls
-#     the pod's /run-agent (:3017) directly through the headless Service.
-#   - The controller is leader-elected over the Postgres state store and creates/retires
-#     Kubernetes Jobs from the job-template ConfigMap, keeping PREWARM_POOL_SIZE idle pods.
-#   - Each Job runs the executor host, which boots one gVisor (runsc, rootless, systrap)
-#     sandbox. The gVisor seccomp profile from gvisor-seccomp.json is installed on every
-#     node by the node-installer DaemonSet, and /dev/net/tun is handed out by the
-#     smarter-device-manager DaemonSet so pasta can give the sandbox a network.
-#   - All sandbox egress goes through the proxy (:3019). The proxy swaps the sandbox's
-#     facade token for real credentials on requests to BACKEND_URL and filters everything
-#     else. The browser reaches the proxy for agent-ws/Vite through the main backend's
-#     /sandbox/* relay (AGENT_SANDBOX_PROXY_INGRESS_DOMAIN on the backend).
-#   - Controller, proxy and backend share the ES256 keypair + encryption key in
-#     retool-secrets; the sandbox state lives in the `agent_executor` schema of the
-#     Retool Postgres database (STATE_BACKEND=postgres, no Redis needed).
-
-# =============================================================================
-# JS Executor: runs R2 serverless functions in nsjail
-# =============================================================================
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: retool-js-executor
-  namespace: retool
-  labels:
-    retoolService: retool-js-executor
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      retoolService: retool-js-executor
-  template:
-    metadata:
-      labels:
-        retoolService: retool-js-executor
-      annotations:
-        container.apparmor.security.beta.kubernetes.io/js-executor: unconfined
-    spec:
-      terminationGracePeriodSeconds: 391
-      initContainers:
-        - name: install-seccomp
-          image: busybox:1.37.0
-          command:
-            - /bin/sh
-            - -c
-            - |
-              DEST=/host-seccomp/profiles/nsjail-seccomp.json
-              mkdir -p "$(dirname "$DEST")"
-              cp /seccomp-profile/nsjail-seccomp.json "$DEST"
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          volumeMounts:
-            - name: seccomp-profile
-              mountPath: /seccomp-profile
-            - name: host-seccomp
-              mountPath: /host-seccomp
-      containers:
-        - name: js-executor
-          image: tryretool/js-executor-service:4.34.9-stable
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: http-server
-              containerPort: 3000
-          env:
-            - name: NODE_ENV
-              value: production
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-              add: ["NET_ADMIN", "NET_RAW", "SETUID", "SETGID"]
-            seccompProfile:
-              type: Localhost
-              localhostProfile: profiles/nsjail-seccomp.json
-          startupProbe:
-            httpGet:
-              path: /api/health
-              port: 3000
-            periodSeconds: 10
-            failureThreshold: 30
-          readinessProbe:
-            httpGet:
-              path: /api/readiness
-              port: 3000
-            periodSeconds: 10
-            timeoutSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /api/health
-              port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 10
-          # Request == limit for memory: the executor sheds load at 80% of its limit.
-          resources:
-            requests:
-              cpu: "2"
-              memory: 6Gi
-            limits:
-              cpu: "2"
-              memory: 6Gi
-      volumes:
-        - name: seccomp-profile
-          configMap:
-            name: retool-nsjail-seccomp
-        - name: host-seccomp
-          hostPath:
-            path: /var/lib/kubelet/seccomp
-            type: DirectoryOrCreate
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: retool-js-executor
-  namespace: retool
-spec:
-  type: ClusterIP
-  selector:
-    retoolService: retool-js-executor
-  ports:
-    - name: http-server
-      port: 80
-      targetPort: 3000
----
+# Pods you will see in the namespace:
+#   retool-agent-sandbox-controller-*   Deployment. Leader-elected over the Postgres state
+#                                        store. Creates/retires sandbox Jobs, keeps
+#                                        PREWARM_POOL_SIZE idle sandboxes warm, hands one to
+#                                        the R2 agent worker on POST /assign (port 3018).
+#   retool-agent-sandbox-proxy-*        Deployment. The only network path out of a sandbox.
+#                                        Filters egress, swaps the sandbox's facade token for
+#                                        real credentials on calls to BACKEND_URL, and relays
+#                                        the editor's WebSocket/Vite traffic in (port 3019).
+#   retool-agent-sandbox-job-*          One Job pod per sandbox, created by the controller
+#                                        from the job-template ConfigMap below. Runs the
+#                                        executor host (port 3017), which boots one gVisor
+#                                        (runsc) sandbox containing the agent and the
+#                                        user's app checkout.
+#   retool-agent-sandbox-node-installer-*  DaemonSet. Copies gvisor-seccomp.json onto every
+#                                        node, then sleeps.
+#   retool-agent-sandbox-device-plugin-*   DaemonSet (smarter-device-manager). Registers
+#                                        /dev/net/tun with the kubelet so sandbox pods can
+#                                        request it for pasta networking.
+#   retool-agent-sandbox-image-prepuller-* DaemonSet. Pre-pulls the sandbox image on every
+#                                        node; the controller also watches it to detect
+#                                        image rollouts.
+#
+# Request flow: R2 agent worker -> controller /assign -> sandbox pod /run-agent;
+# sandbox -> proxy -> retool:3000; browser -> retool:3000 (/sandbox/*) -> proxy -> sandbox.
+# The controller and proxy share the `agent_executor` schema of the Retool Postgres database
+# (STATE_BACKEND=postgres), so no Redis is required.
 # =============================================================================
 # Agent Sandbox: gVisor seccomp profile, installed on every node
 # =============================================================================
@@ -1261,160 +1160,3 @@ spec:
     - name: tcp-proxy
       port: 3019
       targetPort: http
----
-# =============================================================================
-# R2 agent Temporal worker: orchestrates sandbox provisioning, publishing, snapshots.
-# Polls the `r2-agent` task queue on the Retool-managed Temporal namespace.
-# =============================================================================
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: retool-r2-agent-worker
-  namespace: retool
-  labels:
-    retoolService: retool-r2-agent-worker
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      retoolService: retool-r2-agent-worker
-  template:
-    metadata:
-      labels:
-        retoolService: retool-r2-agent-worker
-    spec:
-      containers:
-        - name: r2-agent-worker
-          image: tryretool/backend:4.34.9-stable
-          imagePullPolicy: IfNotPresent
-          args:
-            - bash
-            - -c
-            - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 $(POSTGRES_HOST):$(POSTGRES_PORT); ./docker_scripts/start_api.sh
-          ports:
-            - name: http-server
-              containerPort: 3016
-          env:
-            - name: NODE_ENV
-              value: production
-            - name: NODE_OPTIONS
-              value: --max_old_space_size=1024
-            - name: SERVICE_TYPE
-              value: R2_AGENT_TEMPORAL_WORKER
-            - name: WORKER_TEMPORAL_TASKQUEUE
-              value: r2-agent
-            - name: DISABLE_DATABASE_MIGRATIONS
-              value: "true"
-            - name: COOKIE_INSECURE
-              value: "false"
-
-            - name: POSTGRES_HOST
-              value: retool-db.abc123.us-east-1.rds.amazonaws.com
-            - name: POSTGRES_PORT
-              value: "5432"
-            - name: POSTGRES_DB
-              value: hammerhead_production
-            - name: POSTGRES_USER
-              value: retool
-            - name: POSTGRES_SSL_ENABLED
-              value: "true"
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: postgresql-password
-
-            - name: LICENSE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: license-key
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: jwt-secret
-            - name: ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: encryption-key
-
-            - name: WORKFLOW_BACKEND_HOST
-              value: http://retool:3000
-            - name: CODE_EXECUTOR_INGRESS_DOMAIN
-              value: http://retool-code-executor
-            - name: JS_EXECUTOR_INGRESS_DOMAIN
-              value: http://retool-js-executor
-
-            # Agent Sandbox: same values as the main backend.
-            - name: RR_AGENT_PUBSUB_BACKEND
-              value: postgres
-            - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
-              value: http://retool-agent-sandbox-controller:3018
-            - name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
-              value: http://retool-agent-sandbox-proxy.retool.svc.cluster.local:3019
-            - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: agent-sandbox-jwt-private-key
-            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: agent-sandbox-jwt-public-key
-            - name: AGENT_SANDBOX_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: agent-sandbox-encryption-key
-
-            # Snapshot storage: the worker mints presigned URLs that sandbox pods upload to
-            # and download from, so only the worker needs blob-store credentials.
-            - name: RR_BLOB_STORAGE_PROVIDER
-              value: s3
-            - name: RR_DEFAULT_S3_BUCKET
-              value: my-retool-rr-bucket
-            - name: RR_DEFAULT_S3_REGION
-              value: us-east-1
-            - name: RR_DEFAULT_S3_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: rr-s3-access-key-id
-            - name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retool-secrets
-                  key: rr-s3-secret-access-key
-          startupProbe:
-            httpGet:
-              path: /api/checkHealth
-              port: 3016
-            periodSeconds: 10
-            failureThreshold: 30
-          readinessProbe:
-            httpGet:
-              path: /api/checkHealth
-              port: 3016
-            periodSeconds: 10
-            timeoutSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /api/checkHealth
-              port: 3016
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 10
-          resources:
-            requests:
-              cpu: "1"
-              memory: 2Gi
-            limits:
-              cpu: "2"
-              memory: 4Gi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]

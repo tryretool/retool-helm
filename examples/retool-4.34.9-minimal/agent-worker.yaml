@@ -1,0 +1,162 @@
+# R2 agent Temporal worker: the Retool backend process that orchestrates every R2 agent
+# session. It runs retoolReactSandboxAgentWorkflow on the `r2-agent` task queue of the
+# Retool-managed Temporal namespace (configured in the Retool UI under Settings > Advanced;
+# the worker reads the connection from the database, so no WORKFLOW_TEMPORAL_* env vars are
+# set). For each session it asks the agent-sandbox controller for a pod, stores the user's
+# credentials with it, starts the agent, and later publishes the app and mints the presigned
+# S3 URLs used for sandbox snapshots. Outbound HTTPS to *.tmprl.cloud must be allowed.
+#
+# Pods you will see: retool-r2-agent-worker-* (one container, r2-agent-worker, health
+# check on port 3016).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-r2-agent-worker
+  namespace: retool
+  labels:
+    retoolService: retool-r2-agent-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-r2-agent-worker
+  template:
+    metadata:
+      labels:
+        retoolService: retool-r2-agent-worker
+    spec:
+      containers:
+        - name: r2-agent-worker
+          image: tryretool/backend:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          args:
+            - bash
+            - -c
+            - chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh -t 0 $(POSTGRES_HOST):$(POSTGRES_PORT); ./docker_scripts/start_api.sh
+          ports:
+            - name: http-server
+              containerPort: 3016
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: NODE_OPTIONS
+              value: --max_old_space_size=1024
+            - name: SERVICE_TYPE
+              value: R2_AGENT_TEMPORAL_WORKER
+            - name: WORKER_TEMPORAL_TASKQUEUE
+              value: r2-agent
+            - name: DISABLE_DATABASE_MIGRATIONS
+              value: "true"
+            - name: COOKIE_INSECURE
+              value: "false"
+
+            - name: POSTGRES_HOST
+              value: retool-db.abc123.us-east-1.rds.amazonaws.com
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hammerhead_production
+            - name: POSTGRES_USER
+              value: retool
+            - name: POSTGRES_SSL_ENABLED
+              value: "true"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: postgresql-password
+
+            - name: LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: license-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: encryption-key
+
+            - name: WORKFLOW_BACKEND_HOST
+              value: http://retool:3000
+            - name: CODE_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-code-executor
+            - name: JS_EXECUTOR_INGRESS_DOMAIN
+              value: http://retool-js-executor
+
+            # Agent Sandbox: same values as the main backend.
+            - name: RR_AGENT_PUBSUB_BACKEND
+              value: postgres
+            - name: AGENT_SANDBOX_CONTROLLER_INGRESS_DOMAIN
+              value: http://retool-agent-sandbox-controller:3018
+            - name: AGENT_SANDBOX_PROXY_INGRESS_DOMAIN
+              value: http://retool-agent-sandbox-proxy.retool.svc.cluster.local:3019
+            - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-private-key
+            - name: AGENT_SANDBOX_JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-jwt-public-key
+            - name: AGENT_SANDBOX_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: agent-sandbox-encryption-key
+
+            # Snapshot storage: the worker mints presigned URLs that sandbox pods upload to
+            # and download from, so only the worker needs blob-store credentials.
+            - name: RR_BLOB_STORAGE_PROVIDER
+              value: s3
+            - name: RR_DEFAULT_S3_BUCKET
+              value: my-retool-rr-bucket
+            - name: RR_DEFAULT_S3_REGION
+              value: us-east-1
+            - name: RR_DEFAULT_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: rr-s3-access-key-id
+            - name: RR_DEFAULT_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retool-secrets
+                  key: rr-s3-secret-access-key
+          startupProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3016
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3016
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/checkHealth
+              port: 3016
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

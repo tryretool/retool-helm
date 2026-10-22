@@ -8,7 +8,7 @@ metadata:
   name: retool-nsjail-seccomp
   namespace: retool
 data:
-  # Shared by code-executor.yaml and r2.yaml (js-executor). Contents of nsjail-seccomp.json.
+  # Shared by code-executor.yaml and js-executor.yaml. Contents of nsjail-seccomp.json.
   nsjail-seccomp.json: |
     {
       "defaultAction": "SCMP_ACT_ERRNO",

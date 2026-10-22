@@ -1,0 +1,115 @@
+# JS Executor: runs R2 serverless functions (the server-side code of React Retool apps)
+# inside nsjail sandboxes. The main backend and the R2 agent worker call it over
+# JS_EXECUTOR_INGRESS_DOMAIN=http://retool-js-executor. It needs no database, no secrets and
+# no Temporal; the only dependency is the retool-nsjail-seccomp ConfigMap from
+# code-executor.yaml, which an init container copies to the node so the kubelet can apply it
+# as a Localhost seccomp profile.
+#
+# Pods you will see: retool-js-executor-* (one container, js-executor, port 3000).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retool-js-executor
+  namespace: retool
+  labels:
+    retoolService: retool-js-executor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      retoolService: retool-js-executor
+  template:
+    metadata:
+      labels:
+        retoolService: retool-js-executor
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/js-executor: unconfined
+    spec:
+      terminationGracePeriodSeconds: 391
+      initContainers:
+        - name: install-seccomp
+          image: busybox:1.37.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              DEST=/host-seccomp/profiles/nsjail-seccomp.json
+              mkdir -p "$(dirname "$DEST")"
+              cp /seccomp-profile/nsjail-seccomp.json "$DEST"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: seccomp-profile
+              mountPath: /seccomp-profile
+            - name: host-seccomp
+              mountPath: /host-seccomp
+      containers:
+        - name: js-executor
+          image: tryretool/js-executor-service:4.34.9-stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-server
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+              add: ["NET_ADMIN", "NET_RAW", "SETUID", "SETGID"]
+            seccompProfile:
+              type: Localhost
+              localhostProfile: profiles/nsjail-seccomp.json
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/readiness
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+          # Request == limit for memory: the executor sheds load at 80% of its limit.
+          resources:
+            requests:
+              cpu: "2"
+              memory: 6Gi
+            limits:
+              cpu: "2"
+              memory: 6Gi
+      volumes:
+        - name: seccomp-profile
+          configMap:
+            name: retool-nsjail-seccomp
+        - name: host-seccomp
+          hostPath:
+            path: /var/lib/kubelet/seccomp
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retool-js-executor
+  namespace: retool
+spec:
+  type: ClusterIP
+  selector:
+    retoolService: retool-js-executor
+  ports:
+    - name: http-server
+      port: 80
+      targetPort: 3000

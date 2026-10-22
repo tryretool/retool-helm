@@ -10,7 +10,9 @@ service, with every environment variable inlined where it is used.
 | `backend.yaml`          | `SERVICE_TYPE=MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR,RR_GIT_SERVER` + Service `retool:3000`  |
 | `jobs-runner.yaml`      | `SERVICE_TYPE=JOBS_RUNNER`                                                                       |
 | `code-executor.yaml`    | Code executor (nsjail, seccomp) + the shared `retool-nsjail-seccomp` ConfigMap                   |
-| `r2.yaml`               | JS executor, agent-sandbox controller / proxy / Job template / DaemonSets, R2 agent worker      |
+| `js-executor.yaml`      | JS executor for R2 serverless functions (nsjail)                                                |
+| `agent-sandbox.yaml`    | Agent Sandbox: controller, proxy, sandbox Job template, headless Service, node DaemonSets, RBAC  |
+| `agent-worker.yaml`     | R2 agent Temporal worker (`SERVICE_TYPE=R2_AGENT_TEMPORAL_WORKER`)                              |
 | `ingress.yaml`          | One ingress for the main backend; every other hop is in-cluster                                  |
 
 ## Assumptions
