@@ -54,7 +54,7 @@ commandline:
 
 env:
   # required env var for backend to start up, but not actually registered
-  BASE_DOMAIN: "https://helm-ci.retool.dev"
+  BASE_DOMAIN: "https://retool.example.com"
   # CI runs all pods at once in kind. Avoid failing chart install on transient
   # DNS/startup ordering while the code executor service is coming up.
   IGNORE_CODE_EXECUTOR_STARTUP_CHECK: "true"
