@@ -76,7 +76,7 @@ class RoutingTests(unittest.TestCase):
         output = self.assert_rendered()
         self.assertEqual(ingress_routes(output), INGRESS_DIRECT)
         self.assertEqual(http_routes(output), HTTP_DIRECT)
-        self.assertIn('value: "http://routing-retool-mcp:4010"', manifest(output, "deployment_backend.yaml"))
+        self.assertIn('value: "http://routing-retool-mcp.default.svc.cluster.local:4010"', manifest(output, "deployment_backend.yaml"))
         self.assertIn("- name: MCP_SERVICE_INGRESS_DOMAIN", manifest(output, "deployment_backend.yaml"))
 
     def test_backend_relay_uses_main_service_for_both_route_types(self):

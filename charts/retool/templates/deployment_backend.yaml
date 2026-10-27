@@ -136,16 +136,16 @@ spec:
             value: {{ template "retool.postgresql.ssl_enabled" . }}
           {{- if .Values.dbconnector.enabled }}
           - name: DB_CONNECTOR_HOST
-            value: http://{{ include "retool.dbconnector.name" . }}
+            value: http://{{ include "retool.dbconnector.name" . }}.{{ include "retool.serviceDomain" . }}
           - name: DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.port | quote }}
           - name: DB_SSH_CONNECTOR_HOST
-            value: http://{{ include "retool.dbconnector.name" . }}
+            value: http://{{ include "retool.dbconnector.name" . }}.{{ include "retool.serviceDomain" . }}
           - name: DB_SSH_CONNECTOR_PORT
             value: {{ .Values.dbconnector.port | quote }}
           {{- if $.Values.dbconnector.java.enabled }}
           - name: JAVA_DB_CONNECTOR_HOST
-            value: http://{{ include "retool.dbconnector.name" . }}
+            value: http://{{ include "retool.dbconnector.name" . }}.{{ include "retool.serviceDomain" . }}
           - name: JAVA_DB_CONNECTOR_PORT
             value: {{ $.Values.dbconnector.java.port | quote }}
           {{- end }}
@@ -169,9 +169,9 @@ spec:
           {{- end }}
           {{- if include "retool.workflows.enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
-            value: http://{{ include "retool.workflowBackend.name" . }}
+            value: http://{{ include "retool.workflowBackend.name" . }}.{{ include "retool.serviceDomain" . }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.codeExecutor.name" . }}
+            value: http://{{ template "retool.codeExecutor.name" . }}.{{ include "retool.serviceDomain" . }}
           {{- end }}
           {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
           {{- if and (include "retool.appServingLayer.enabled" .) (not (include "retool.appServingLayer.separateEnabled" .)) }}
@@ -202,7 +202,7 @@ spec:
           {{- end }}
           {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
           - name: JS_EXECUTOR_INGRESS_DOMAIN
-            value: http://{{ template "retool.jsExecutor.name" . }}
+            value: http://{{ template "retool.jsExecutor.name" . }}.{{ include "retool.serviceDomain" . }}
           {{- end }}
 
           {{- include "retool.telemetry.includeEnvVars" . | nindent 10 }}
@@ -280,7 +280,7 @@ spec:
             localhost.
           */}}
           - name: RR_GIT_SERVER_HOST
-            value: {{ template "retool.gitServer.name" . }}
+            value: {{ template "retool.gitServer.name" . }}.{{ include "retool.serviceDomain" . }}
           - name: RR_GIT_SERVER_PORT
             value: {{ include "retool.gitServer.port" . | quote }}
           {{- end }}
