@@ -741,7 +741,14 @@ Usage: (include "retool.appServingLayer.enabled" .)
 
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
-{{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
+{{- $temporal := .Values.temporal | default dict -}}
+{{- if hasKey $temporal "external" -}}
+{{- merge (dict "enabled" true) $temporal.external | toYaml -}}
+{{- else if $temporal.bundled -}}
+{{- dict "enabled" false | toYaml -}}
+{{- else -}}
+{{- .Values.workflows.temporal | default $temporal | toYaml -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -788,7 +795,7 @@ Usage: (include "retool.temporal.enabled" .)
 */}}
 {{- define "retool.temporal.enabled" -}}
 {{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
-{{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled -}}1{{- end -}}
+{{- if or (eq (include "retool.temporal.bundled" .) "true") ($temporalConfig).enabled -}}1{{- end -}}
 {{- end -}}
 
 {{/*

@@ -1,5 +1,6 @@
 Retool infrastructure:
   Database: {{ if eq (include "retool.database.bundled" .) "true" }}bundled PostgreSQL{{ else }}external PostgreSQL ({{ include "retool.postgresql.host" . }}:{{ include "retool.postgresql.port" . }}){{ end }}
+  Temporal: {{ if eq (include "retool.temporal.bundled" .) "true" }}bundled{{ else if (include "retool.temporalConfig" . | fromYaml).enabled }}external ({{ include "retool.temporal.host" . }}:{{ include "retool.temporal.port" . }}, namespace {{ include "retool.temporal.namespace" . }}){{ else }}not configured{{ end }}
 
 Application access:
 {{- if .Values.ingress.enabled }}

@@ -27,10 +27,11 @@ workflows:
   enabled: true
 
 temporal:
-  enabled: true
-  host: temporal-frontend.temporal.svc.cluster.local
-  port: 7233
-  namespace: workflows
+  bundled: false
+  external:
+    host: temporal-frontend.temporal.svc.cluster.local
+    port: 7233
+    namespace: workflows
 
 ingress:
   enabled: false

@@ -18,11 +18,13 @@ database:
 workflows:
   enabled: true
 
+temporal:
+  bundled: true
+
 # The Retool database and Temporal persistence share PostgreSQL for this example.
 # Temporal requires its own default and visibility databases and credentials even
 # when Retool and Temporal connect to the same PostgreSQL instance.
 retool-temporal-services-helm:
-  enabled: true
   server:
     config:
       persistence:

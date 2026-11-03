@@ -1,4 +1,4 @@
-"""Exercise database dependency selection and connection migration."""
+"""Exercise database and Temporal dependency selection and connection migration."""
 
 import json
 import subprocess
@@ -13,6 +13,16 @@ PG = {
     "user": "retool", "ssl_enabled": True,
     "passwordSecretName": "database-credentials", "passwordSecretKey": "password",
 }
+TEMPORAL = {"host": "temporal.example.com", "port": 7233, "namespace": "workflows"}
+PERSISTENCE = {
+    store: {"sql": {"host": "postgres.example.com", "port": 5432,
+                    "database": database, "user": "temporal",
+                    "existingSecret": "temporal-database", "secretKey": "password"}}
+    for store, database in [("default", "temporal"), ("visibility", "temporal_visibility")]
+}
+BUNDLE = {"server": {"config": {"persistence": PERSISTENCE}}}
+
+
 def render(values, *fixtures):
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "values.json"
@@ -91,6 +101,48 @@ class ConfigurationTests(unittest.TestCase):
         self.assertNotIn("kind: StatefulSet", output)
         self.assertIn('value: "postgres.example.com"', output)
 
+    def test_external_temporal_matches_both_legacy_connection_locations(self):
+        canonical = {"temporal": {"bundled": False, "external": TEMPORAL}}
+        output = self.rendered(canonical)
+        self.assertEqual(output, self.rendered({"temporal": {"enabled": True, **TEMPORAL}}))
+        self.assertEqual(output, self.rendered({"workflows": {"temporal": {"enabled": True, **TEMPORAL}}}))
+        self.assertNotIn("/retool-temporal-services-helm/templates/", output)
+        for filename in ("deployment_backend.yaml", "deployment_jobs.yaml",
+                         "deployment_workflows.yaml", "deployment_workers.yaml"):
+            self.assertIn('value: "temporal.example.com"', manifest(output, filename))
+
+    def test_bundled_temporal_matches_legacy_and_controls_actual_dependency(self):
+        legacy_bundle = {**BUNDLE, "enabled": True}
+        legacy = {"retool-temporal-services-helm": legacy_bundle}
+        canonical = {"temporal": {"bundled": True}, "retool-temporal-services-helm": BUNDLE}
+        output = self.rendered(canonical)
+        self.assertEqual(output, self.rendered(legacy))
+        self.assertIn("/retool-temporal-services-helm/templates/server-deployment.yaml", output)
+        self.assertIn("controls-retool-wf-temporal-temporal-frontend", output)
+        # Saved legacy enabled=true must not leave an unused Temporal cluster running.
+        output = self.rendered({"temporal": {"bundled": False, "external": TEMPORAL},
+                                "retool-temporal-services-helm": legacy_bundle})
+        self.assertNotIn("/retool-temporal-services-helm/templates/", output)
+        self.assertIn('value: "temporal.example.com"', output)
+
+    def test_no_temporal_preserves_postgres_orchestration_fallback(self):
+        output = self.rendered({"image": {"tag": "4.87.0-edge"}, "temporal": {"bundled": False}},
+                               "test-agent-sandbox-inherit-postgres-option.yaml")
+        self.assertNotIn("/retool-temporal-services-helm/templates/", output)
+        self.assertNotIn("name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST", output)
+        self.assertIn("name: R2_ORCHESTRATION_BACKEND", output)
+
+    def test_secret_backed_temporal_mtls_reaches_every_caller(self):
+        temporal = {**TEMPORAL, "sslEnabled": True, "sslCert": "dGVzdC1jZXJ0",
+                    "sslKeySecretName": "temporal-client", "sslKeySecretKey": "private-key"}
+        output = self.rendered({"temporal": {"bundled": False, "external": temporal}})
+        for filename in ("deployment_backend.yaml", "deployment_jobs.yaml",
+                         "deployment_workflows.yaml", "deployment_workers.yaml"):
+            document = manifest(output, filename)
+            self.assertIn("name: WORKFLOW_TEMPORAL_TLS_KEY", document)
+            self.assertIn("name: temporal-client", document)
+            self.assertIn("key: private-key", document)
+
     def test_documented_examples_render_and_select_the_expected_dependencies(self):
         for example, bundled in [("aws-external-values.yaml", False),
                                   ("bundled-services-values.yaml", True)]:
@@ -113,13 +165,24 @@ class ConfigurationTests(unittest.TestCase):
             ({'database': {'external': PG}}, 'requires database.bundled=false'),
             ({'database': {'bundled': False, 'external': {'host': 'db'}}}, 'database'),
             ({'database': {'bundled': False, 'external': {**PG, 'port': 0}}}, 'port'),
+            ({'temporal': {'bundled': 'false'}}, 'bundled'),
+            ({'temporal': {'external': {'host': 'temporal'}}}, 'namespace'),
+            ({'temporal': {'external': {**TEMPORAL, 'enabled': True}}}, 'enabled'),
         ]:
             with self.subTest(values=values):
                 self.rejected(values, message)
 
     def test_new_and_legacy_connection_blocks_cannot_silently_override_each_other(self):
-        self.rejected({'database': {'bundled': False, 'external': PG}, 'config': {'postgresql': PG}}, 'cannot be combined')
-        self.rejected({'database': {'bundled': True}, 'config': {'postgresql': PG}}, 'cannot be combined')
+        self.rejected({"database": {"bundled": False, "external": PG},
+                       "config": {"postgresql": PG}}, "cannot be combined")
+        self.rejected({"database": {"bundled": True}, "config": {"postgresql": PG}},
+                      "cannot be combined")
+        for legacy in [{"enabled": True}, {"host": "other-temporal"}, {"sslKey": "old-key"}]:
+            self.rejected({"temporal": {"external": TEMPORAL, **legacy}}, "cannot be combined")
+        self.rejected({"temporal": {"external": TEMPORAL},
+                       "workflows": {"temporal": {"enabled": True, **TEMPORAL}}}, "cannot be combined")
+        self.rejected({"temporal": {"bundled": True, "external": TEMPORAL},
+                       "retool-temporal-services-helm": BUNDLE}, "cannot be combined")
 
 
 if __name__ == "__main__":
