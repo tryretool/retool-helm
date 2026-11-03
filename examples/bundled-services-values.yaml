@@ -1,0 +1,60 @@
+# Evaluation only. Install with release name "retool" so the PostgreSQL Service
+# and Secret references below match. Use external services for production.
+# Supply an image tag and create the referenced application/TLS Secrets first.
+image:
+  tag: YOUR_RETOOL_IMAGE_TAG
+
+config:
+  licenseKeySecretName: retool-app
+  encryptionKeySecretName: retool-app
+  jwtSecretSecretName: retool-app
+
+env:
+  BASE_DOMAIN: https://retool.example.com
+
+database:
+  bundled: true
+
+workflows:
+  enabled: true
+
+temporal:
+  bundled: true
+
+# The Retool database and Temporal persistence share PostgreSQL for this example.
+# Temporal requires its own default and visibility databases and credentials even
+# when Retool and Temporal connect to the same PostgreSQL instance.
+retool-temporal-services-helm:
+  server:
+    config:
+      persistence:
+        default:
+          sql:
+            host: retool-postgresql
+            port: 5432
+            database: temporal
+            user: postgres
+            existingSecret: retool-postgresql
+            secretKey: postgres-password
+        visibility:
+          sql:
+            host: retool-postgresql
+            port: 5432
+            database: temporal_visibility
+            user: postgres
+            existingSecret: retool-postgresql
+            secretKey: postgres-password
+
+exposure:
+  mode: ingress
+
+ingress:
+  ingressClassName: nginx
+  hosts:
+    - host: retool.example.com
+      paths:
+        - path: /
+  tls:
+    - secretName: retool-tls
+      hosts:
+        - retool.example.com

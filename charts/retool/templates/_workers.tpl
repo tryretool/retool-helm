@@ -198,7 +198,7 @@ spec:
           - name: DISABLE_DATABASE_MIGRATIONS
             value: "true"
           {{- $temporalConfig := (include "retool.temporalConfig" $ | fromYaml) -}}
-          {{- if or (index $.Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled }}
+          {{- if or (eq (include "retool.temporal.bundled" $) "true") ($temporalConfig).enabled }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST
             value: {{ template "retool.temporal.host" $ }}
           - name: WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT
@@ -209,7 +209,7 @@ spec:
           {{- if ($temporalConfig).sslEnabled }}
           - name: WORKFLOW_TEMPORAL_TLS_ENABLED
             value: "true"
-          {{- if (and ($temporalConfig).sslCert ($temporalConfig).sslKey) }}
+          {{- if (and ($temporalConfig).sslCert (or ($temporalConfig).sslKey ($temporalConfig).sslKeySecretName)) }}
           - name: WORKFLOW_TEMPORAL_TLS_CRT
             value: {{ $temporalConfig.sslCert }}
           - name: WORKFLOW_TEMPORAL_TLS_KEY
@@ -315,13 +315,13 @@ spec:
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
-          {{- if  $.Values.postgresql.enabled }}
+          {{- if  (eq (include "retool.database.bundled" $) "true") }}
                 name: {{ template "retool.postgresql.fullname" $ }}
                 key: postgres-password
           {{- else }}
-                {{- if $.Values.config.postgresql.passwordSecretName }}
-                name: {{ $.Values.config.postgresql.passwordSecretName }}
-                key: {{ $.Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
+                {{- if (include "retool.database.external" $ | fromYaml).passwordSecretName }}
+                name: {{ (include "retool.database.external" $ | fromYaml).passwordSecretName }}
+                key: {{ (include "retool.database.external" $ | fromYaml).passwordSecretKey | default "postgresql-password" }}
                 {{- else }}
                 name: {{ template "retool.fullname" $ }}
                 key: postgresql-password

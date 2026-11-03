@@ -1,6 +1,32 @@
 # nameOverride:
 # fullnameOverride:
 
+# Canonical database controls. Leave this block empty to preserve legacy values.
+# Set bundled: false and supply external to use RDS or another managed database.
+# bundled selects the dependency directly; it takes precedence over postgresql.enabled.
+# Advanced bundled settings remain under postgresql (auth, storage, resources).
+# See docs/configuration-controls.md for migration and examples.
+database: {}
+# database:
+#   bundled: false
+#   external:
+#     host: postgres.example.com
+#     port: 5432
+#     database: retool
+#     user: retool
+#     ssl_enabled: true
+#     passwordSecretName: retool-database
+#     passwordSecretKey: password
+
+# Select the route owner once. Connection and routing details remain under
+# ingress and httpRoute. An empty block preserves their legacy enabled flags.
+# ingress: create Ingress; gateway: create HTTPRoute; external: create neither.
+# This selects the main application's exposure. The separate React Retool apps
+# wildcard Ingress remains an independent opt-in under rr.appServingLayer.ingress.
+exposure: {}
+# exposure:
+#   mode: external
+
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
   # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
@@ -33,6 +59,7 @@ config:
   # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
   # jwtSecretSecretKey:
 
+  # Legacy external database settings. Prefer database.external for new installs.
   # IMPORTANT: Incompatible with postgresql subchart
   # Please disable the subchart in order to use a managed or external postgres instance.
   postgresql:
@@ -189,6 +216,7 @@ service:
   # portName: service-port
 
 ingress:
+  # Legacy selector; ignored when exposure.mode is set.
   enabled: true
   # For k8s 1.18+
   # ingressClassName:
@@ -221,6 +249,7 @@ ingress:
 # Gateway API HTTPRoute resource (alternative to ingress)
 # Requires a Gateway API implementation (e.g., GKE Gateway Controller, Istio, Envoy Gateway, NGINX Gateway Fabric)
 httpRoute:
+  # Legacy selector; ignored when exposure.mode is set.
   enabled: false
   labels: {}
   annotations: {}
@@ -243,6 +272,7 @@ httpRoute:
   #         port: 3000
 
 postgresql:
+  # Legacy enabled selector; database.bundled takes precedence when supplied.
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
   # or self-host more permanently. Use enabled: false and set in config above to do so.
@@ -1799,6 +1829,22 @@ retoolos:
 # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
 # Set enabled to true if using a pre-existing temporal cluster instead of deploying a new one.
 temporal:
+  # Canonical controls (omit both to preserve the legacy configuration):
+  #   bundled: true  -> deploy the bundled Temporal chart
+  #   bundled: false + external -> use an existing cluster
+  #   bundled: false without an external connection -> no configured cluster
+  # bundled takes precedence over retool-temporal-services-helm.enabled.
+  # Advanced bundled settings remain under retool-temporal-services-helm.server.
+  # bundled: false
+  # external:
+  #   host: temporal.example.com
+  #   port: 7233
+  #   namespace: workflows
+  #   sslEnabled: true
+  #   sslCert: <base64-client-certificate>
+  #   sslKeySecretName: temporal-client
+  #   sslKeySecretKey: key
+  # Legacy connection settings; move these fields into external when migrating.
   # set enabled to true if using a pre-existing temporal cluster
   enabled: false
   # discoverable service name for the temporal frontend service

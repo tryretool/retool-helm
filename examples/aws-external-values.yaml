@@ -1,0 +1,37 @@
+# RDS + an existing Temporal cluster, with ALB routes managed outside this chart.
+# Replace the image tag, hostnames, and secret references before installation.
+# The chart does not create RDS, Temporal, the ALB, certificates, or these Secrets.
+image:
+  tag: YOUR_RETOOL_IMAGE_TAG
+
+config:
+  licenseKeySecretName: retool-app
+  encryptionKeySecretName: retool-app
+  jwtSecretSecretName: retool-app
+
+env:
+  BASE_DOMAIN: https://retool.example.com
+
+database:
+  bundled: false
+  external:
+    host: YOUR_RDS_ENDPOINT
+    port: 5432
+    database: retool
+    user: retool
+    ssl_enabled: true
+    passwordSecretName: retool-database
+    passwordSecretKey: password
+
+workflows:
+  enabled: true
+
+temporal:
+  bundled: false
+  external:
+    host: temporal-frontend.temporal.svc.cluster.local
+    port: 7233
+    namespace: workflows
+
+exposure:
+  mode: external

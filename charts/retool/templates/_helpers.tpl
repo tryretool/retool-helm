@@ -437,10 +437,10 @@ startupProbe:
 Set postgresql ssl_enabled
 */}}
 {{- define "retool.postgresql.ssl_enabled" -}}
-{{- if .Values.postgresql.enabled -}}
+{{- if (eq (include "retool.database.bundled" .) "true") -}}
 {{- .Values.postgresql.ssl_enabled | quote -}}
 {{- else -}}
-{{- .Values.config.postgresql.ssl_enabled | quote -}}
+{{- (include "retool.database.external" . | fromYaml).ssl_enabled | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -448,10 +448,10 @@ Set postgresql ssl_enabled
 Set postgresql host
 */}}
 {{- define "retool.postgresql.host" -}}
-{{- if .Values.postgresql.enabled -}}
+{{- if (eq (include "retool.database.bundled" .) "true") -}}
 {{- include "retool.postgresql.fullname" . | quote -}}
 {{- else -}}
-{{- .Values.config.postgresql.host | quote -}}
+{{- (include "retool.database.external" . | fromYaml).host | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -459,10 +459,10 @@ Set postgresql host
 Set postgresql port
 */}}
 {{- define "retool.postgresql.port" -}}
-{{- if .Values.postgresql.enabled -}}
+{{- if (eq (include "retool.database.bundled" .) "true") -}}
 {{- .Values.postgresql.service.port | quote -}}
 {{- else -}}
-{{- .Values.config.postgresql.port | quote -}}
+{{- (include "retool.database.external" . | fromYaml).port | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -470,12 +470,12 @@ Set postgresql port
 Set postgresql db
 */}}
 {{- define "retool.postgresql.database" -}}
-{{- if .Values.postgresql.enabled -}}
+{{- if (eq (include "retool.database.bundled" .) "true") -}}
 {{- .Values.postgresql.auth.database | quote -}}
-{{- else if .Values.config.postgresql.db -}}
-{{- .Values.config.postgresql.db | quote -}}
+{{- else if (include "retool.database.external" . | fromYaml).db -}}
+{{- (include "retool.database.external" . | fromYaml).db | quote -}}
 {{- else -}}
-{{- .Values.config.postgresql.database | quote -}}
+{{- (include "retool.database.external" . | fromYaml).database | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -483,10 +483,10 @@ Set postgresql db
 Set postgresql user
 */}}
 {{- define "retool.postgresql.user" -}}
-{{- if .Values.postgresql.enabled -}}
+{{- if (eq (include "retool.database.bundled" .) "true") -}}
 {{- .Values.postgresql.auth.username | quote -}}
 {{- else -}}
-{{- .Values.config.postgresql.user | quote -}}
+{{- (include "retool.database.external" . | fromYaml).user | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -741,7 +741,14 @@ Usage: (include "retool.appServingLayer.enabled" .)
 
 {{/* Global Temporal configuration */}}
 {{- define "retool.temporalConfig" -}}
-{{- .Values.workflows.temporal | default .Values.temporal | toYaml -}}
+{{- $temporal := .Values.temporal | default dict -}}
+{{- if hasKey $temporal "external" -}}
+{{- merge (dict "enabled" true) $temporal.external | toYaml -}}
+{{- else if $temporal.bundled -}}
+{{- dict "enabled" false | toYaml -}}
+{{- else -}}
+{{- .Values.workflows.temporal | default $temporal | toYaml -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -788,7 +795,7 @@ Usage: (include "retool.temporal.enabled" .)
 */}}
 {{- define "retool.temporal.enabled" -}}
 {{- $temporalConfig := include "retool.temporalConfig" . | fromYaml -}}
-{{- if or (index .Values "retool-temporal-services-helm" "enabled") ($temporalConfig).enabled -}}1{{- end -}}
+{{- if or (eq (include "retool.temporal.bundled" .) "true") ($temporalConfig).enabled -}}1{{- end -}}
 {{- end -}}
 
 {{/*
@@ -1005,7 +1012,7 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- if not (include "retool.postgresql.host" . | trimAll "\"") -}}
 {{- fail "agentSandbox.enabled defaults to reusing the backend's Postgres connection, but config.postgresql resolved no host. Set agentSandbox.postgres.url / .host / .urlSecretName (point .urlSecretName at your externalSecret to reuse its postgres-url key; externalSecret.name alone only covers the JWT/encryption keys), or configure config.postgresql." -}}
 {{- end -}}
-{{- if not (or .Values.postgresql.enabled .Values.config.postgresql.passwordSecretName (eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1")) -}}
+{{- if not (or (eq (include "retool.database.bundled" .) "true") (include "retool.database.external" . | fromYaml).passwordSecretName (eq (include "shouldIncludeConfigSecretsEnvVars" . | trim) "1")) -}}
 {{- fail "agentSandbox.postgres is unset so it would inherit the backend's Postgres password, but that password is supplied via external secrets (envFrom) and cannot be referenced from a separate pod. Set agentSandbox.postgres.url / .urlSecretName / .host (+ passwordSecretName) -- .urlSecretName can point at your externalSecret's postgres-url key (externalSecret.name alone only covers the JWT/encryption keys)." -}}
 {{- end -}}
 {{- end -}}
@@ -1128,16 +1135,16 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
 - name: PGPASSWORD
   valueFrom:
     secretKeyRef:
-      {{- if .Values.postgresql.enabled }}
+      {{- if (eq (include "retool.database.bundled" .) "true") }}
       name: {{ template "retool.postgresql.fullname" . }}
       {{- if eq .Values.postgresql.auth.username "postgres" }}
       key: postgres-password
       {{- else }}
       key: password
       {{- end }}
-      {{- else if .Values.config.postgresql.passwordSecretName }}
-      name: {{ .Values.config.postgresql.passwordSecretName }}
-      key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
+      {{- else if (include "retool.database.external" . | fromYaml).passwordSecretName }}
+      name: {{ (include "retool.database.external" . | fromYaml).passwordSecretName }}
+      key: {{ (include "retool.database.external" . | fromYaml).passwordSecretKey | default "postgresql-password" }}
       {{- else }}
       name: {{ template "retool.fullname" . }}
       key: postgresql-password
@@ -1199,7 +1206,7 @@ Usage: {{- include "retool.agentSandbox.postgresEgressRules" . | nindent 4 }}
     - port: {{ $port }}
       protocol: TCP
 {{- else }}
-{{- if and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled }}
+{{- if and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) (eq (include "retool.database.bundled" .) "true") }}
 - to:
     - podSelector:
         matchLabels:
@@ -1237,7 +1244,7 @@ Usage: {{- if eq (include "retool.agentSandbox.postgresEgressMissing" .) "1" }}
 {{- define "retool.agentSandbox.postgresEgressMissing" -}}
 {{- $as := .Values.rr.agentSandbox -}}
 {{- $pg := $as.postgres -}}
-{{- if and $as.networkPolicy.enabled $as.networkPolicy.postgresPort (not $as.networkPolicy.postgresAllowAny) (not $as.networkPolicy.postgresAllowlist) (not (and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) .Values.postgresql.enabled)) -}}
+{{- if and $as.networkPolicy.enabled $as.networkPolicy.postgresPort (not $as.networkPolicy.postgresAllowAny) (not $as.networkPolicy.postgresAllowlist) (not (and (not $pg.url) (not $pg.host) (not $pg.urlSecretName) (eq (include "retool.database.bundled" .) "true"))) -}}
 1{{- end -}}
 {{- end -}}
 
