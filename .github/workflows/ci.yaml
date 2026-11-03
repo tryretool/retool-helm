@@ -82,6 +82,8 @@ jobs:
         run: python3 .github/test_mcp_helm_test.py
       - name: Verify MCP routing modes and migration errors
         run: python3 .github/test_mcp_routing.py
+      - name: Verify database controls and legacy compatibility
+        run: python3 .github/test_configuration_controls.py
 
   # We don't use helm-docs yet, can set this up later
   #

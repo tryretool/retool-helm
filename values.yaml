@@ -1,6 +1,23 @@
 # nameOverride:
 # fullnameOverride:
 
+# Canonical database controls. Leave this block empty to preserve legacy values.
+# Set bundled: false and supply external to use RDS or another managed database.
+# bundled selects the dependency directly; it takes precedence over postgresql.enabled.
+# Advanced bundled settings remain under postgresql (auth, storage, resources).
+# See docs/configuration-controls.md for migration and examples.
+database: {}
+# database:
+#   bundled: false
+#   external:
+#     host: postgres.example.com
+#     port: 5432
+#     database: retool
+#     user: retool
+#     ssl_enabled: true
+#     passwordSecretName: retool-database
+#     passwordSecretKey: password
+
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
   # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
@@ -33,6 +50,7 @@ config:
   # jwtSecretSecretKey is the key in the k8s secret, default: jwt-secret
   # jwtSecretSecretKey:
 
+  # Legacy external database settings. Prefer database.external for new installs.
   # IMPORTANT: Incompatible with postgresql subchart
   # Please disable the subchart in order to use a managed or external postgres instance.
   postgresql:
@@ -243,6 +261,7 @@ httpRoute:
   #         port: 3000
 
 postgresql:
+  # Legacy enabled selector; database.bundled takes precedence when supplied.
   # We highly recommend you do NOT use this subchart as is to run Postgres in a container
   # for your production instance of Retool; it is a default. Please use a managed Postgres,
   # or self-host more permanently. Use enabled: false and set in config above to do so.
