@@ -2,6 +2,7 @@
 
 - [Database controls](database-controls.md)
 - [Temporal controls](temporal-controls.md)
+- [Public route ownership](exposure-controls.md)
 
 Start with the [AWS external-services example](../examples/aws-external-values.yaml)
 or the [bundled evaluation example](../examples/bundled-services-values.yaml).

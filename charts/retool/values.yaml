@@ -18,6 +18,15 @@ database: {}
 #     passwordSecretName: retool-database
 #     passwordSecretKey: password
 
+# Select the route owner once. Connection and routing details remain under
+# ingress and httpRoute. An empty block preserves their legacy enabled flags.
+# ingress: create Ingress; gateway: create HTTPRoute; external: create neither.
+# This selects the main application's exposure. The separate React Retool apps
+# wildcard Ingress remains an independent opt-in under rr.appServingLayer.ingress.
+exposure: {}
+# exposure:
+#   mode: external
+
 config:
   licenseKey: "EXPIRED-LICENSE-KEY-TRIAL"
   # licenseKeySecretName is the name of the secret where the Retool license key is stored (can be used instead of licenseKey)
@@ -207,6 +216,7 @@ service:
   # portName: service-port
 
 ingress:
+  # Legacy selector; ignored when exposure.mode is set.
   enabled: true
   # For k8s 1.18+
   # ingressClassName:
@@ -239,6 +249,7 @@ ingress:
 # Gateway API HTTPRoute resource (alternative to ingress)
 # Requires a Gateway API implementation (e.g., GKE Gateway Controller, Istio, Envoy Gateway, NGINX Gateway Fabric)
 httpRoute:
+  # Legacy selector; ignored when exposure.mode is set.
   enabled: false
   labels: {}
   annotations: {}

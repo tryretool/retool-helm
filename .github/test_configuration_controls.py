@@ -1,4 +1,4 @@
-"""Exercise database and Temporal dependency selection and connection migration."""
+"""Exercise dependency selection, connection migration, and exposure ownership."""
 
 import json
 import subprocess
@@ -143,6 +143,33 @@ class ConfigurationTests(unittest.TestCase):
             self.assertIn("name: temporal-client", document)
             self.assertIn("key: private-key", document)
 
+    def test_exposure_selects_one_route_owner_despite_legacy_switches(self):
+        for mode, ingress, gateway in [("ingress", True, False), ("gateway", False, True),
+                                        ("external", False, False)]:
+            with self.subTest(mode=mode):
+                output = self.rendered({"exposure": {"mode": mode}}, "test-mcp-enabled-option.yaml")
+                self.assertEqual("kind: Ingress" in output, ingress)
+                self.assertEqual("kind: HTTPRoute" in output, gateway)
+                self.assertIn("name: controls-retool-mcp", output)
+                if mode != "external":
+                    self.assertIn("/.well-known/oauth-authorization-server", output)
+                    self.assertIn("/.well-known/oauth-protected-resource", output)
+
+    def test_exposure_preserves_mcp_relay_and_separate_apps_domain(self):
+        for mode, filename in [("ingress", "ingress.yaml"), ("gateway", "httproute.yaml")]:
+            output = self.rendered({"exposure": {"mode": mode}, "mcp": {"routing": {"mode": "backendRelay"}}},
+                                   "test-mcp-enabled-option.yaml")
+            self.assertNotIn("/mcp", manifest(output, filename))
+        output = self.rendered({"exposure": {"mode": "external"}},
+                               "test-rr-app-serving-layer-separate-option.yaml")
+        self.assertIn("# Source: retool/templates/ingress_rr_app_serving_layer.yaml", output)
+        self.assertNotIn("# Source: retool/templates/ingress.yaml", output)
+
+    def test_legacy_can_still_create_both_route_types(self):
+        output = self.rendered({}, "test-mcp-enabled-option.yaml")
+        self.assertIn("kind: Ingress", output)
+        self.assertIn("kind: HTTPRoute", output)
+
     def test_documented_examples_render_and_select_the_expected_dependencies(self):
         for example, bundled in [("aws-external-values.yaml", False),
                                   ("bundled-services-values.yaml", True)]:
@@ -168,6 +195,8 @@ class ConfigurationTests(unittest.TestCase):
             ({'temporal': {'bundled': 'false'}}, 'bundled'),
             ({'temporal': {'external': {'host': 'temporal'}}}, 'namespace'),
             ({'temporal': {'external': {**TEMPORAL, 'enabled': True}}}, 'enabled'),
+            ({'exposure': {'mode': 'loadbalancer'}}, 'mode'),
+            ({'exposure': {'enabled': True}}, 'enabled'),
         ]:
             with self.subTest(values=values):
                 self.rejected(values, message)

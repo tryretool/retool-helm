@@ -45,6 +45,9 @@ retool-temporal-services-helm:
             existingSecret: retool-postgresql
             secretKey: postgres-password
 
+exposure:
+  mode: ingress
+
 ingress:
   ingressClassName: nginx
   hosts:

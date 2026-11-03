@@ -1,4 +1,4 @@
-{{- if .Values.httpRoute.enabled }}
+{{- if (eq (include "retool.exposure.enabled" (dict "root" . "mode" "gateway")) "true") }}
 {{- $fullName := include "retool.fullname" . -}}
 {{- $svcPort := .Values.service.externalPort -}}
 {{- $mcp := .Values.mcp | default dict -}}
