@@ -1818,6 +1818,22 @@ retoolos:
 # IMPORTANT: Incompatible with retool-temporal-services-helm subchart
 # Set enabled to true if using a pre-existing temporal cluster instead of deploying a new one.
 temporal:
+  # Canonical controls (omit both to preserve the legacy configuration):
+  #   bundled: true  -> deploy the bundled Temporal chart
+  #   bundled: false + external -> use an existing cluster
+  #   bundled: false without an external connection -> no configured cluster
+  # bundled takes precedence over retool-temporal-services-helm.enabled.
+  # Advanced bundled settings remain under retool-temporal-services-helm.server.
+  # bundled: false
+  # external:
+  #   host: temporal.example.com
+  #   port: 7233
+  #   namespace: workflows
+  #   sslEnabled: true
+  #   sslCert: <base64-client-certificate>
+  #   sslKeySecretName: temporal-client
+  #   sslKeySecretKey: key
+  # Legacy connection settings; move these fields into external when migrating.
   # set enabled to true if using a pre-existing temporal cluster
   enabled: false
   # discoverable service name for the temporal frontend service

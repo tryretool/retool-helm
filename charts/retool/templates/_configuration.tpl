@@ -21,8 +21,18 @@ Absent canonical controls preserve the legacy configuration exactly.
 {{- end -}}
 {{- end -}}
 
+{{- define "retool.temporal.bundled" -}}
+{{- $temporal := .Values.temporal | default dict -}}
+{{- if hasKey $temporal "bundled" -}}
+{{- $temporal.bundled -}}
+{{- else -}}
+{{- index .Values "retool-temporal-services-helm" "enabled" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "retool.configuration.validate" -}}
 {{- $database := .Values.database | default dict -}}
+{{- $temporal := .Values.temporal | default dict -}}
 {{- if and $database.bundled .Values.config.postgresql -}}
 {{- fail "database.bundled=true cannot be combined with config.postgresql; remove the legacy external connection settings" -}}
 {{- end -}}
@@ -43,5 +53,19 @@ Absent canonical controls preserve the legacy configuration exactly.
 {{- end -}}
 {{- if and (hasKey $database "bundled") (not $database.bundled) (not (hasKey $database "external")) (not .Values.config.postgresql) -}}
 {{- fail "database.bundled=false requires database.external connection settings (or legacy config.postgresql during migration)" -}}
+{{- end -}}
+{{- if hasKey $temporal "external" -}}
+{{- if eq (include "retool.temporal.bundled" .) "true" -}}
+{{- fail "temporal.external cannot be combined with temporal.bundled=true; select one Temporal cluster" -}}
+{{- end -}}
+{{- if or .Values.workflows.temporal $temporal.enabled $temporal.host $temporal.port $temporal.namespace $temporal.sslEnabled $temporal.sslCert $temporal.sslKey $temporal.sslKeySecretName $temporal.sslKeySecretKey -}}
+{{- fail "temporal.external cannot be combined with legacy temporal connection settings or workflows.temporal; move all connection fields to temporal.external" -}}
+{{- end -}}
+{{- if not (and $temporal.external.host $temporal.external.port $temporal.external.namespace) -}}
+{{- fail "temporal.external requires host, port, and namespace" -}}
+{{- end -}}
+{{- end -}}
+{{- if and $temporal.bundled (or $temporal.enabled (.Values.workflows.temporal).enabled) -}}
+{{- fail "temporal.bundled=true cannot be combined with an enabled external Temporal cluster; remove the legacy external settings" -}}
 {{- end -}}
 {{- end -}}

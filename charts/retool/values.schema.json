@@ -53,6 +53,57 @@
           }
         }
       }
+    },
+    "temporal": {
+      "type": "object",
+      "properties": {
+        "bundled": {
+          "type": "boolean"
+        },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "host",
+            "port",
+            "namespace"
+          ],
+          "properties": {
+            "host": {
+              "type": "string",
+              "minLength": 1
+            },
+            "namespace": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sslCert": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sslKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sslKeySecretName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sslKeySecretKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "sslEnabled": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   }
 }
