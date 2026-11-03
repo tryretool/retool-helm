@@ -159,13 +159,13 @@ spec:
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
-          {{- if  .Values.postgresql.enabled }}
+          {{- if  (eq (include "retool.database.bundled" .) "true") }}
                 name: {{ template "retool.postgresql.fullname" . }}
                 key: postgres-password
           {{- else }}
-                {{- if .Values.config.postgresql.passwordSecretName }}
-                name: {{ .Values.config.postgresql.passwordSecretName }}
-                key: {{ .Values.config.postgresql.passwordSecretKey | default "postgresql-password" }}
+                {{- if (include "retool.database.external" . | fromYaml).passwordSecretName }}
+                name: {{ (include "retool.database.external" . | fromYaml).passwordSecretName }}
+                key: {{ (include "retool.database.external" . | fromYaml).passwordSecretKey | default "postgresql-password" }}
                 {{- else }}
                 name: {{ template "retool.fullname" . }}
                 key: postgresql-password

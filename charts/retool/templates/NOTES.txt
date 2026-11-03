@@ -1,4 +1,7 @@
-1. Get the application URL by running these commands:
+Retool infrastructure:
+  Database: {{ if eq (include "retool.database.bundled" .) "true" }}bundled PostgreSQL{{ else }}external PostgreSQL ({{ include "retool.postgresql.host" . }}:{{ include "retool.postgresql.port" . }}){{ end }}
+
+Application access:
 {{- if .Values.ingress.enabled }}
 {{- range $host := .Values.ingress.hosts }}
   {{- range .paths }}
@@ -21,7 +24,7 @@
   kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
 {{- end }}
 
-{{- if and .Values.postgresql.enabled (and (not .Values.postgresql.auth.postgresPassword) (eq .Values.postgresql.auth.username "postgres")) }}
+{{- if and (eq (include "retool.database.bundled" .) "true") (and (not .Values.postgresql.auth.postgresPassword) (eq .Values.postgresql.auth.username "postgres")) }}
 
 ***************************************************************************
 Warning: Using in-cluster postgresql setup. `.Values.postgresql.auth.username username` is set to the default admin username "postgres", but the admin password field `.Values.postgresql.auth.postgresPassword` is not set, so a random password is generated and used. This wouldn't affect your usage, but if you choose to uninstall and reinstall this helm chart, please make sure you remove the existing PersistentVolumeClaim backing the in-cluster postgresql by running:
