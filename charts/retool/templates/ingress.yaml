@@ -1,4 +1,4 @@
-{{- if .Values.ingress.enabled }}
+{{- if (eq (include "retool.exposure.enabled" (dict "root" . "mode" "ingress")) "true") }}
 {{- $fullName := include "retool.fullname" . -}}
 {{- $svcPort := .Values.service.externalPort -}}
 {{- $mcp := .Values.mcp | default dict -}}

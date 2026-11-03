@@ -33,8 +33,5 @@ temporal:
     port: 7233
     namespace: workflows
 
-ingress:
-  enabled: false
-
-httpRoute:
-  enabled: false
+exposure:
+  mode: external

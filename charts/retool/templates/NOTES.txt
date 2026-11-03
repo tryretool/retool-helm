@@ -1,14 +1,30 @@
 Retool infrastructure:
   Database: {{ if eq (include "retool.database.bundled" .) "true" }}bundled PostgreSQL{{ else }}external PostgreSQL ({{ include "retool.postgresql.host" . }}:{{ include "retool.postgresql.port" . }}){{ end }}
   Temporal: {{ if eq (include "retool.temporal.bundled" .) "true" }}bundled{{ else if (include "retool.temporalConfig" . | fromYaml).enabled }}external ({{ include "retool.temporal.host" . }}:{{ include "retool.temporal.port" . }}, namespace {{ include "retool.temporal.namespace" . }}){{ else }}not configured{{ end }}
+  Exposure: {{ (.Values.exposure).mode | default "legacy ingress.enabled/httpRoute.enabled selectors" }}
 
 Application access:
-{{- if .Values.ingress.enabled }}
+{{- if (eq (include "retool.exposure.enabled" (dict "root" . "mode" "ingress")) "true") }}
 {{- range $host := .Values.ingress.hosts }}
   {{- range .paths }}
   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
   {{- end }}
 {{- end }}
+{{- else if eq (include "retool.exposure.enabled" (dict "root" . "mode" "gateway")) "true" }}
+  Gateway API HTTPRoute: {{ include "retool.fullname" . }}
+  Verify its Accepted and ResolvedRefs conditions and the parent Gateway listeners.
+  kubectl --namespace {{ .Release.Namespace }} describe httproute {{ include "retool.fullname" . }}
+{{- else if eq (.Values.exposure).mode "external" }}
+  Public routes are managed outside this chart. Route requests to:
+    / -> {{ include "retool.fullname" . }}:{{ .Values.service.externalPort }}
+  {{- if .Values.mcp.enabled }}
+  {{- if eq (include "retool.mcp.routingMode" .) "direct" }}
+    /.well-known/oauth-authorization-server -> {{ include "retool.backendInternal.name" . }}:{{ .Values.mcp.backendMetadata.service.externalPort | default 3001 }}
+    /.well-known/oauth-protected-resource and /mcp -> {{ include "retool.mcp.name" . }}:{{ .Values.mcp.service.externalPort }}
+  {{- else }}
+    The catchall / route must also match /mcp and both OAuth discovery URLs.
+  {{- end }}
+  {{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "retool.fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")

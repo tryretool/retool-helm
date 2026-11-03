@@ -30,6 +30,17 @@ Absent canonical controls preserve the legacy configuration exactly.
 {{- end -}}
 {{- end -}}
 
+{{- define "retool.exposure.enabled" -}}
+{{- $exposure := .root.Values.exposure | default dict -}}
+{{- if $exposure.mode -}}
+{{- eq $exposure.mode .mode -}}
+{{- else if eq .mode "ingress" -}}
+{{- .root.Values.ingress.enabled -}}
+{{- else -}}
+{{- .root.Values.httpRoute.enabled -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "retool.configuration.validate" -}}
 {{- $database := .Values.database | default dict -}}
 {{- $temporal := .Values.temporal | default dict -}}
