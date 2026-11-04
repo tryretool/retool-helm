@@ -1,4 +1,7 @@
 {{- if eq (include "retool.appArmorNsjailInstaller.enabled" .) "1" }}
+{{- $installer := .Values.codeExecutor.appArmorInstaller | default dict -}}
+{{- $nodeSelector := $installer.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := $installer.tolerations | default .Values.tolerations -}}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -15,6 +18,9 @@ spec:
     metadata:
       annotations:
         checksum/profiles: {{ include (print $.Template.BasePath "/apparmor_nsjail_configmap.yaml") . | sha256sum }}
+{{- with $installer.annotations }}
+{{ toYaml . | indent 8 }}
+{{- end }}
       labels:
         retoolService: {{ template "retool.fullname" . }}-apparmor-nsjail
         app.kubernetes.io/name: {{ template "retool.fullname" . }}-apparmor-nsjail
@@ -25,12 +31,12 @@ spec:
 {{- end }}
     spec:
       automountServiceAccountToken: false
-{{- if .Values.nodeSelector }}
+{{- if $nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
+{{ toYaml $nodeSelector | indent 8 }}
 {{- end }}
       tolerations:
-{{ toYaml .Values.tolerations | indent 8 }}
+{{ toYaml $tolerations | indent 8 }}
       hostPID: true
       initContainers:
         - name: install
@@ -51,6 +57,10 @@ spec:
               nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-executor
               touch /host-run/retool-executor.loaded
               echo "AppArmor profiles loaded successfully"
+{{- with $installer.resources }}
+          resources:
+{{ toYaml . | indent 12 }}
+{{- end }}
           volumeMounts:
             - name: apparmor-profiles
               mountPath: /profiles
