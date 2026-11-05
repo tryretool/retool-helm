@@ -538,7 +538,7 @@ Usage: (include "retool.workflows.enabled" .)
 {{/*
 Resolve whether the code-executor service should render. The code executor is a
 standalone sandbox service: workflows need it, but it can also be deployed on its
-own (e.g. for RR, where js-executor is also present).
+own.
 
 .Values.codeExecutor.enabled wins when explicitly set to true/false. When left
 unset (null, the default) it inherits retool.workflows.enabled, preserving
@@ -580,8 +580,8 @@ DaemonSet, see apparmor_nsjail_configmap.yaml / apparmor_nsjail_daemonset.yaml)
 should render. That installer is consumed by two independent components that
 both switch their container.apparmor.security.beta.kubernetes.io annotation
 from "unconfined" to "localhost/retool-executor" when
-codeExecutor.appArmorProfileInstaller is set: the code-executor (rendered when
-retool.codeExecutor.enabled resolves true) and the RR js-executor (rendered
+codeExecutor.appArmorProfileInstaller is set: the legacy code-executor (rendered
+when retool.codeExecutor.enabled resolves true) and the RR js-executor (rendered
 whenever rr.jsExecutor is enabled, independent of workflows). The installer
 must render whenever either consumer needs it, so it is intentionally NOT
 gated on retool.codeExecutor.enabled alone -- doing so would leave js-executor's

@@ -2,33 +2,14 @@
 # executor explicitly enabled via codeExecutor.enabled. Overlaid on top of
 # test-install-values.yaml (which enables workflows via image.tag), so this file
 # proves codeExecutor.enabled: true overrides the inherited workflows switch and
-# the code-executor workload still renders on its own.
+# the code-executor workload still renders on its own (including the nsjail
+# seccomp sandbox and shared AppArmor installer).
 #
-# A regression that re-couples code-executor rendering to workflows.enabled would
-# drop deployment_code_executor.yaml / configmap_code_executor.yaml here and the
-# test would render nothing for them.
+# Behavioral assertions for this path live in .github/test_code_executor.py.
 workflows:
   enabled: false
 
 codeExecutor:
   enabled: true
-  replicaCount: 2
-  image:
-    repository: tryretool/code-executor-service
-    tag: 3.123.4
-  # Exercise the nsjail seccomp sandbox branch and the shared AppArmor installer
-  # (apparmor_nsjail_daemonset.yaml + apparmor_nsjail_configmap.yaml). The
-  # installer must still render for code-executor even with workflows disabled.
   useSeccompProfile: true
   appArmorProfileInstaller: true
-  resources:
-    limits:
-      cpu: 4000m
-      memory: 4Gi
-    requests:
-      cpu: 2000m
-      memory: 2Gi
-
-# Exercise the PDB branch shared by the code-executor deployment.
-podDisruptionBudget:
-  maxUnavailable: 1
