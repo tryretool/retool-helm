@@ -1,5 +1,6 @@
 {{- include "retool.rr.validateLegacyValues" . }}
 {{- include "retool.gitServer.validateBlobStorage" . }}
+{{- include "retool.codeExecutor.validateEnabled" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -170,6 +171,8 @@ spec:
           {{- if include "retool.workflows.enabled" . }}
           - name: WORKFLOW_BACKEND_HOST
             value: http://{{ include "retool.workflowBackend.name" . }}
+          {{- end }}
+          {{- if eq (include "retool.codeExecutor.enabled" .) "1" }}
           - name: CODE_EXECUTOR_INGRESS_DOMAIN
             value: http://{{ template "retool.codeExecutor.name" . }}
           {{- end }}

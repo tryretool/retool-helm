@@ -536,18 +536,57 @@ Usage: (include "retool.workflows.enabled" .)
 {{- end -}}
 
 {{/*
+Resolve whether the code-executor service should render. The code executor is a
+standalone sandbox service: workflows need it, but it can also be deployed on its
+own (e.g. for RR, where js-executor is also present).
+
+.Values.codeExecutor.enabled wins when explicitly set to true/false. When left
+unset (null, the default) it inherits retool.workflows.enabled, preserving
+back-compat: existing installs that only toggle workflows.enabled keep the same
+code-executor behavior. A non-bool, non-null value is a misconfiguration and
+fails loudly.
+Usage: (include "retool.codeExecutor.enabled" .)
+Returns "1" when enabled, "" otherwise.
+*/}}
+{{- define "retool.codeExecutor.enabled" -}}
+{{- $enabled := (.Values.codeExecutor | default dict).enabled -}}
+{{- if kindIs "invalid" $enabled -}}
+  {{/* unset/null -> inherit the workflows master switch */}}
+  {{- include "retool.workflows.enabled" . -}}
+{{- else if kindIs "bool" $enabled -}}
+  {{- if $enabled -}}1{{- end -}}
+{{- else -}}
+  {{- fail (printf "codeExecutor.enabled must be true, false, or unset/null (to inherit workflows.enabled); got %s" (kindOf $enabled)) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Fail loudly when workflows are enabled but the code executor is explicitly
+disabled: workflows run their code on the code executor, so this combination
+would deploy a broken workflows stack. Leaving codeExecutor.enabled unset (null)
+is fine -- it inherits workflows.enabled.
+Usage: (include "retool.codeExecutor.validateEnabled" .)
+*/}}
+{{- define "retool.codeExecutor.validateEnabled" -}}
+{{- $enabled := (.Values.codeExecutor | default dict).enabled -}}
+{{- if and (kindIs "bool" $enabled) (not $enabled) (eq (include "retool.workflows.enabled" .) "1") -}}
+{{- fail "workflows are enabled but codeExecutor.enabled is false. Workflows run on the code executor, so this would deploy a broken workflows stack. Either set codeExecutor.enabled: true (or leave it null to inherit workflows.enabled), or disable workflows." -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resolve whether the shared nsjail AppArmor profile installer (ConfigMap +
 DaemonSet, see apparmor_nsjail_configmap.yaml / apparmor_nsjail_daemonset.yaml)
 should render. That installer is consumed by two independent components that
 both switch their container.apparmor.security.beta.kubernetes.io annotation
 from "unconfined" to "localhost/retool-executor" when
-codeExecutor.appArmorProfileInstaller is set: the legacy code-executor (only
-rendered when workflows are enabled) and the RR js-executor (rendered
+codeExecutor.appArmorProfileInstaller is set: the code-executor (rendered when
+retool.codeExecutor.enabled resolves true) and the RR js-executor (rendered
 whenever rr.jsExecutor is enabled, independent of workflows). The installer
 must render whenever either consumer needs it, so it is intentionally NOT
-gated on retool.workflows.enabled alone -- doing so would leave js-executor's
+gated on retool.codeExecutor.enabled alone -- doing so would leave js-executor's
 wait-for-apparmor init container waiting forever on a DaemonSet that never
-gets created when workflows are disabled.
+gets created when the code executor is disabled.
 Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
 Returns "1" when it should render, "" otherwise.
 Accepts true / "ubuntu" / "cos" as enabled values.
@@ -556,7 +595,7 @@ Accepts true / "ubuntu" / "cos" as enabled values.
 {{- $output := "" -}}
 {{- if .Values.codeExecutor.appArmorProfileInstaller -}}
   {{- $jsExecutorEnabled := eq (include "retool.rr.componentEnabled" (dict "root" . "component" "jsExecutor")) "1" -}}
-  {{- if or (include "retool.workflows.enabled" .) $jsExecutorEnabled -}}
+  {{- if or (eq (include "retool.codeExecutor.enabled" .) "1") $jsExecutorEnabled -}}
     {{- $output = "1" -}}
   {{- end -}}
 {{- end -}}
