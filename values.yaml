@@ -2036,9 +2036,6 @@ telemetry:
 
     pullPolicy: "IfNotPresent"
 
-  # Memory grows with the number of containers whose logs are collected, which
-  # includes every DaemonSet pod in the release, so it grows with node count.
-  # About 655Mi was measured with 145 containers on 15 nodes.
   resources:
     requests:
       cpu: 128m
