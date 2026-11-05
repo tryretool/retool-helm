@@ -2036,13 +2036,16 @@ telemetry:
 
     pullPolicy: "IfNotPresent"
 
+  # Memory grows with the number of containers whose logs are collected, which
+  # includes every DaemonSet pod in the release, so it grows with node count.
+  # About 655Mi was measured with 145 containers on 15 nodes.
   resources:
     requests:
       cpu: 128m
-      memory: 128Mi
-    limits:
-      cpu: 256m
       memory: 256Mi
+    limits:
+      cpu: 512m
+      memory: 1Gi
 
   # When present, any vector config here gets added to the telemetry pod (via a
   # created configmap) and added to the internal [vector](https://vector.dev/)
