@@ -586,7 +586,7 @@ whenever rr.jsExecutor is enabled, independent of workflows). The installer
 must render whenever either consumer needs it, so it is intentionally NOT
 gated on retool.codeExecutor.enabled alone -- doing so would leave js-executor's
 wait-for-apparmor init container waiting forever on a DaemonSet that never
-gets created when the code executor is disabled.
+gets created when code executor is disabled.
 Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
 Returns "1" when it should render, "" otherwise.
 Accepts true / "ubuntu" / "cos" as enabled values.
