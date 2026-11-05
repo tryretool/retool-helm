@@ -1,4 +1,6 @@
 {{- if eq (include "retool.rr.componentEnabled" (dict "root" $ "component" "jsExecutor")) "1" }}
+{{- $nodeSelector := .Values.rr.jsExecutor.nodeSelector | default .Values.nodeSelector -}}
+{{- $tolerations := .Values.rr.jsExecutor.tolerations | default .Values.tolerations -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -232,12 +234,12 @@ spec:
       affinity:
 {{ toYaml .Values.rr.jsExecutor.affinity | indent 8 }}
 {{- end }}
-{{- if .Values.nodeSelector }}
+{{- if $nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
+{{ toYaml $nodeSelector | indent 8 }}
 {{- end }}
       tolerations:
-{{ toYaml .Values.tolerations | indent 8 }}
+{{ toYaml $tolerations | indent 8 }}
 ---
 apiVersion: v1
 kind: Service

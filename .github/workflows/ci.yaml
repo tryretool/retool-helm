@@ -82,6 +82,8 @@ jobs:
         run: python3 .github/test_mcp_helm_test.py
       - name: Verify MCP routing modes and migration errors
         run: python3 .github/test_mcp_routing.py
+      - name: Verify js-executor and AppArmor installer node placement
+        run: python3 .github/test_isolated_pool_scheduling.py
 
   # We don't use helm-docs yet, can set this up later
   #
@@ -159,7 +161,7 @@ jobs:
   test-apparmor:
     name: test-apparmor
     if: needs.changed.outputs.run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - changed
       - lint-chart

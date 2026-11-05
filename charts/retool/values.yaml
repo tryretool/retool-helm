@@ -958,7 +958,7 @@ codeExecutor:
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
-  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on every node.
+  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on each node.
   # When enabled, the code-executor and js-executor annotations switch from
   # "unconfined" to "localhost/retool-executor". Requires useSeccompProfile:
   # true for code-executor to take effect (js-executor always uses the
@@ -972,6 +972,24 @@ codeExecutor:
   #   "ubuntu" - for Ubuntu/Debian nodes
   #   "cos"    - for GKE Container-Optimized OS nodes
   appArmorProfileInstaller: false
+
+  # Settings for the nsjail AppArmor installer DaemonSet. It must run on every
+  # node that can schedule code-executor or js-executor pods, or their
+  # wait-for-apparmor init container never finishes. nodeSelector and
+  # tolerations fall back to the top-level values when empty.
+  appArmorInstaller:
+    nodeSelector: {}
+    tolerations: []
+    # Annotations for installer pods (e.g. sidecar.istio.io/inject: "false")
+    annotations: {}
+    # Resources for the privileged init container that loads the profiles
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
 
 # === RR (Retool agent runtime) =============================================
 # Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
@@ -1049,6 +1067,12 @@ rr:
 
     # Config affinity and anti-affinity rules for the JS executor pods
     affinity: {}
+
+    # Node placement overrides (falls back to global nodeSelector/tolerations
+    # if empty). With codeExecutor.appArmorProfileInstaller, also set
+    # codeExecutor.appArmorInstaller placement so the installer reaches these nodes.
+    nodeSelector: {}
+    tolerations: []
 
     # Resources for the JS executor. Memory request and limit are kept equal:
     # JSE reads its memory limit and rejects requests at 80% of it, so the

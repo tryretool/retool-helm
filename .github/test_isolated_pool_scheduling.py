@@ -1,0 +1,69 @@
+"""Render checks for js-executor and nsjail AppArmor installer node placement."""
+
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.dont_write_bytecode = True
+
+JS_EXECUTOR = ("# Source: retool/templates/deployment_js_executor.yaml", "Deployment")
+INSTALLER = ("# Source: retool/templates/apparmor_nsjail_daemonset.yaml", "DaemonSet")
+GLOBAL_PLACEMENT = ("nodeSelector.pool=shared", "tolerations[0].key=shared", "tolerations[0].operator=Exists")
+
+
+def render(option_file, *settings):
+    command = [
+        "helm", "template", "placement", "charts/retool",
+        "--values", "charts/retool/ci/test-install-values.yaml",
+        "--values", f"charts/retool/ci/{option_file}",
+    ]
+    for setting in settings:
+        command.extend(("--set", setting))
+    return subprocess.check_output(command, cwd=ROOT, text=True)
+
+
+def manifest(output, source, kind):
+    for document in output.split("\n---\n"):
+        if document.lstrip().startswith(source) and f"\nkind: {kind}\n" in document:
+            return document
+    raise AssertionError(f"no {kind} rendered from {source}")
+
+
+class PlacementTests(unittest.TestCase):
+    def test_component_overrides_win_over_global(self):
+        output = render("test-apparmor-nsjail-isolated-pool-option.yaml", *GLOBAL_PLACEMENT)
+        for workload in (JS_EXECUTOR, INSTALLER):
+            with self.subTest(workload=workload[1]):
+                rendered = manifest(output, *workload)
+                self.assertIn("nodeSelector:\n        kubernetes.io/os: linux", rendered)
+                self.assertIn("key: retool.com/isolated", rendered)
+                self.assertNotIn("pool: shared", rendered)
+                self.assertNotIn("key: shared", rendered)
+
+    def test_empty_overrides_fall_back_to_global(self):
+        output = render("test-apparmor-nsjail-option.yaml", *GLOBAL_PLACEMENT)
+        for workload in (JS_EXECUTOR, INSTALLER):
+            with self.subTest(workload=workload[1]):
+                rendered = manifest(output, *workload)
+                self.assertIn("pool: shared", rendered)
+                self.assertIn("key: shared", rendered)
+                self.assertNotIn("retool.com/isolated", rendered)
+
+    def test_installer_annotations_and_resources(self):
+        installer = manifest(render("test-apparmor-nsjail-isolated-pool-option.yaml"), *INSTALLER)
+        self.assertIn('sidecar.istio.io/inject: "false"', installer)
+        install = installer.split("- name: install\n", 1)[1].split("- name: pause", 1)[0]
+        self.assertIn("cpu: 200m\n              memory: 192Mi", install)
+
+    def test_installer_default_resources(self):
+        installer = manifest(render("test-apparmor-nsjail-option.yaml"), *INSTALLER)
+        install = installer.split("- name: install\n", 1)[1].split("- name: pause", 1)[0]
+        self.assertIn("limits:\n              cpu: 100m\n              memory: 128Mi", install)
+        self.assertIn("requests:\n              cpu: 10m\n              memory: 32Mi", install)
+
+
+if __name__ == "__main__":
+    unittest.main()
