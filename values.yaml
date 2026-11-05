@@ -893,6 +893,16 @@ mcp:
     labels: {}
 
 codeExecutor:
+  # Toggle the code-executor service. The code executor is a standalone sandbox
+  # service: workflows need it, but it can also be deployed on its own (e.g. for
+  # custom auth and firebase raw mode).
+  #
+  #   null (default) - inherit workflows.enabled (back-compat: existing installs
+  #                    that only toggle workflows.enabled keep the same behavior)
+  #   true           - deploy the code executor regardless of workflows
+  #   false          - never deploy the code executor
+  enabled: null
+
   # Code executor normally tracks the top-level `image` parameters. Override the
   # tag only when you need a one-off or patched build (e.g. a support build whose
   # tag differs from the backend's); running a code executor version that does not
