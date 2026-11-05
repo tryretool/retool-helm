@@ -1,4 +1,4 @@
-{{- if include "retool.workflows.enabled" . }}
+{{- if eq (include "retool.codeExecutor.enabled" .) "1" }}
 {{- if and (not .Values.codeExecutor.securityContext) .Values.codeExecutor.useSeccompProfile }}
 apiVersion: v1
 kind: ConfigMap
