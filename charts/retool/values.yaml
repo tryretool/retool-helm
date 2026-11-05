@@ -2041,7 +2041,7 @@ telemetry:
       cpu: 128m
       memory: 256Mi
     limits:
-      cpu: 512m
+      cpu: 500m
       memory: 1Gi
 
   # When present, any vector config here gets added to the telemetry pod (via a
