@@ -84,6 +84,8 @@ jobs:
         run: python3 .github/test_mcp_routing.py
       - name: Verify js-executor and AppArmor installer node placement
         run: python3 .github/test_isolated_pool_scheduling.py
+      - name: Verify code-executor enablement
+        run: python3 .github/test_code_executor.py
 
   # We don't use helm-docs yet, can set this up later
   #
