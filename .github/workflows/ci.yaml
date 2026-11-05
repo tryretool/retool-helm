@@ -161,7 +161,7 @@ jobs:
   test-apparmor:
     name: test-apparmor
     if: needs.changed.outputs.run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - changed
       - lint-chart
