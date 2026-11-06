@@ -1382,7 +1382,7 @@ rr:
       # so sandboxes can reach your own Retool backend (git clone, org libraries,
       # thread branch data, etc). REQUIRED if your BASE_DOMAIN resolves to a
       # private IP from inside the cluster (e.g. ingress.enabled: false). Must
-      # match the actual public hostname(s) sandboxes call out to comma-separate
+      # match the actual public hostname(s) sandboxes call out to — comma-separate
       # multiple domains if you serve this deployment from more than one (e.g.
       # per-environment subdomains). Getting this wrong fails silently or with a
       # generic error, with no indication the cause is this setting.
