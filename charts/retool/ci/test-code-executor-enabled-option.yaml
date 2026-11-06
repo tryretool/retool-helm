@@ -1,0 +1,15 @@
+# Exercises the standalone code-executor path: workflows disabled, but the code
+# executor explicitly enabled via codeExecutor.enabled. Overlaid on top of
+# test-install-values.yaml (which enables workflows via image.tag), so this file
+# proves codeExecutor.enabled: true overrides the inherited workflows switch and
+# the code-executor workload still renders on its own (including the nsjail
+# seccomp sandbox and shared AppArmor installer).
+#
+# Behavioral assertions for this path live in .github/test_code_executor.py.
+workflows:
+  enabled: false
+
+codeExecutor:
+  enabled: true
+  useSeccompProfile: true
+  appArmorProfileInstaller: true

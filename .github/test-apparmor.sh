@@ -164,11 +164,10 @@ else
   fail "retool-executor profile NOT found in kernel"
 fi
 
-# nsjail child profile loaded via px transition from retool-executor
-if echo "$PROFILES" | grep -q "retool-executor//nsjail"; then
-  pass "retool-executor//nsjail child profile loaded"
+if echo "$PROFILES" | grep -q "retool-executor-restricted (enforce)"; then
+  pass "retool-executor-restricted profile loaded"
 else
-  fail "retool-executor//nsjail child profile NOT found in kernel"
+  fail "retool-executor-restricted profile NOT found in kernel"
 fi
 
 if echo "$PROFILES" | grep -q "retool-agent-sandbox (enforce)"; then
@@ -178,40 +177,14 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Test pod: retool-executor profile
+# Executors: the real images run nsjail under the chart's securityContext
 # ---------------------------------------------------------------------------
-echo "=== Testing retool-executor profile ==="
+echo "=== Testing the executors run nsjail ==="
 
-kubectl run test-executor -n "$NAMESPACE" --image=busybox:1.37 --restart=Never \
-  --overrides='{
-    "spec": {
-      "containers": [{
-        "name": "test-executor",
-        "image": "busybox:1.37",
-        "command": ["sleep", "120"],
-        "securityContext": {
-          "appArmorProfile": {"type": "Localhost", "localhostProfile": "retool-executor"}
-        }
-      }]
-    }
-  }' -- sleep 120 2>/dev/null || true
-
-kubectl wait --for=condition=Ready pod/test-executor -n "$NAMESPACE" --timeout=60s
-
-CURRENT=$(kubectl exec test-executor -n "$NAMESPACE" -- cat /proc/self/attr/current 2>/dev/null || echo "UNKNOWN")
-if echo "$CURRENT" | grep -q "retool-executor (enforce)"; then
-  pass "test-executor pod running under retool-executor profile"
+if "$SCRIPT_DIR/test-executor-nsjail.sh" "$NAMESPACE"; then
+  pass "code-executor and js-executor run nsjail, with every other process restricted"
 else
-  fail "test-executor pod profile is '$CURRENT', expected 'retool-executor (enforce)'"
-fi
-
-# Under the px transition design, the parent profile denies mount/userns.
-# Only /usr/bin/nsjail (which transitions to retool-executor//nsjail) gets them.
-# Verify that a regular binary CANNOT use these operations.
-if kubectl exec test-executor -n "$NAMESPACE" -- unshare --user --mount --pid --fork echo "OK" 2>/dev/null; then
-  fail "unshare --user --mount should be DENIED under retool-executor (only nsjail gets these via px transition)"
-else
-  pass "unshare --user --mount correctly denied under retool-executor (restricted to nsjail)"
+  fail "code-executor or js-executor failed under the AppArmor profiles (details above)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -289,7 +262,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "=== Cleanup ==="
 
-kubectl delete pod test-executor test-sandbox -n "$NAMESPACE" --grace-period=0 --force 2>/dev/null || true
+kubectl delete pod test-sandbox -n "$NAMESPACE" --grace-period=0 --force 2>/dev/null || true
 kubectl delete namespace "$NAMESPACE" --wait=false 2>/dev/null || true
 
 if $CLEANUP_K3S; then

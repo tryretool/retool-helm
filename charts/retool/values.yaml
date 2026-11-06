@@ -699,12 +699,30 @@ multiplayer:
 #     oauthIntrospectionAuthTokenSecretName: retool-mcp-oauth
 #     oauthIntrospectionAuthTokenSecretKey: token
 #
-# The chart injects the token into both MCP and the backend. The MCP ingress
-# routes below are enabled by default; reproduce their mapping when ingress is
-# managed outside this chart.
+# The chart injects the token into both MCP and the backend. Choose how public
+# MCP requests are routed with mcp.routing.mode below.
 mcp:
   # Set to true to deploy the MCP server.
   enabled: false
+
+  # Optional public-ingress smoke test run by `helm test`. Set publicUrl to the
+  # Retool origin (no path), such as https://retool.example.com. The Job pod
+  # must resolve and reach this URL through the public ingress, including its
+  # TLS certificate. Leave empty to omit the hook even when MCP is enabled.
+  # After installation or upgrade, run:
+  #   helm test <release> --namespace <namespace>
+  # The unauthenticated test expects a 401 Bearer challenge at /mcp and valid
+  # JSON from both OAuth discovery URLs. Redirects, HTML, and connection errors
+  # fail the Job with the URL and observed status or missing field. On failure:
+  #   kubectl get jobs --namespace <namespace>
+  #   kubectl logs job/<job-name> --namespace <namespace>
+  # Failed Jobs remain; successful Jobs are removed. Helm 4.2.0 may report a
+  # log retrieval error with `helm test --logs` even after this Job succeeds.
+  test:
+    publicUrl: ""
+    # Use a Python 3 image with the standard library; image.pullSecrets apply.
+    image: python:3.12-alpine
+    imagePullPolicy: IfNotPresent
 
   replicaCount: 1
 
@@ -800,7 +818,7 @@ mcp:
     limits:
       memory: "4096Mi"
 
-  # Backend API Service for the OAuth authorization-server metadata route.
+  # Backend API Service for OAuth authorization-server discovery in direct mode.
   backendMetadata:
     service:
       enabled: true
@@ -810,41 +828,56 @@ mcp:
       annotations: {}
       labels: {}
 
-  # Retool 4.0.7 and later support a simplified ingress setup: route all public
-  # paths, including /mcp and /.well-known, to the main Retool Service on port
-  # 3000. The main backend must also be able to relay /mcp to the in-cluster MCP
-  # Service. When mcp.enabled is true, the chart configures the backend with
-  # MCP_SERVICE_INGRESS_DOMAIN=http://<fullname>-mcp:<service.externalPort>.
-  # You can override it through the top-level env, environmentSecrets, or
-  # environmentVariables settings.
-  #
-  # With that setting, omit or disable the MCP-specific ingress or HTTPRoute
-  # rules below and keep only the normal "/" route to <fullname>:3000. Replace
-  # <fullname> with this chart release's full name.
-  #
-  # Retool versions before 4.0.7 require the explicit MCP routes below,
-  # rendered before the main Retool route. External ingress must preserve this
-  # order and target mapping:
-  #   Exact  /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
-  #   Exact  /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
-  #   Prefix /mcp                                     -> <fullname>-mcp:4010
-  #   Prefix /                                         -> <fullname>:3000
+  routing:
+    # direct (default): required before Retool 4.0.7; also works with newer
+    # versions. Public /mcp and OAuth discovery requests use dedicated routes.
+    # backendRelay (Retool 4.0.7+): send those requests through the main Retool
+    # Service on port 3000. Its backend relays /mcp to the MCP Service. When
+    # MCP is enabled, the chart sets MCP_SERVICE_INGRESS_DOMAIN to the in-cluster
+    # MCP Service URL unless you override that backend environment variable.
+    # The chart does not infer the mode from image.tag; custom and PR tags may
+    # not identify a Retool version.
+    #
+    # If you manage public routes outside this chart, configure them yourself:
+    # backendRelay needs a catchall / route to <fullname>:3000 that matches
+    # /mcp and both /.well-known OAuth discovery URLs. For direct, route:
+    #   /.well-known/oauth-authorization-server -> <fullname>-backend-internal:3001
+    #   /.well-known/oauth-protected-resource    -> <fullname>-mcp:4010
+    #   /mcp                                     -> <fullname>-mcp:4010
+    #   / (remaining requests)                   -> <fullname>:3000
+    # With ingress-nginx strict path validation, use ImplementationSpecific on
+    # the /.well-known paths and Prefix on /mcp. Check path matching with your
+    # Ingress controller. For HTTPRoute, use Exact on the /.well-known paths
+    # and PathPrefix on /mcp. Replace <fullname> with this release's full name.
+    #
+    # When upgrading from an older chart, use helm upgrade
+    # --reset-then-reuse-values to load new defaults while keeping saved
+    # overrides. Plain --reuse-values can retain old chart defaults. If your
+    # Helm lacks that flag, use -f with your values file instead.
+    mode: direct
+
   ingress:
-    # Also requires mcp.enabled.
-    enabled: true
+    # null adds these paths to the chart's Ingress only in direct mode when MCP
+    # is enabled. Set false if an external Ingress supplies them. true with
+    # backendRelay is invalid; remove an older true override when switching.
+    # ingress-nginx with strict path validation rejects dots in Exact and
+    # Prefix paths, so the /.well-known paths use ImplementationSpecific.
+    enabled: null
     paths:
       - path: /.well-known/oauth-authorization-server
-        pathType: Exact
+        pathType: ImplementationSpecific
         target: backendInternal
       - path: /.well-known/oauth-protected-resource
-        pathType: Exact
+        pathType: ImplementationSpecific
       - path: /mcp
         pathType: Prefix
 
   # Equivalent Gateway API routes.
   httpRoute:
-    # Also requires mcp.enabled.
-    enabled: true
+    # null adds these rules to the chart's HTTPRoute only in direct mode when
+    # MCP is enabled. Set false if an external HTTPRoute supplies them. true
+    # with backendRelay is invalid; remove an older true override when switching.
+    enabled: null
     rules:
       - path: /.well-known/oauth-authorization-server
         pathType: Exact
@@ -860,6 +893,16 @@ mcp:
     labels: {}
 
 codeExecutor:
+  # Toggle the code-executor service. The code executor is a standalone sandbox
+  # service: workflows need it, but it can also be deployed on its own (e.g. for
+  # custom auth and firebase raw mode).
+  #
+  #   null (default) - inherit workflows.enabled (back-compat: existing installs
+  #                    that only toggle workflows.enabled keep the same behavior)
+  #   true           - deploy the code executor regardless of workflows
+  #   false          - never deploy the code executor
+  enabled: null
+
   # Code executor normally tracks the top-level `image` parameters. Override the
   # tag only when you need a one-off or patched build (e.g. a support build whose
   # tag differs from the backend's); running a code executor version that does not
@@ -925,7 +968,7 @@ codeExecutor:
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
-  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on every node.
+  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on each node.
   # When enabled, the code-executor and js-executor annotations switch from
   # "unconfined" to "localhost/retool-executor". Requires useSeccompProfile:
   # true for code-executor to take effect (js-executor always uses the
@@ -939,6 +982,24 @@ codeExecutor:
   #   "ubuntu" - for Ubuntu/Debian nodes
   #   "cos"    - for GKE Container-Optimized OS nodes
   appArmorProfileInstaller: false
+
+  # Settings for the nsjail AppArmor installer DaemonSet. It must run on every
+  # node that can schedule code-executor or js-executor pods, or their
+  # wait-for-apparmor init container never finishes. nodeSelector and
+  # tolerations fall back to the top-level values when empty.
+  appArmorInstaller:
+    nodeSelector: {}
+    tolerations: []
+    # Annotations for installer pods (e.g. sidecar.istio.io/inject: "false")
+    annotations: {}
+    # Resources for the privileged init container that loads the profiles
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
 
 # === RR (Retool agent runtime) =============================================
 # Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
@@ -1016,6 +1077,12 @@ rr:
 
     # Config affinity and anti-affinity rules for the JS executor pods
     affinity: {}
+
+    # Node placement overrides (falls back to global nodeSelector/tolerations
+    # if empty). With codeExecutor.appArmorProfileInstaller, also set
+    # codeExecutor.appArmorInstaller placement so the installer reaches these nodes.
+    nodeSelector: {}
+    tolerations: []
 
     # Resources for the JS executor. Memory request and limit are kept equal:
     # JSE reads its memory limit and rejects requests at 80% of it, so the
@@ -1218,6 +1285,9 @@ rr:
         limits:
           cpu: '2'
           memory: 4Gi
+      # Pass the sandbox container's CPU limit to build tools (tsc, esbuild, Rolldown, pnpm)
+      # so they size their thread pools to it. Without a CPU limit this is the node's CPU count.
+      cpuAwareThreads: true
       # Idle timeout (ms) before an unassigned sandbox self-terminates.
       sandboxIdleTimeoutMs: 600000
       # Hard ceiling (ms) on total sandbox lifetime, regardless of activity. When
@@ -1374,6 +1444,22 @@ rr:
     frontendWsProxyDomain: ''
     # Public URL for proxy domain. Defaults to frontendWsProxyDomain if empty.
     proxyDomain: ''
+    # Optional. Serves each editor sandbox on its own origin at
+    # sandbox-<id>.sandboxes.<rr.appServingLayer.domain> (e.g.
+    # sandbox-<id>.sandboxes.apps.retool.example.com) instead of the shared
+    # /sandbox/<id>/ path on the Retool host. On Retool versions that support it,
+    # the editor preview then loads on that origin instead of a sandboxed iframe.
+    # Requires rr.appServingLayer, a *.sandboxes.<domain> DNS record and
+    # certificate, and a route to the proxy Service on proxy.port
+    # (rr.appServingLayer.ingress renders one). Turn this on only after that route
+    # works; this moves every editor preview immediately.
+    wildcardSandboxes: false
+    # Overrides the derived sandboxes.<rr.appServingLayer.domain> root, e.g. to put
+    # sandboxes on a separate registrable domain. Setting it also turns per-sandbox
+    # origins on without rr.appServingLayer: the editor preview gets its own origin
+    # and the org's Permissions Policy settings, while published apps stay in the
+    # sandboxed iframe.
+    frontendWildcardDomain: ''
 
     # NetworkPolicy: restrict sandbox, controller, and proxy pod traffic.
     # Strongly recommended for production to isolate sandbox egress.
@@ -1508,6 +1594,73 @@ rr:
       service:
         annotations: {}
         labels: {}
+
+  # Serves published React Retool apps on their own origins under `domain`
+  # (SERVICE_TYPE=RR_APP_SERVING_LAYER). When enabled, it runs in-process on the
+  # main backend pods and <fullname>-app-serving-layer is a Service pointing at
+  # them on `port`. Set separate.enabled to run it as its own Deployment
+  # instead. Requires the git server to be enabled: the serving layer reads
+  # published app assets from the same blob storage git_server writes to.
+  # Requires Retool 4.78.0 or later.
+  #
+  # Unlike the other rr components this does NOT inherit the rr.enabled master
+  # switch. It needs wildcard DNS and a wildcard certificate for *.<domain>,
+  # neither of which the chart can provide, so it must be opted into
+  # explicitly.
+  #
+  # Route the apps domain with `ingress` below, or with your own ingress or load
+  # balancer rule to <fullname>-app-serving-layer on `port`. Don't add the apps
+  # domain to the top-level `ingress.hosts`: that Ingress also adds multiplayer
+  # and MCP paths to every host it serves.
+  appServingLayer:
+    enabled: false
+    # Domain published apps are served under, e.g. apps.retool.example.com.
+    # Rendered as RR_APP_DOMAIN onto the main backend, the jobs runner, and the
+    # serving layer Deployment when separate. Required when enabled.
+    domain: ~
+    # Port the serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and
+    # that its Service exposes.
+    port: 3010
+    # Renders an Ingress that routes *.<domain> to the serving layer and nothing
+    # else; <domain> itself isn't served, so it needs no DNS record or
+    # certificate. With per-sandbox origins on (wildcardSandboxes or
+    # frontendWildcardDomain) it also routes *.<sandbox domain> to the
+    # agent-sandbox proxy. DNS and certificates need only these wildcards. A
+    # *.<domain> certificate doesn't cover *.sandboxes.<domain>, so list both
+    # in tls.
+    ingress:
+      enabled: false
+      ingressClassName: ''
+      annotations: {}
+      # e.g. for domain apps.retool.example.com with wildcardSandboxes on:
+      # [{ secretName: retool-apps-tls, hosts: ["*.apps.retool.example.com", "*.sandboxes.apps.retool.example.com"] }]
+      tls: []
+    # Annotations/labels applied to the serving-layer Service.
+    service:
+      annotations: {}
+      labels: {}
+    # Runs the serving layer as its own <fullname>-app-serving-layer Deployment
+    # and PodDisruptionBudget instead of on the main backend pods.
+    separate:
+      enabled: false
+      replicaCount: 1
+      # The serving layer drains in-flight requests for up to 480s on shutdown.
+      terminationGracePeriodSeconds: 616
+      # Pod resource requests/limits. Falls back to top-level `resources` if unset.
+      resources: {}
+      # Falls back to top-level `affinity` if unset.
+      affinity: {}
+      # Annotations/labels applied to the serving-layer pod template.
+      annotations: {}
+      labels: {}
+      startupProbe:
+        enabled: true
+        path: /api/checkHealth
+        initialDelaySeconds: 0
+        timeoutSeconds: 10
+        periodSeconds: 10
+        successThreshold: 1
+        failureThreshold: 18
 
   # Shared blob-storage config used by git_server, snapshots, and RetoolOS. Set
   # exactly one of s3, gcs, azure. RetoolOS puts its objects under the
@@ -1873,7 +2026,7 @@ telemetry:
   # identification when `telemetry.sendToRetool.enabled = true`, and can also
   # optionally be sent to a user-managed destination via
   # `telemetry.customVectorConfig`.
-  enabled: false
+  enabled: true
 
   sendToRetool:
     # Only relevant when `telemetry.enabled = true`. When enabled, telemetry
@@ -1904,10 +2057,10 @@ telemetry:
   resources:
     requests:
       cpu: 128m
-      memory: 128Mi
-    limits:
-      cpu: 256m
       memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
 
   # When present, any vector config here gets added to the telemetry pod (via a
   # created configmap) and added to the internal [vector](https://vector.dev/)

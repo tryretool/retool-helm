@@ -51,6 +51,34 @@ env.BASE_DOMAIN. Secret-backed values cannot be resolved at template time.
 {{- trimSuffix "/" (trimPrefix "http://" (trimPrefix "https://" (toString $domain))) -}}
 {{- end }}
 
+{{/* Resolve MCP routing mode and reject incompatible explicit route flags. */}}
+{{- define "retool.mcp.routingMode" -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $routing := $mcp.routing | default dict -}}
+{{- $mode := $routing.mode -}}
+{{- if not (hasKey $routing "mode") -}}
+{{- if $mcp.enabled -}}
+{{- fail "mcp.routing.mode is missing: when upgrading from an older chart, use --reset-then-reuse-values so Helm loads the new chart defaults, or explicitly set mcp.routing.mode=direct (compatible default) or backendRelay (Retool 4.0.7+)" -}}
+{{- else -}}
+{{- $mode = "direct" -}}
+{{- end -}}
+{{- end -}}
+{{- if not (has $mode (list "backendRelay" "direct")) -}}
+{{- fail (printf "mcp.routing.mode must be \"backendRelay\" or \"direct\" (got %q)" (toString $mode)) -}}
+{{- end -}}
+{{- range $surface := list "ingress" "httpRoute" -}}
+  {{- $legacy := get $mcp $surface | default dict -}}
+  {{- $enabled := get $legacy "enabled" -}}
+  {{- if and (hasKey $legacy "enabled") (not (kindIs "bool" $enabled)) (not (kindIs "invalid" $enabled)) -}}
+    {{- fail (printf "mcp.%s.enabled must be true, false, or null" $surface) -}}
+  {{- end -}}
+  {{- if and $mcp.enabled (eq $mode "backendRelay") $enabled -}}
+    {{- fail (printf "mcp.%s.enabled=true conflicts with mcp.routing.mode=backendRelay: remove mcp.%s.enabled or set it to false to route through the main Retool Service; use mcp.routing.mode=direct to keep dedicated routes" $surface $surface) -}}
+  {{- end -}}
+{{- end -}}
+{{- $mode -}}
+{{- end }}
+
 {{/*
 MCP Service env var for the main Retool backend. Explicit backend env settings
 take precedence over the chart-generated in-cluster Service URL.
@@ -89,7 +117,6 @@ target: backendInternal routes to the backend API Service.
 {{- if eq $target "backendInternal" -}}
 {{- $serviceName = include "retool.backendInternal.name" $root -}}
 {{- $servicePort = $path.port | default (.backendInternalPort | default 3001) -}}
-{{- $pathType = $path.pathType | default "Exact" -}}
 {{- end -}}
 - path: {{ $path.path }}
   {{- if (semverCompare ">=1.18-0" $root.Capabilities.KubeVersion.Version) }}
@@ -144,12 +171,18 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 
+{{/*
+DEPLOYMENT_TEMPLATE_{TYPE,VERSION} reporting. Both default to the plain chart
+identity. The top-level `deploymentTemplateType` / `deploymentTemplateVersion`
+values are reserved overrides for first-party wrappers (Retool's self-hosted
+blueprints) and are deliberately not documented in values.yaml.
+*/}}
 {{- define "retool.deploymentTemplateType" -}}
-{{- "k8s-helm" | quote -}}
+{{- .Values.deploymentTemplateType | default "k8s-helm" | quote -}}
 {{- end -}}
 
 {{- define "retool.deploymentTemplateVersion" -}}
-{{- .Chart.Version | quote -}}
+{{- .Values.deploymentTemplateVersion | default .Chart.Version | quote -}}
 {{- end -}}
 
 {{/*
@@ -503,18 +536,57 @@ Usage: (include "retool.workflows.enabled" .)
 {{- end -}}
 
 {{/*
+Resolve whether the code-executor service should render. The code executor is a
+standalone sandbox service: workflows need it, but it can also be deployed on its
+own.
+
+.Values.codeExecutor.enabled wins when explicitly set to true/false. When left
+unset (null, the default) it inherits retool.workflows.enabled, preserving
+back-compat: existing installs that only toggle workflows.enabled keep the same
+code-executor behavior. A non-bool, non-null value is a misconfiguration and
+fails loudly.
+Usage: (include "retool.codeExecutor.enabled" .)
+Returns "1" when enabled, "" otherwise.
+*/}}
+{{- define "retool.codeExecutor.enabled" -}}
+{{- $enabled := (.Values.codeExecutor | default dict).enabled -}}
+{{- if kindIs "invalid" $enabled -}}
+  {{/* unset/null -> inherit the workflows master switch */}}
+  {{- include "retool.workflows.enabled" . -}}
+{{- else if kindIs "bool" $enabled -}}
+  {{- if $enabled -}}1{{- end -}}
+{{- else -}}
+  {{- fail (printf "codeExecutor.enabled must be true, false, or unset/null (to inherit workflows.enabled); got %s" (kindOf $enabled)) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Fail loudly when workflows are enabled but the code executor is explicitly
+disabled: workflows run their code on the code executor, so this combination
+would deploy a broken workflows stack. Leaving codeExecutor.enabled unset (null)
+is fine -- it inherits workflows.enabled.
+Usage: (include "retool.codeExecutor.validateEnabled" .)
+*/}}
+{{- define "retool.codeExecutor.validateEnabled" -}}
+{{- $enabled := (.Values.codeExecutor | default dict).enabled -}}
+{{- if and (kindIs "bool" $enabled) (not $enabled) (eq (include "retool.workflows.enabled" .) "1") -}}
+{{- fail "workflows are enabled but codeExecutor.enabled is false. Workflows run on the code executor, so this would deploy a broken workflows stack. Either set codeExecutor.enabled: true (or leave it null to inherit workflows.enabled), or disable workflows." -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resolve whether the shared nsjail AppArmor profile installer (ConfigMap +
 DaemonSet, see apparmor_nsjail_configmap.yaml / apparmor_nsjail_daemonset.yaml)
 should render. That installer is consumed by two independent components that
 both switch their container.apparmor.security.beta.kubernetes.io annotation
 from "unconfined" to "localhost/retool-executor" when
-codeExecutor.appArmorProfileInstaller is set: the legacy code-executor (only
-rendered when workflows are enabled) and the RR js-executor (rendered
+codeExecutor.appArmorProfileInstaller is set: the legacy code-executor (rendered
+when retool.codeExecutor.enabled resolves true) and the RR js-executor (rendered
 whenever rr.jsExecutor is enabled, independent of workflows). The installer
 must render whenever either consumer needs it, so it is intentionally NOT
-gated on retool.workflows.enabled alone -- doing so would leave js-executor's
+gated on retool.codeExecutor.enabled alone -- doing so would leave js-executor's
 wait-for-apparmor init container waiting forever on a DaemonSet that never
-gets created when workflows are disabled.
+gets created when code executor is disabled.
 Usage: (include "retool.appArmorNsjailInstaller.enabled" .)
 Returns "1" when it should render, "" otherwise.
 Accepts true / "ubuntu" / "cos" as enabled values.
@@ -523,7 +595,7 @@ Accepts true / "ubuntu" / "cos" as enabled values.
 {{- $output := "" -}}
 {{- if .Values.codeExecutor.appArmorProfileInstaller -}}
   {{- $jsExecutorEnabled := eq (include "retool.rr.componentEnabled" (dict "root" . "component" "jsExecutor")) "1" -}}
-  {{- if or (include "retool.workflows.enabled" .) $jsExecutorEnabled -}}
+  {{- if or (eq (include "retool.codeExecutor.enabled" .) "1") $jsExecutorEnabled -}}
     {{- $output = "1" -}}
   {{- end -}}
 {{- end -}}
@@ -688,6 +760,22 @@ Usage: (include "retool.gitServer.enabled" .)
 */}}
 {{- define "retool.gitServer.enabled" -}}
 {{- include "retool.rr.componentEnabled" (dict "root" . "component" "gitServer") -}}
+{{- end -}}
+
+{{/*
+Set RR app serving layer enabled. Unlike the other rr components this does NOT
+inherit rr.enabled: the serving layer needs an apps domain, wildcard DNS and a
+matching certificate that only the operator can supply, so it must be opted
+into explicitly (rr.appServingLayer.enabled: true). Same reasoning as mcp.
+Usage: (include "retool.appServingLayer.enabled" .)
+*/}}
+{{- define "retool.appServingLayer.enabled" -}}
+{{- $cfg := (.Values.rr | default dict).appServingLayer -}}
+{{- if kindIs "map" $cfg -}}
+  {{- if eq (toString $cfg.enabled) "true" -}}1{{- end -}}
+{{- else if not (kindIs "invalid" $cfg) -}}
+  {{- fail (printf "rr.appServingLayer must be a mapping (got %s). To enable it set rr.appServingLayer.enabled: true." (kindOf $cfg)) -}}
+{{- end -}}
 {{- end -}}
 
 {{/* Global Temporal configuration */}}
@@ -1273,6 +1361,10 @@ Usage: {{- include "retool.agentSandbox.backendEnvVars" . | nindent 10 }}
 - name: AGENT_SANDBOX_FRONTEND_WS_PROXY_DOMAIN
   value: {{ .Values.rr.agentSandbox.frontendWsProxyDomain | quote }}
 {{- end }}
+{{- with include "retool.agentSandbox.frontendWildcardDomain" . }}
+- name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
+  value: {{ . | quote }}
+{{- end }}
 {{- if .Values.rr.agentSandbox.jwtPrivateKey }}
 - name: AGENT_SANDBOX_JWT_PRIVATE_KEY
   value: {{ .Values.rr.agentSandbox.jwtPrivateKey | quote }}
@@ -1325,6 +1417,106 @@ Set git server deployment/service name (only used when rr.gitServer.separate is 
 */}}
 {{- define "retool.gitServer.name" -}}
 {{ include "retool.fullnameWithSuffix" (list . "git-server") }}
+{{- end -}}
+
+{{/*
+Set app serving layer deployment/service name (only used when rr.appServingLayer is enabled)
+*/}}
+{{- define "retool.appServingLayer.name" -}}
+{{ include "retool.fullnameWithSuffix" (list . "app-serving-layer") }}
+{{- end -}}
+
+{{/*
+Selector labels for the separate app serving layer Deployment. Note changes here will
+require manual deployment recreation and incur downtime, so should be avoided.
+*/}}
+{{- define "retool.appServingLayer.selectorLabels" -}}
+retoolService: {{ include "retool.appServingLayer.name" . }}
+{{- end }}
+
+{{/*
+Extra (non-selector) labels for the app serving layer.
+*/}}
+{{- define "retool.appServingLayer.labels" -}}
+app.kubernetes.io/name: {{ include "retool.appServingLayer.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+telemetry.retool.com/service-name: rr-app-serving-layer
+{{- end }}
+
+{{/*
+Port the app serving layer listens on (RR_APP_SERVING_LAYER_SERVER_PORT) and exposes
+via its service. Matches the backend default. rr.gitServer.separate.port defaults to the
+same number without colliding: that git server has its own pod, and the in-process one uses 3020.
+*/}}
+{{- define "retool.appServingLayer.port" -}}
+{{- (.Values.rr.appServingLayer | default dict).port | default 3010 -}}
+{{- end -}}
+
+{{/*
+Truthy when the app serving layer runs in its own deployment
+(rr.appServingLayer.separate.enabled). Otherwise it runs in-process on the main backend.
+*/}}
+{{- define "retool.appServingLayer.separateEnabled" -}}
+{{- if and (include "retool.appServingLayer.enabled" .) (.Values.rr.appServingLayer.separate | default dict).enabled -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Domain published R2 apps are served under (RR_APP_DOMAIN), e.g. apps.retool.example.com.
+Read by the serving layer to resolve a request hostname to an app, and by the main
+backend to build published-app URLs.
+*/}}
+{{- define "retool.appServingLayer.domain" -}}
+{{- $asl := .Values.rr.appServingLayer | default dict -}}
+{{- $domain := required "Please set a value for .Values.rr.appServingLayer.domain when the app serving layer is enabled" $asl.domain -}}
+{{- include "retool.validateHostname" (dict "key" "rr.appServingLayer.domain" "value" $domain) -}}
+{{- $domain -}}
+{{- end -}}
+
+{{/*
+RR_APP_DOMAIN for every workload that builds or resolves published-app URLs: the main
+backend (which runs the serving layer unless separate.enabled), the separate serving
+layer, the standalone git server (CLI preview links), and the jobs runner (Source Control
+sync and the space hostname ID backfill).
+Usage: {{- include "retool.appServingLayer.domainEnv" . | nindent 10 }}
+*/}}
+{{- define "retool.appServingLayer.domainEnv" -}}
+{{- if include "retool.appServingLayer.enabled" . }}
+- name: RR_APP_DOMAIN
+  value: {{ include "retool.appServingLayer.domain" . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Fails the render unless value is a lowercase hostname. The backend and the agent-sandbox
+proxy compare these domains against the request Host header, which browsers lowercase, so
+a scheme, port, path, uppercase letter, or trailing dot would never match.
+Usage: (include "retool.validateHostname" (dict "key" "rr.x.domain" "value" $domain))
+*/}}
+{{- define "retool.validateHostname" -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" (toString .value)) -}}
+{{- fail (printf "%s must be a lowercase hostname with no scheme, port, path, or trailing dot (got %q), e.g. apps.retool.example.com" .key (toString .value)) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Root domain for per-sandbox editor origins (sandbox-<id>.<root>), or empty when
+unset. rr.agentSandbox.frontendWildcardDomain wins; otherwise
+rr.agentSandbox.wildcardSandboxes derives sandboxes.<rr.appServingLayer.domain>.
+Usage: (include "retool.agentSandbox.frontendWildcardDomain" .)
+*/}}
+{{- define "retool.agentSandbox.frontendWildcardDomain" -}}
+{{- $as := .Values.rr.agentSandbox | default dict -}}
+{{- if $as.frontendWildcardDomain -}}
+{{- include "retool.validateHostname" (dict "key" "rr.agentSandbox.frontendWildcardDomain" "value" $as.frontendWildcardDomain) -}}
+{{- $as.frontendWildcardDomain -}}
+{{- else if eq (toString $as.wildcardSandboxes) "true" -}}
+{{- if not (include "retool.appServingLayer.enabled" .) -}}
+{{- fail "rr.agentSandbox.wildcardSandboxes puts sandboxes at sandboxes.<rr.appServingLayer.domain>, so it needs rr.appServingLayer enabled with a domain. To use a different sandbox domain, set rr.agentSandbox.frontendWildcardDomain instead." -}}
+{{- end -}}
+{{- printf "sandboxes.%s" (include "retool.appServingLayer.domain" .) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*

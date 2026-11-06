@@ -107,7 +107,8 @@ data:
       "metadata": {
         "labels": {
           "retoolService": "{{ include "retool.agentSandbox.name" . }}",
-          "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
+          "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}",
+          "telemetry.retool.com/service-name": "agent-sandbox"
         }
       },
       "spec": {
@@ -118,13 +119,15 @@ data:
             "annotations": {{- $sandboxAnnotations := dict "karpenter.sh/do-not-disrupt" "true" -}}{{- $_ := set $sandboxAnnotations "cluster-autoscaler.kubernetes.io/safe-to-evict" "false" -}}{{- range $k, $v := $as.sandbox.annotations }}{{- $_ := set $sandboxAnnotations $k $v }}{{- end }}{{ toJson $sandboxAnnotations }},
             "labels": {
               "retoolService": "{{ include "retool.agentSandbox.name" . }}",
-              "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}"
+              "app.kubernetes.io/name": "{{ include "retool.agentSandbox.name" . }}",
+              "telemetry.retool.com/service-name": "agent-sandbox"
             }
           },
           "spec": {
             "restartPolicy": "Never",
             "subdomain": "{{ include "retool.agentSandbox.name" . }}-pods",
             "automountServiceAccountToken": false,
+            "enableServiceLinks": false,
             {{- if $nodeSelector }}
             "nodeSelector": {{ toJson $nodeSelector }},
             {{- end }}
@@ -199,6 +202,14 @@ data:
                   ,{"name": "SANDBOX_IDLE_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxIdleTimeoutMs }}"}
                   ,{"name": "SANDBOX_GLOBAL_LIFETIME_MS", "value": "{{ $as.sandbox.sandboxGlobalLifetimeMs }}"}
                   ,{"name": "SANDBOX_READY_TIMEOUT_MS", "value": "{{ $as.sandbox.sandboxReadyTimeoutMs }}"}
+                  {{- if $as.sandbox.cpuAwareThreads }}
+                  ,{"name": "SANDBOX_CPU_LIMIT", "valueFrom": {"resourceFieldRef": {"resource": "limits.cpu", "divisor": "1"}}}
+                  {{- end }}
+                  {{- if .Values.telemetry.enabled }}
+                  ,{"name": "STATSD_HOST", "value": "{{ include "retool.telemetry.fullname" . }}.{{ .Release.Namespace }}"}
+                  ,{"name": "STATSD_PORT", "value": "9125"}
+                  ,{"name": "NODE_NAME", "valueFrom": {"fieldRef": {"fieldPath": "spec.nodeName"}}}
+                  {{- end }}
                   {{- if $as.jwtPublicKey }}
                   ,{"name": "AGENT_SANDBOX_JWT_PUBLIC_KEY", "value": {{ $as.jwtPublicKey | toJson }}}
                   {{- else if $as.externalSecret.name }}
@@ -328,6 +339,7 @@ spec:
               value: "controller"
             - name: CONTROLLER_PORT
               value: {{ $as.controller.port | quote }}
+            {{- include "retool.telemetry.includeEnvVars" . | nindent 12 }}
             - name: STATE_BACKEND
               value: "postgres"
             {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
@@ -535,6 +547,7 @@ spec:
               value: "proxy"
             - name: PROXY_PORT
               value: {{ $as.proxy.port | quote }}
+            {{- include "retool.telemetry.includeEnvVars" . | nindent 12 }}
             - name: STATE_BACKEND
               value: "postgres"
             {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
@@ -583,6 +596,10 @@ spec:
             {{- if $as.proxy.sandboxProxyTimeoutMs }}
             - name: SANDBOX_PROXY_TIMEOUT_MS
               value: {{ $as.proxy.sandboxProxyTimeoutMs | quote }}
+            {{- end }}
+            {{- with include "retool.agentSandbox.frontendWildcardDomain" $ }}
+            - name: AGENT_SANDBOX_FRONTEND_WILDCARD_DOMAIN
+              value: {{ . | quote }}
             {{- end }}
             {{- if $as.proxy.npmRegistry.url }}
             - name: NPM_PUBLIC_REGISTRY_URL
