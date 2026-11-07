@@ -625,6 +625,7 @@ spec:
               value: {{ $as.proxy.npmRegistry.authTokenTtlMs | quote }}
             {{- end }}
             {{- end }}
+            {{- include "retool.agentSandbox.httpProxyEnv" . | nindent 12 }}
           lifecycle:
             preStop:
               exec:
