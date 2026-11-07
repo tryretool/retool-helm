@@ -1356,6 +1356,11 @@ rr:
 
     # Proxy: HTTP proxy for sandbox egress with credential injection.
     # The proxy must be reachable by frontend browsers for WebSocket connections.
+    # HTTP_PROXY, HTTPS_PROXY and NO_PROXY set in env, environmentVariables or
+    # environmentSecrets are passed to it, so sandbox traffic to public hosts goes
+    # through your proxy. Only http:// proxy URLs are used. Sandboxes run untrusted
+    # code, so your proxy should block internal destinations, or set allowedDomains
+    # below to limit where sandboxes can connect.
     proxy:
       replicaCount: 1
       port: 3019
