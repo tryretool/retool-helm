@@ -111,6 +111,8 @@ jobs:
           python3 .github/test_global_pod_scheduling.py
       - name: Verify js-executor capabilities and iptables env by version
         run: python3 .github/test_js_executor_capabilities.py
+      - name: Verify topologySpreadConstraints selectors and override order
+        run: python3 .github/test_topology_spread_constraints.py
 
   kubeconform-chart:
     if: needs.changed.outputs.run == 'true'

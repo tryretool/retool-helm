@@ -11,7 +11,7 @@ codeExecutor:
       whenUnsatisfiable: ScheduleAnyway
       labelSelector:
         matchLabels:
-          retoolService: retool-code-executor
+          example.com/spread-group: code-executor
 # Global list without labelSelector: each component gets its own selector labels.
 topologySpreadConstraints:
   - maxSkew: 1
