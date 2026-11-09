@@ -1915,3 +1915,23 @@ Usage: (include "retool.jsExecutor.requireNetAdminAndInstallIptables" .)
   {{- fail (printf "rr.jsExecutor.requireNetAdminAndInstallIptables must be true, false, or null (got %s)" (kindOf $flag)) -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Render a list of topologySpreadConstraints for one component.
+A constraint that sets no labelSelector gets the component's selector labels,
+so a single list (for example the global .Values.topologySpreadConstraints)
+spreads each component on its own pods only.
+Usage:
+  include "retool.topologySpreadConstraints" (dict "constraints" $list "selectorLabels" (include "retool.selectorLabels" . | fromYaml))
+*/}}
+{{- define "retool.topologySpreadConstraints" -}}
+{{- $out := list -}}
+{{- range .constraints -}}
+{{- $c := deepCopy . -}}
+{{- if not (hasKey $c "labelSelector") -}}
+{{- $_ := set $c "labelSelector" (dict "matchLabels" $.selectorLabels) -}}
+{{- end -}}
+{{- $out = append $out $c -}}
+{{- end -}}
+{{- toYaml $out -}}
+{{- end -}}

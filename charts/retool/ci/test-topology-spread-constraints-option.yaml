@@ -1,0 +1,22 @@
+workflows:
+  enabled: true
+agents:
+  enabled: true
+codeExecutor:
+  enabled: true
+  # Component override with an explicit labelSelector, which is kept as-is.
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          retoolService: retool-code-executor
+# Global list without labelSelector: each component gets its own selector labels.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+  - maxSkew: 2
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
