@@ -400,7 +400,9 @@ tolerations: []
 # the workflow backend, the workflow and agent workers, and the code executor.
 # A constraint without a labelSelector gets the selector labels of the pod's own
 # component, so a single list spreads each component independently.
-# Per-component overrides, which replace this list:
+# Per-component overrides. The most specific block that sets the key wins and
+# replaces this list. Set an override to [] to disable constraints for that
+# component; leave it unset to inherit:
 #   workflows.topologySpreadConstraints (workflow backend and workflow workers)
 #   workflows.worker.topologySpreadConstraints
 #   agents.topologySpreadConstraints (agent and agent eval workers)

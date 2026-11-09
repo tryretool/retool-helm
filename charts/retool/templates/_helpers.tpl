@@ -1858,21 +1858,36 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- end -}}
 
 {{/*
-Render a list of topologySpreadConstraints for one component.
+Render the topologySpreadConstraints of one component.
+"sources" lists the values blocks to read, most specific first (for example
+the worker block, then its parent block, then .Values). The first block that
+sets the topologySpreadConstraints key wins, so an explicit empty list
+disables constraints for that component. Blocks without the key fall through.
 A constraint that sets no labelSelector gets the component's selector labels,
 so a single list (for example the global .Values.topologySpreadConstraints)
 spreads each component on its own pods only.
+Renders nothing when the resolved list is empty.
 Usage:
-  include "retool.topologySpreadConstraints" (dict "constraints" $list "selectorLabels" (include "retool.selectorLabels" . | fromYaml))
+  include "retool.topologySpreadConstraints" (dict "sources" (list .Values.workflows .Values) "selectorLabels" (include "retool.workflowBackend.selectorLabels" . | fromYaml))
 */}}
 {{- define "retool.topologySpreadConstraints" -}}
+{{- $constraints := list -}}
+{{- $found := false -}}
+{{- range $source := .sources -}}
+{{- if and (not $found) (kindIs "map" $source) (hasKey $source "topologySpreadConstraints") -}}
+{{- $constraints = $source.topologySpreadConstraints | default list -}}
+{{- $found = true -}}
+{{- end -}}
+{{- end -}}
 {{- $out := list -}}
-{{- range .constraints -}}
+{{- range $constraints -}}
 {{- $c := deepCopy . -}}
 {{- if not (hasKey $c "labelSelector") -}}
 {{- $_ := set $c "labelSelector" (dict "matchLabels" $.selectorLabels) -}}
 {{- end -}}
 {{- $out = append $out $c -}}
 {{- end -}}
+{{- if $out -}}
 {{- toYaml $out -}}
+{{- end -}}
 {{- end -}}

@@ -447,10 +447,10 @@ spec:
       affinity:
 {{ toYaml $affinity | indent 8 }}
     {{- end }}
-    {{- $topologySpreadConstraints := $workerValues.topologySpreadConstraints | default $parentValues.topologySpreadConstraints | default $.Values.topologySpreadConstraints }}
+    {{- $topologySpreadConstraints := include "retool.topologySpreadConstraints" (dict "sources" (list $workerValues $parentValues $.Values) "selectorLabels" (include (printf "retool.%sWorker.selectorLabels" $workerType) $ | fromYaml)) }}
     {{- if $topologySpreadConstraints }}
       topologySpreadConstraints:
-{{ include "retool.topologySpreadConstraints" (dict "constraints" $topologySpreadConstraints "selectorLabels" (include (printf "retool.%sWorker.selectorLabels" $workerType) $ | fromYaml)) | indent 8 }}
+{{ $topologySpreadConstraints | indent 8 }}
     {{- end }}
     {{- if $.Values.nodeSelector }}
       nodeSelector:
