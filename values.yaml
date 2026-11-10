@@ -396,6 +396,28 @@ affinity:
 # Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 tolerations: []
 
+# Topology spread constraints for pod assignment. Applies to the main backend,
+# the workflow backend, the workflow and agent workers, and the code executor.
+# A constraint without a labelSelector gets the selector labels of the pod's own
+# component, so a single list spreads each component independently.
+# Per-component overrides. The most specific block that sets the key wins and
+# replaces this list. Set an override to [] to disable constraints for that
+# component; leave it unset to inherit:
+#   workflows.topologySpreadConstraints (workflow backend and workflow workers)
+#   workflows.worker.topologySpreadConstraints
+#   agents.topologySpreadConstraints (agent and agent eval workers)
+#   agents.worker.topologySpreadConstraints
+#   agents.evalWorker.topologySpreadConstraints
+#   codeExecutor.topologySpreadConstraints
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+topologySpreadConstraints: []
+#  - maxSkew: 1
+#    topologyKey: topology.kubernetes.io/zone
+#    whenUnsatisfiable: DoNotSchedule
+#  - maxSkew: 2
+#    topologyKey: kubernetes.io/hostname
+#    whenUnsatisfiable: ScheduleAnyway
+
 # Node labels for pod assignment
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
 nodeSelector:
