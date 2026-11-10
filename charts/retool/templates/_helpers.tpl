@@ -1028,6 +1028,34 @@ AGENT_*_FRONTEND_WS_PROXY_DOMAIN, which is browser-facing public config.
 {{- end -}}
 
 {{/*
+HTTP_PROXY, HTTPS_PROXY and NO_PROXY (either case) from env, environmentSecrets and
+environmentVariables, so the agent sandbox proxy reaches public hosts through the same
+proxy as the rest of Retool. Only these names are copied, not the rest of the user's env.
+*/}}
+{{- define "retool.agentSandbox.httpProxyEnv" -}}
+{{- $env := .Values.env | default dict -}}
+{{- range $name := list "HTTP_PROXY" "HTTPS_PROXY" "NO_PROXY" "http_proxy" "https_proxy" "no_proxy" }}
+{{- if hasKey $env $name }}
+{{- include "retool.env" (dict $name (get $env $name)) }}
+{{- end }}
+{{- range $.Values.environmentSecrets }}
+{{- if eq .name $name }}
+- name: {{ .name }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .secretKeyRef.name }}
+      key: {{ .secretKeyRef.key }}
+{{- end }}
+{{- end }}
+{{- range $.Values.environmentVariables }}
+{{- if eq .name $name }}
+{{ list . | toYaml | trim }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Validate that an enabled agent sandbox has its required secrets supplied. The
 controller and proxy fail to boot without a Postgres connection and a JWT
 public key, and the Retool backend needs the JWT private key to sign sandbox

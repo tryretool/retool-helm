@@ -1356,6 +1356,10 @@ rr:
 
     # Proxy: HTTP proxy for sandbox egress with credential injection.
     # The proxy must be reachable by frontend browsers for WebSocket connections.
+    # Uses HTTP_PROXY, HTTPS_PROXY and NO_PROXY from env, environmentVariables and
+    # environmentSecrets (http:// proxy URLs only). Sandboxes run untrusted code, so
+    # block internal destinations at your proxy or with allowedDomains. With
+    # networkPolicy, also allow a private proxy address in proxyExtraEgress.
     proxy:
       replicaCount: 1
       port: 3019
@@ -1500,6 +1504,11 @@ rr:
       extraEgress: []
       # Extra egress rules for the controller and proxy (appended verbatim).
       controllerExtraEgress: []
+      # e.g. allow an HTTP(S)_PROXY at a private address (blockedRanges blocks it):
+      #   proxyExtraEgress:
+      #     - to: [{ipBlock: {cidr: 10.20.30.40/32}}]
+      #       ports: [{port: 3128, protocol: TCP}]
+      # For an in-cluster proxy, use pod/namespace selectors, not its Service IP.
       proxyExtraEgress: []
       # Extra ingress peers (podSelector/namespaceSelector/ipBlock maps) allowed
       # to reach the controller and proxy. The backend, workflow backend,
