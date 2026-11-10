@@ -1360,7 +1360,10 @@ rr:
     # environmentSecrets are passed to it, so sandbox traffic to public hosts goes
     # through your proxy. Only http:// proxy URLs are used. Sandboxes run untrusted
     # code, so your proxy should block internal destinations, or set allowedDomains
-    # below to limit where sandboxes can connect.
+    # below to limit where sandboxes can connect. With networkPolicy.enabled,
+    # blockedRanges also blocks a proxy at a private address (e.g. 10.20.30.40),
+    # so allow its address and port in networkPolicy.proxyExtraEgress (example
+    # there).
     proxy:
       replicaCount: 1
       port: 3019
@@ -1505,6 +1508,18 @@ rr:
       extraEgress: []
       # Extra egress rules for the controller and proxy (appended verbatim).
       controllerExtraEgress: []
+      # REQUIRED if HTTP_PROXY / HTTPS_PROXY points at a private address, since
+      # blockedRanges blocks it. Allow only the proxy's address and port, e.g.:
+      #   proxyExtraEgress:
+      #     - to:
+      #         - ipBlock:
+      #             cidr: 10.20.30.40/32
+      #       ports:
+      #         - port: 3128
+      #           protocol: TCP
+      # If the proxy runs in this cluster, match its pods with namespaceSelector
+      # and podSelector instead, since an ipBlock on a Service IP usually doesn't
+      # match.
       proxyExtraEgress: []
       # Extra ingress peers (podSelector/namespaceSelector/ipBlock maps) allowed
       # to reach the controller and proxy. The backend, workflow backend,
