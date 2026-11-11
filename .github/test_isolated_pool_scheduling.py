@@ -1,4 +1,4 @@
-"""Render checks for js-executor and nsjail AppArmor installer node placement."""
+"""Render checks for js-executor, nsjail AppArmor installer and telemetry node placement."""
 
 import subprocess
 import sys
@@ -11,6 +11,7 @@ sys.dont_write_bytecode = True
 
 JS_EXECUTOR = ("# Source: retool/templates/deployment_js_executor.yaml", "Deployment")
 INSTALLER = ("# Source: retool/templates/apparmor_nsjail_daemonset.yaml", "DaemonSet")
+TELEMETRY = ("# Source: retool/templates/deployment_telemetry.yaml", "Deployment")
 GLOBAL_PLACEMENT = ("nodeSelector.pool=shared", "tolerations[0].key=shared", "tolerations[0].operator=Exists")
 
 
@@ -63,6 +64,19 @@ class PlacementTests(unittest.TestCase):
         install = installer.split("- name: install\n", 1)[1].split("- name: pause", 1)[0]
         self.assertIn("limits:\n              cpu: 100m\n              memory: 128Mi", install)
         self.assertIn("requests:\n              cpu: 10m\n              memory: 32Mi", install)
+
+    def test_telemetry_uses_global_placement(self):
+        telemetry = manifest(render("test-telemetry-placement-option.yaml"), *TELEMETRY)
+        self.assertIn("kubernetes.io/os: linux", telemetry)
+        self.assertIn("key: example.com/dedicated", telemetry)
+
+    def test_telemetry_extra_pod_spec_wins_over_global(self):
+        output = render("test-telemetry-placement-option.yaml", "telemetry.extraPodSpec.nodeSelector.pool=telemetry")
+        telemetry = manifest(output, *TELEMETRY)
+        self.assertEqual(telemetry.count("nodeSelector:"), 1)
+        self.assertIn("pool: telemetry", telemetry)
+        self.assertNotIn("kubernetes.io/os: linux", telemetry)
+        self.assertIn("key: example.com/dedicated", telemetry)
 
 
 if __name__ == "__main__":
