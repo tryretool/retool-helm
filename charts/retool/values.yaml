@@ -2103,8 +2103,6 @@ telemetry:
 
   extraEnv: []
   extraAnnotations: {}
-  # Extra fields for the telemetry pod spec. The pod uses the top-level
-  # `nodeSelector` and `tolerations` unless this sets its own.
   extraPodSpec: {}
   extraVolumes: []
   extraVolumeMounts: []
