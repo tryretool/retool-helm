@@ -146,6 +146,15 @@ spec:
         {{- if .Values.telemetry.extraVolumes }}
         {{- .Values.telemetry.extraVolumes | toYaml | nindent 8 }}
         {{- end }}
+      {{- $extraPodSpec := .Values.telemetry.extraPodSpec | default dict }}
+      {{- if and .Values.nodeSelector (not (hasKey $extraPodSpec "nodeSelector")) }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.tolerations (not (hasKey $extraPodSpec "tolerations")) }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
       {{- if .Values.telemetry.extraPodSpec }}
       {{- .Values.telemetry.extraPodSpec | toYaml | nindent 6 }}
       {{- end }}

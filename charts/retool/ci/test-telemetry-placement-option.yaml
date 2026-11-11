@@ -1,0 +1,9 @@
+# The telemetry pod takes the top-level placement like every other pod. The
+# selector matches every Linux node, so the kind cluster can still schedule it.
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations:
+  - key: example.com/dedicated
+    operator: Equal
+    value: retool
+    effect: NoSchedule
