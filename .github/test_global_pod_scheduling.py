@@ -1,15 +1,16 @@
 """Every rendered pod must inherit the top-level nodeSelector and tolerations.
 
 Renders the same values/option matrix as kubeconform.sh. Intentional exceptions
-go in EXEMPT_SOURCES or COMPONENT_OVERRIDES.
+go in EXEMPT_WORKLOADS or COMPONENT_OVERRIDES.
 """
 
-import re
 import subprocess
 import sys
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,9 +27,9 @@ GLOBAL_PLACEMENT = (
 
 WORKLOAD_KINDS = {"Deployment", "DaemonSet", "StatefulSet", "ReplicaSet", "Job", "CronJob", "Pod"}
 
-EXEMPT_SOURCES = {
+EXEMPT_WORKLOADS = {
     # Subchart; configured via postgresql.primary.nodeSelector / tolerations.
-    "retool/charts/postgresql/templates/primary/statefulset.yaml",
+    f"StatefulSet/{RELEASE}-postgresql",
 }
 
 # Component-level placement wins over the top-level values (see
@@ -60,53 +61,20 @@ def render(files):
     return result.returncode, result.stdout, result.stderr
 
 
-def documents(output):
-    for document in output.split("\n---\n"):
-        kind = re.search(r"^kind: (\S+)$", document, re.M)
-        if not kind or kind.group(1) not in WORKLOAD_KINDS:
-            continue
-        source = re.search(r"^# Source: (\S+)$", document, re.M)
-        name = re.search(r"^metadata:\n(?:[ ]{2,}.*\n|\s*\n)*?[ ]{2}name: (\S+)$", document, re.M)
-        yield (
-            source.group(1) if source else "<unknown>",
-            f"{kind.group(1)}/{name.group(1).strip(chr(34)) if name else '<unknown>'}",
-            document,
-        )
+def pod_spec(manifest):
+    spec = manifest.get("spec") or {}
+    if manifest["kind"] == "Pod":
+        return spec
+    if manifest["kind"] == "CronJob":
+        spec = (spec.get("jobTemplate") or {}).get("spec") or {}
+    return ((spec.get("template") or {}).get("spec")) or {}
 
 
-def pod_spec_field(document, field):
-    """Return the pod spec's `field` block, or None.
-
-    Located via the `containers:` indentation so matches elsewhere (env vars,
-    annotations) are ignored.
-    """
-    lines = document.splitlines()
-    indent = None
-    for line in lines:
-        match = re.match(r"^( *)containers:\s*$", line)
-        if match:
-            indent = match.group(1)
-            break
-    if indent is None:
-        return None
-    for i, line in enumerate(lines):
-        if line.startswith(f"{indent}{field}:"):
-            block = [line]
-            for following in lines[i + 1:]:
-                if following.strip() and not following.startswith(indent + " ") and not following.startswith(indent + "- "):
-                    break
-                block.append(following)
-            return "\n".join(block)
-    return None
-
-
-def missing_placement(document):
+def missing_placement(pod):
     missing = []
-    node_selector = pod_spec_field(document, "nodeSelector")
-    if node_selector is None or SENTINEL_NODE_SELECTOR not in node_selector:
+    if (pod.get("nodeSelector") or {}).get(SENTINEL_NODE_SELECTOR) is None:
         missing.append("nodeSelector")
-    tolerations = pod_spec_field(document, "tolerations")
-    if tolerations is None or SENTINEL_TOLERATION not in tolerations:
+    if not any(t.get("key") == SENTINEL_TOLERATION for t in pod.get("tolerations") or []):
         missing.append("tolerations")
     return missing
 
@@ -125,12 +93,15 @@ class GlobalPodSchedulingTests(unittest.TestCase):
                 failures.append(f"{label}: helm template failed:\n{stderr.strip()}")
                 continue
             overridden = set().union(*(COMPONENT_OVERRIDES.get(f.name, set()) for f in files))
-            for source, workload, document in documents(output):
-                if source in EXEMPT_SOURCES or workload in overridden:
+            for manifest in yaml.safe_load_all(output):
+                if not manifest or manifest.get("kind") not in WORKLOAD_KINDS:
                     continue
-                missing = missing_placement(document)
+                workload = f"{manifest['kind']}/{manifest['metadata']['name']}"
+                if workload in EXEMPT_WORKLOADS or workload in overridden:
+                    continue
+                missing = missing_placement(pod_spec(manifest))
                 if missing:
-                    failures.append(f"{label}: {workload} ({source}) is missing the top-level {' and '.join(missing)}")
+                    failures.append(f"{label}: {workload} is missing the top-level {' and '.join(missing)}")
 
         if failures:
             self.fail(
