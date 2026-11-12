@@ -57,8 +57,7 @@ jobs:
             exit 0
           fi
 
-          # The render tests in .github/ exercise the chart, so a PR that only
-          # changes them still needs the chart jobs to run them.
+          # Render tests exercise the chart too.
           changed_tests=$(git diff --name-only "origin/main...HEAD" -- '.github/test_*.py')
           if [[ -n "$changed_tests" ]]; then
             echo "Chart render tests changed: $changed_tests"
@@ -88,8 +87,7 @@ jobs:
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (lint)
         run: ct lint --config .github/ct.yaml
-      # ct lint only builds dependencies for charts it sees as changed, which
-      # is none on main or on a PR that only changes the render tests below.
+      # ct lint only builds dependencies for changed charts.
       - name: Build chart dependencies
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami --force-update

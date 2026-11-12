@@ -1,14 +1,7 @@
-"""Every pod the chart renders must inherit the top-level nodeSelector and tolerations.
+"""Every rendered pod must inherit the top-level nodeSelector and tolerations.
 
-Renders each CI values file on its own and combined with each *option.yaml (the
-same matrix as kubeconform.sh), with a sentinel top-level nodeSelector and
-toleration, and fails if any workload's pod spec is missing either. This catches
-new templates that forget the scheduling block, as happened for code-executor
-(#169) and telemetry (#423).
-
-If a new workload intentionally does not take the global placement, add it to
-EXEMPT_SOURCES with the reason. If a CI option file deliberately overrides a
-component's placement, add the workload to COMPONENT_OVERRIDES for that file.
+Renders the same values/option matrix as kubeconform.sh. Intentional exceptions
+go in EXEMPT_SOURCES or COMPONENT_OVERRIDES.
 """
 
 import re
@@ -33,16 +26,13 @@ GLOBAL_PLACEMENT = (
 
 WORKLOAD_KINDS = {"Deployment", "DaemonSet", "StatefulSet", "ReplicaSet", "Job", "CronJob", "Pod"}
 
-# Templates whose pods are not expected to take the top-level values.
 EXEMPT_SOURCES = {
-    # Bitnami subchart: it only sees values under `postgresql:`, so users set
-    # postgresql.primary.nodeSelector / tolerations themselves.
+    # Subchart; configured via postgresql.primary.nodeSelector / tolerations.
     "retool/charts/postgresql/templates/primary/statefulset.yaml",
 }
 
-# Option files that pin a component somewhere else on purpose. The component
-# value wins over the top-level one, which test_isolated_pool_scheduling.py
-# covers.
+# Component-level placement wins over the top-level values (see
+# test_isolated_pool_scheduling.py).
 COMPONENT_OVERRIDES = {
     "test-apparmor-nsjail-isolated-pool-option.yaml": {
         f"Deployment/{RELEASE}-retool-js-executor",
@@ -85,11 +75,10 @@ def documents(output):
 
 
 def pod_spec_field(document, field):
-    """The text of `field` in the pod spec, or None if the pod spec does not set it.
+    """Return the pod spec's `field` block, or None.
 
-    The pod spec is found by the indentation of its `containers:` key, so a
-    matching string elsewhere (an env var, an annotation) is never mistaken for
-    the pod's own nodeSelector or tolerations.
+    Located via the `containers:` indentation so matches elsewhere (env vars,
+    annotations) are ignored.
     """
     lines = document.splitlines()
     indent = None
@@ -145,8 +134,7 @@ class GlobalPodSchedulingTests(unittest.TestCase):
 
         if failures:
             self.fail(
-                "Every pod should inherit the top-level nodeSelector and tolerations "
-                "(see the docstring of this file for exemptions):\n  " + "\n  ".join(failures)
+                "Pods missing the top-level nodeSelector/tolerations:\n  " + "\n  ".join(failures)
             )
 
 
