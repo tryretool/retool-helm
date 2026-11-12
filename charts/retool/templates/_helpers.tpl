@@ -1888,3 +1888,20 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- end -}}
 {{- $output -}}
 {{- end -}}
+
+{{/*
+Whether the JS executor still needs to install iptables rules at startup, and
+therefore needs the NET_ADMIN and NET_RAW capabilities. Returns "1" if so, "" if not.
+Versions >= 4.34 enforce network isolation through the token-swapping proxy instead.
+Tags that are not semver (e.g. "latest", "edge") are treated as legacy, so the
+capabilities are kept.
+Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
+*/}}
+{{- define "retool.jsExecutor.requiresNetAdmin" -}}
+{{- $tag := include "retool.jsExecutor.image.tag" . -}}
+{{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+{{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0" (regexFind $semver_version_regexp $tag)) -}}
+{{- else -}}
+1
+{{- end -}}
+{{- end -}}
