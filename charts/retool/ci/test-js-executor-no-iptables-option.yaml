@@ -1,0 +1,10 @@
+rr:
+
+  # JSE >= 4.58 has no iptables step in start.sh, so deployment_js_executor.yaml
+  # must drop NET_ADMIN/NET_RAW and must not set DISABLE_IPTABLES_SECURITY_CONFIGURATION.
+  # Overlaid on test-install-values.yaml.
+  jsExecutor:
+    enabled: true
+    image:
+      repository: tryretool/js-executor-service
+      tag: 4.58.0

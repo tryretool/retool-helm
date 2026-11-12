@@ -1888,3 +1888,22 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- end -}}
 {{- $output -}}
 {{- end -}}
+
+{{/* Returns "1" for JSE versions that need NET_ADMIN/NET_RAW: below 4.34.0 and non-semver tags. */}}
+{{- define "retool.jsExecutor.requiresNetAdmin" -}}
+{{- $tag := include "retool.jsExecutor.image.tag" . -}}
+{{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+{{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0" (regexFind $semver_version_regexp $tag)) -}}
+{{- else -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/* Returns "1" for JSE versions that need DISABLE_IPTABLES_SECURITY_CONFIGURATION: 4.34.0 up to 4.58.0. */}}
+{{- define "retool.jsExecutor.skipIptablesEnv" -}}
+{{- $tag := include "retool.jsExecutor.image.tag" . -}}
+{{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+{{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0 < 4.58.0-0" (regexFind $semver_version_regexp $tag)) -}}
+1
+{{- end -}}
+{{- end -}}
