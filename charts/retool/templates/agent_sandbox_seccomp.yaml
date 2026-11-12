@@ -70,6 +70,13 @@ spec:
               mkdir -p "$(dirname "$DEST")"
               cp /seccomp-profile/gvisor-seccomp.json "$DEST"
               echo "seccomp profile installed at $DEST"
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
           volumeMounts:
             - name: seccomp-profile
               mountPath: /seccomp-profile
@@ -94,6 +101,13 @@ spec:
               nsenter -t 1 -m -- apparmor_parser -r /etc/apparmor.d/retool-agent-sandbox
               touch /host-run/retool-agent-sandbox.loaded
               echo "AppArmor profile retool-agent-sandbox loaded successfully"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
           volumeMounts:
             - name: apparmor-profiles
               mountPath: /apparmor-profiles

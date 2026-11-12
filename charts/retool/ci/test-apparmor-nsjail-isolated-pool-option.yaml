@@ -1,0 +1,37 @@
+# Exercises pinning js-executor and the nsjail AppArmor installer DaemonSet to
+# a dedicated, tainted node pool via rr.jsExecutor.nodeSelector/tolerations and
+# codeExecutor.appArmorInstaller, independently of the top-level values. Also
+# sets installer pod annotations and init container resources.
+#
+# Overlaid on test-install-values.yaml.
+
+codeExecutor:
+  enabled: true
+  useSeccompProfile: true
+  appArmorProfileInstaller: true
+  appArmorInstaller:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: retool.com/isolated
+        operator: Exists
+        effect: NoSchedule
+    annotations:
+      sidecar.istio.io/inject: "false"
+    resources:
+      requests:
+        cpu: 20m
+        memory: 48Mi
+      limits:
+        cpu: 200m
+        memory: 192Mi
+
+rr:
+  jsExecutor:
+    enabled: true
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: retool.com/isolated
+        operator: Exists
+        effect: NoSchedule

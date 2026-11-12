@@ -893,6 +893,16 @@ mcp:
     labels: {}
 
 codeExecutor:
+  # Toggle the code-executor service. The code executor is a standalone sandbox
+  # service: workflows need it, but it can also be deployed on its own (e.g. for
+  # custom auth and firebase raw mode).
+  #
+  #   null (default) - inherit workflows.enabled (back-compat: existing installs
+  #                    that only toggle workflows.enabled keep the same behavior)
+  #   true           - deploy the code executor regardless of workflows
+  #   false          - never deploy the code executor
+  enabled: null
+
   # Code executor normally tracks the top-level `image` parameters. Override the
   # tag only when you need a one-off or patched build (e.g. a support build whose
   # tag differs from the backend's); running a code executor version that does not
@@ -958,7 +968,7 @@ codeExecutor:
   useSeccompProfile: false
   seccompLocalhostProfile: profiles/nsjail-seccomp.json
 
-  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on every node.
+  # Deploy a DaemonSet that loads AppArmor profiles for nsjail on each node.
   # When enabled, the code-executor and js-executor annotations switch from
   # "unconfined" to "localhost/retool-executor". Requires useSeccompProfile:
   # true for code-executor to take effect (js-executor always uses the
@@ -972,6 +982,24 @@ codeExecutor:
   #   "ubuntu" - for Ubuntu/Debian nodes
   #   "cos"    - for GKE Container-Optimized OS nodes
   appArmorProfileInstaller: false
+
+  # Settings for the nsjail AppArmor installer DaemonSet. It must run on every
+  # node that can schedule code-executor or js-executor pods, or their
+  # wait-for-apparmor init container never finishes. nodeSelector and
+  # tolerations fall back to the top-level values when empty.
+  appArmorInstaller:
+    nodeSelector: {}
+    tolerations: []
+    # Annotations for installer pods (e.g. sidecar.istio.io/inject: "false")
+    annotations: {}
+    # Resources for the privileged init container that loads the profiles
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
 
 # === RR (Retool agent runtime) =============================================
 # Master switch for the whole RR stack. Set `rr.enabled: true` to turn on the
@@ -1049,6 +1077,12 @@ rr:
 
     # Config affinity and anti-affinity rules for the JS executor pods
     affinity: {}
+
+    # Node placement overrides (falls back to global nodeSelector/tolerations
+    # if empty). With codeExecutor.appArmorProfileInstaller, also set
+    # codeExecutor.appArmorInstaller placement so the installer reaches these nodes.
+    nodeSelector: {}
+    tolerations: []
 
     # Resources for the JS executor. Memory request and limit are kept equal:
     # JSE reads its memory limit and rejects requests at 80% of it, so the
@@ -1322,6 +1356,10 @@ rr:
 
     # Proxy: HTTP proxy for sandbox egress with credential injection.
     # The proxy must be reachable by frontend browsers for WebSocket connections.
+    # Uses HTTP_PROXY, HTTPS_PROXY and NO_PROXY from env, environmentVariables and
+    # environmentSecrets (http:// proxy URLs only). Sandboxes run untrusted code, so
+    # block internal destinations at your proxy or with allowedDomains. With
+    # networkPolicy, also allow a private proxy address in proxyExtraEgress.
     proxy:
       replicaCount: 1
       port: 3019
@@ -1344,6 +1382,14 @@ rr:
       # URL the proxy uses to reach the Retool backend for token exchange.
       # Defaults to http://<fullname>:3000 (same-cluster backend service).
       backendUrl: ''
+      # Domain suffix(es) exempted from the sandbox proxy's private-IP egress block,
+      # so sandboxes can reach your own Retool backend (git clone, org libraries,
+      # thread branch data, etc). REQUIRED if your BASE_DOMAIN resolves to a
+      # private IP from inside the cluster (e.g. ingress.enabled: false). Must
+      # match the actual public hostname(s) sandboxes call out to — comma-separate
+      # multiple domains if you serve this deployment from more than one (e.g.
+      # per-environment subdomains). Getting this wrong fails silently or with a
+      # generic error, with no indication the cause is this setting.
       backendDomainSuffixes: ''
       sandboxProxyTimeoutMs: '180000'  # 3 minutes
       # Where the proxy fetches public npm packages. Leave url empty to use
@@ -1458,6 +1504,11 @@ rr:
       extraEgress: []
       # Extra egress rules for the controller and proxy (appended verbatim).
       controllerExtraEgress: []
+      # e.g. allow an HTTP(S)_PROXY at a private address (blockedRanges blocks it):
+      #   proxyExtraEgress:
+      #     - to: [{ipBlock: {cidr: 10.20.30.40/32}}]
+      #       ports: [{port: 3128, protocol: TCP}]
+      # For an in-cluster proxy, use pod/namespace selectors, not its Service IP.
       proxyExtraEgress: []
       # Extra ingress peers (podSelector/namespaceSelector/ipBlock maps) allowed
       # to reach the controller and proxy. The backend, workflow backend,
@@ -2020,10 +2071,10 @@ telemetry:
   resources:
     requests:
       cpu: 128m
-      memory: 128Mi
-    limits:
-      cpu: 256m
       memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
 
   # When present, any vector config here gets added to the telemetry pod (via a
   # created configmap) and added to the internal [vector](https://vector.dev/)
