@@ -86,6 +86,8 @@ jobs:
         run: python3 .github/test_isolated_pool_scheduling.py
       - name: Verify code-executor enablement
         run: python3 .github/test_code_executor.py
+      - name: Verify every pod inherits the top-level nodeSelector and tolerations
+        run: python3 .github/test_global_pod_scheduling.py
 
   # We don't use helm-docs yet, can set this up later
   #
