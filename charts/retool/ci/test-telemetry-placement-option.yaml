@@ -1,0 +1,7 @@
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations:
+  - key: example.com/dedicated
+    operator: Equal
+    value: retool
+    effect: NoSchedule

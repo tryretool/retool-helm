@@ -1,4 +1,4 @@
-"""Render checks for js-executor and nsjail AppArmor installer node placement."""
+"""Render checks for js-executor, nsjail AppArmor installer and telemetry node placement."""
 
 import subprocess
 import sys
@@ -11,10 +11,11 @@ sys.dont_write_bytecode = True
 
 JS_EXECUTOR = ("# Source: retool/templates/deployment_js_executor.yaml", "Deployment")
 INSTALLER = ("# Source: retool/templates/apparmor_nsjail_daemonset.yaml", "DaemonSet")
+TELEMETRY = ("# Source: retool/templates/deployment_telemetry.yaml", "Deployment")
 GLOBAL_PLACEMENT = ("nodeSelector.pool=shared", "tolerations[0].key=shared", "tolerations[0].operator=Exists")
 
 
-def render(option_file, *settings):
+def render(option_file, *settings, json_settings=()):
     command = [
         "helm", "template", "placement", "charts/retool",
         "--values", "charts/retool/ci/test-install-values.yaml",
@@ -22,6 +23,8 @@ def render(option_file, *settings):
     ]
     for setting in settings:
         command.extend(("--set", setting))
+    for setting in json_settings:
+        command.extend(("--set-json", setting))
     return subprocess.check_output(command, cwd=ROOT, text=True)
 
 
@@ -64,6 +67,37 @@ class PlacementTests(unittest.TestCase):
         self.assertIn("limits:\n              cpu: 100m\n              memory: 128Mi", install)
         self.assertIn("requests:\n              cpu: 10m\n              memory: 32Mi", install)
 
+    def test_telemetry_uses_global_placement(self):
+        telemetry = manifest(render("test-telemetry-placement-option.yaml"), *TELEMETRY)
+        self.assertIn("kubernetes.io/os: linux", telemetry)
+        self.assertIn("key: example.com/dedicated", telemetry)
+
+    def test_telemetry_extra_pod_spec_overrides_only_its_own_field(self):
+        cases = {
+            "custom nodeSelector": ('{"nodeSelector": {"pool": "telemetry"}}', "pool: telemetry", None),
+            "empty nodeSelector": ('{"nodeSelector": {}}', "nodeSelector: {}", None),
+            "custom tolerations": ('{"tolerations": [{"key": "telemetry", "operator": "Exists"}]}', None, "key: telemetry"),
+            "empty tolerations": ('{"tolerations": []}', None, "tolerations: []"),
+        }
+        for name, (extra_pod_spec, node_selector, tolerations) in cases.items():
+            with self.subTest(name):
+                output = render(
+                    "test-telemetry-placement-option.yaml",
+                    json_settings=(f"telemetry.extraPodSpec={extra_pod_spec}",),
+                )
+                telemetry = manifest(output, *TELEMETRY)
+                self.assertEqual(telemetry.count("nodeSelector:"), 1)
+                self.assertEqual(telemetry.count("tolerations:"), 1)
+                if node_selector:
+                    self.assertIn(node_selector, telemetry)
+                    self.assertNotIn("kubernetes.io/os: linux", telemetry)
+                else:
+                    self.assertIn("kubernetes.io/os: linux", telemetry)
+                if tolerations:
+                    self.assertIn(tolerations, telemetry)
+                    self.assertNotIn("key: example.com/dedicated", telemetry)
+                else:
+                    self.assertIn("key: example.com/dedicated", telemetry)
 
 if __name__ == "__main__":
     unittest.main()
