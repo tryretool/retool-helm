@@ -70,6 +70,7 @@ class CodeExecutorEnabledTests(unittest.TestCase):
         self.assertTrue(has_source(output, CE_CONFIGMAP))
         self.assertIn("name: codeexec-retool-code-executor", manifest(output, CE_DEPLOYMENT))
         self.assertIn(CODE_EXECUTOR_ENV, manifest(output, BACKEND))
+        self.assertIn("value: http://codeexec-retool-code-executor.default.svc.cluster.local", manifest(output, BACKEND))
         # workflows are off, so the workflow workloads and their backend host
         # must not render.
         self.assertFalse(has_source(output, WORKFLOW_DEPLOYMENT))
@@ -89,6 +90,17 @@ class CodeExecutorEnabledTests(unittest.TestCase):
         self.assertTrue(has_source(output, CE_DEPLOYMENT))
         self.assertIn(CODE_EXECUTOR_ENV, manifest(output, BACKEND))
         self.assertIn(WORKFLOW_BACKEND_ENV, manifest(output, BACKEND))
+        self.assertIn("value: http://codeexec-retool-workflow-backend.default.svc.cluster.local", manifest(output, BACKEND))
+        self.assertIn("value: http://codeexec-retool-code-executor.default.svc.cluster.local", manifest(output, BACKEND))
+
+    def test_custom_cluster_domain_with_standalone_executor(self):
+        output = self.assert_rendered(
+            "workflows.enabled=false",
+            "codeExecutor.enabled=true",
+            "clusterDomain=example.internal",
+        )
+        self.assertIn("value: http://codeexec-retool-code-executor.default.svc.example.internal", manifest(output, BACKEND))
+        self.assertNotIn(WORKFLOW_BACKEND_ENV, manifest(output, BACKEND))
 
     def test_explicit_false_with_workflows_off_disables(self):
         output = self.assert_rendered("workflows.enabled=false", "codeExecutor.enabled=false")
