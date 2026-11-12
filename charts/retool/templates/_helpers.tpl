@@ -1892,7 +1892,13 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{/*
 Whether the JS executor still needs to install iptables rules at startup, and
 therefore needs the NET_ADMIN and NET_RAW capabilities. Returns "1" if so, "" if not.
-Versions >= 4.34 enforce network isolation through the token-swapping proxy instead.
+From 4.34 the token-swapping proxy (jsExecutorTokenSwappingProxy, on by default for
+on-prem) isolates the sandbox's network, and JSE 4.57+ removed the iptables rules
+entirely. On 4.34-4.56 the rules still exist, but the chart skips them with
+DISABLE_IPTABLES_SECURITY_CONFIGURATION. That is only safe while the flag is on:
+if an admin toggled it off for 4.34, the sandbox shares the host network, the
+iptables rules are the only isolation, and NET_ADMIN/NET_RAW are required.
+The chart cannot see the flag.
 Tags that are not semver (e.g. "latest", "edge") are treated as legacy, so the
 capabilities are kept.
 Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
