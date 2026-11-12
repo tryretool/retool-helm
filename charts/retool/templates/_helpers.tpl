@@ -1893,14 +1893,10 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 Whether the JS executor still needs to install iptables rules at startup, and
 therefore needs the NET_ADMIN and NET_RAW capabilities. Returns "1" if so, "" if not.
 From 4.34 the token-swapping proxy (jsExecutorTokenSwappingProxy, on by default for
-on-prem) isolates the sandbox's network, and JSE 4.57+ removed the iptables rules
-entirely. On 4.34-4.56 the rules still exist, but the chart skips them with
-DISABLE_IPTABLES_SECURITY_CONFIGURATION. That is only safe while the flag is on:
-if an admin toggled it off for 4.34, the sandbox shares the host network, the
-iptables rules are the only isolation, and NET_ADMIN/NET_RAW are required.
-The chart cannot see the flag.
-Tags that are not semver (e.g. "latest", "edge") are treated as legacy, so the
-capabilities are kept.
+on-prem) isolates the sandbox's network, so the capabilities can be dropped as long
+as the iptables step is skipped (see retool.jsExecutor.skipIptablesEnv). Tags that
+are not semver (e.g. "latest", "edge") are treated as legacy, so the capabilities
+are kept.
 Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
 */}}
 {{- define "retool.jsExecutor.requiresNetAdmin" -}}
@@ -1908,6 +1904,25 @@ Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
 {{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
 {{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0" (regexFind $semver_version_regexp $tag)) -}}
 {{- else -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Whether the JS executor needs DISABLE_IPTABLES_SECURITY_CONFIGURATION=true. Returns
+"1" for 4.34 up to (not including) 4.58, "" otherwise.
+On those versions start.sh still installs iptables rules and exits 1 if that fails,
+which it does once NET_ADMIN is dropped, so the step has to be skipped. That is only
+safe while jsExecutorTokenSwappingProxy is on: if an admin toggled it off for 4.34,
+the sandbox shares the host network, the iptables rules are the only isolation, and
+NET_ADMIN/NET_RAW are required. The chart cannot see that flag.
+From 4.58 the iptables code is gone from start.sh, so the variable is not needed.
+Usage: (include "retool.jsExecutor.skipIptablesEnv" .)
+*/}}
+{{- define "retool.jsExecutor.skipIptablesEnv" -}}
+{{- $tag := include "retool.jsExecutor.image.tag" . -}}
+{{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+{{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0 < 4.58.0-0" (regexFind $semver_version_regexp $tag)) -}}
 1
 {{- end -}}
 {{- end -}}
