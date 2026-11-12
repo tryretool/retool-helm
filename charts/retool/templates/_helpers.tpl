@@ -1889,16 +1889,7 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- $output -}}
 {{- end -}}
 
-{{/*
-Whether the JS executor still needs to install iptables rules at startup, and
-therefore needs the NET_ADMIN and NET_RAW capabilities. Returns "1" if so, "" if not.
-From 4.34 the token-swapping proxy (jsExecutorTokenSwappingProxy, on by default for
-on-prem) isolates the sandbox's network, so the capabilities can be dropped as long
-as the iptables step is skipped (see retool.jsExecutor.skipIptablesEnv). Tags that
-are not semver (e.g. "latest", "edge") are treated as legacy, so the capabilities
-are kept.
-Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
-*/}}
+{{/* Returns "1" for JSE versions that need NET_ADMIN/NET_RAW: below 4.34.0 and non-semver tags. */}}
 {{- define "retool.jsExecutor.requiresNetAdmin" -}}
 {{- $tag := include "retool.jsExecutor.image.tag" . -}}
 {{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
@@ -1908,17 +1899,7 @@ Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
 {{- end -}}
 {{- end -}}
 
-{{/*
-Whether the JS executor needs DISABLE_IPTABLES_SECURITY_CONFIGURATION=true. Returns
-"1" for 4.34 up to (not including) 4.58, "" otherwise.
-On those versions start.sh still installs iptables rules and exits 1 if that fails,
-which it does once NET_ADMIN is dropped, so the step has to be skipped. That is only
-safe while jsExecutorTokenSwappingProxy is on: if an admin toggled it off for 4.34,
-the sandbox shares the host network, the iptables rules are the only isolation, and
-NET_ADMIN/NET_RAW are required. The chart cannot see that flag.
-From 4.58 the iptables code is gone from start.sh, so the variable is not needed.
-Usage: (include "retool.jsExecutor.skipIptablesEnv" .)
-*/}}
+{{/* Returns "1" for JSE versions that need DISABLE_IPTABLES_SECURITY_CONFIGURATION: 4.34.0 up to 4.58.0. */}}
 {{- define "retool.jsExecutor.skipIptablesEnv" -}}
 {{- $tag := include "retool.jsExecutor.image.tag" . -}}
 {{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
