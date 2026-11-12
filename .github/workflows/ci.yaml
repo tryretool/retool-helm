@@ -57,6 +57,15 @@ jobs:
             exit 0
           fi
 
+          # Render tests exercise the chart too.
+          changed_tests=$(git diff --name-only "origin/main...HEAD" -- '.github/test_*.py')
+          if [[ -n "$changed_tests" ]]; then
+            echo "Chart render tests changed: $changed_tests"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "changed=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "No chart changes - skipping chart jobs"
           echo "run=false" >> "$GITHUB_OUTPUT"
           echo "changed=" >> "$GITHUB_OUTPUT"
@@ -78,6 +87,11 @@ jobs:
         uses: helm/chart-testing-action@v2.3.1
       - name: Run chart-testing (lint)
         run: ct lint --config .github/ct.yaml
+      # ct lint only builds dependencies for changed charts.
+      - name: Build chart dependencies
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+          helm dependency build charts/retool
       - name: Verify MCP Helm test render and HTTP behavior
         run: python3 .github/test_mcp_helm_test.py
       - name: Verify MCP routing modes and migration errors
@@ -86,6 +100,10 @@ jobs:
         run: python3 .github/test_isolated_pool_scheduling.py
       - name: Verify code-executor enablement
         run: python3 .github/test_code_executor.py
+      - name: Verify every pod inherits the top-level nodeSelector and tolerations
+        run: |
+          python3 -m pip install pyyaml
+          python3 .github/test_global_pod_scheduling.py
 
   # We don't use helm-docs yet, can set this up later
   #
