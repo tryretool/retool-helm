@@ -27,7 +27,9 @@ def render(release, namespace, *settings):
 def manifest(output, kind):
     for document in output.split("\n---\n"):
         if document.lstrip().startswith(RBAC) and f"\nkind: {kind}\n" in document:
-            return document
+            # The last document has no trailing newline; restore it so
+            # line-anchored assertions hold wherever the document lands.
+            return document.rstrip("\n") + "\n"
     raise AssertionError(f"no {kind} rendered from {RBAC}")
 
 
@@ -39,12 +41,12 @@ def name(document):
 class TelemetryRbacTests(unittest.TestCase):
     def test_names_include_the_release_namespace(self):
         output = render("retool", "team-a")
-        self.assertEqual(name(manifest(output, "ClusterRole")), "team-a-retool-telemetry")
-        self.assertEqual(name(manifest(output, "ClusterRoleBinding")), "team-a-retool-telemetry")
+        self.assertEqual(name(manifest(output, "ClusterRole")), "team-a.retool-telemetry")
+        self.assertEqual(name(manifest(output, "ClusterRoleBinding")), "team-a.retool-telemetry")
 
     def test_binding_refers_to_its_own_cluster_role(self):
         binding = manifest(render("retool", "team-a"), "ClusterRoleBinding")
-        self.assertIn("roleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: team-a-retool-telemetry\n", binding)
+        self.assertIn("roleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: team-a.retool-telemetry\n", binding)
         self.assertIn("namespace: team-a\n", binding)
 
     def test_same_release_name_in_two_namespaces_does_not_collide(self):
@@ -56,9 +58,19 @@ class TelemetryRbacTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 self.assertEqual(len(rendered), 2, rendered)
 
+    def test_hyphens_in_namespace_and_release_do_not_collide(self):
+        pairs = (("retool", "team-a"), ("a-retool", "team"))
+        names = {
+            kind: {name(manifest(render(release, namespace), kind)) for release, namespace in pairs}
+            for kind in ("ClusterRole", "ClusterRoleBinding")
+        }
+        for kind, rendered in names.items():
+            with self.subTest(kind=kind):
+                self.assertEqual(len(rendered), 2, rendered)
+
     def test_name_override_is_kept(self):
         output = render("retool", "team-a", "telemetry.nameOverride=metrics")
-        self.assertEqual(name(manifest(output, "ClusterRole")), "team-a-retool-metrics")
+        self.assertEqual(name(manifest(output, "ClusterRole")), "team-a.retool-metrics")
 
     def test_disabled_rbac_renders_no_cluster_role(self):
         output = render("retool", "team-a", "telemetry.rbac.create=false")
