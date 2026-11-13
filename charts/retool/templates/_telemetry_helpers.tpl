@@ -7,6 +7,16 @@ Reusable name for telemetry-related chart resources.
 {{- end -}}
 
 {{/*
+Name for the telemetry ClusterRole and ClusterRoleBinding. They are
+cluster-scoped, so the name includes the release namespace: two releases with
+the same name in different namespaces would otherwise both claim one
+ClusterRole, and the second install would fail.
+*/}}
+{{- define "retool.telemetry.clusterRoleName" -}}
+{{- printf "%s-%s" .Release.Namespace (include "retool.telemetry.fullname" .) | trunc 253 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
 Labels to include on telemetry pods.
 */}}
 {{- define "retool.telemetry.labels" -}}
