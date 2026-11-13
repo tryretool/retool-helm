@@ -100,6 +100,8 @@ jobs:
         run: python3 .github/test_isolated_pool_scheduling.py
       - name: Verify code-executor enablement
         run: python3 .github/test_code_executor.py
+      - name: Verify telemetry ClusterRole names are unique per namespace
+        run: python3 .github/test_telemetry_rbac.py
       - name: Verify every pod inherits the top-level nodeSelector and tolerations
         run: |
           python3 -m pip install pyyaml
