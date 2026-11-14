@@ -12,7 +12,7 @@ cluster-scoped, so the name includes the release namespace: two releases with
 the same name in different namespaces would otherwise both claim one
 ClusterRole, and the second install would fail. The separator is a dot because
 namespace names cannot contain one, so no two namespace and release pairs can
-render the same name. A hyphen would let team-a/retool and team/a-retool collide.
+render the same name.
 */}}
 {{- define "retool.telemetry.clusterRoleName" -}}
 {{- printf "%s.%s" .Release.Namespace (include "retool.telemetry.fullname" .) | trunc 253 | trimSuffix "-" -}}
