@@ -33,7 +33,7 @@
           "type": "string"
         },
         "tag": {
-          "description": "Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.",
+          "description": "Retool version to deploy, e.g. `4.86.0-stable`. Required: the chart does not pick a version for you.",
           "type": "string",
           "minLength": 1
         }

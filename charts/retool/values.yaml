@@ -62,7 +62,7 @@ image:  # @schema required
   # -- Retool backend image repository.
   repository: "tryretool/backend"
   # @schema type: string; required; minLength: 1
-  # -- Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.
+  # -- Retool version to deploy, e.g. `4.86.0-stable`. Required: the chart does not pick a version for you.
   # @default -- none (required)
   tag: ""
   # @schema type: string; enum: [Always, IfNotPresent, Never]

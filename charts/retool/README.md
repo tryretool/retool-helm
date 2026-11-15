@@ -35,7 +35,7 @@ This table and `values.schema.json` are generated from the comments in [values.y
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | image.repository | string | `"tryretool/backend"` | Retool backend image repository. |
-| image.tag | string | none (required) | Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you. |
+| image.tag | string | none (required) | Retool version to deploy, e.g. `4.86.0-stable`. Required: the chart does not pick a version for you. |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy for Retool containers. |
 | image.pullSecrets | list | `nil` | Image pull secrets for Retool pods, e.g. `[{name: my-registry}]`. |
 
