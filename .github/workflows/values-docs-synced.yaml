@@ -1,0 +1,21 @@
+name: Ensure values.schema.json and README match values.yaml
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "charts/retool/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/retool/**"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+      - name: Verify generated files are up to date
+        run: charts/retool/schema/generate.sh --check

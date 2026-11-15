@@ -1,0 +1,37 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.description" . }}
+
+Release notes are on the [releases page](https://github.com/tryretool/retool-helm/releases).
+
+## Installing
+
+```bash
+helm repo add retool https://charts.retool.com
+helm repo update
+helm install my-retool retool/retool -f values.yaml
+```
+
+`image.tag` has no default and must be set to a specific Retool version. Start from the chart's [values.yaml](values.yaml), which documents every option inline.
+
+## Validating your values
+
+The chart ships a [`values.schema.json`](values.schema.json). Helm checks your values against it on every `helm install`, `helm upgrade`, `helm template` and `helm lint`, so a mistyped value fails before anything reaches the cluster. To check a values file without installing:
+
+```bash
+helm template my-retool retool/retool -f values.yaml > /dev/null
+```
+
+Editors that understand JSON Schema can use the same file for completion and inline docs. For example, with the VS Code YAML extension, add this to the top of your values file:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/tryretool/retool-helm/main/charts/retool/values.schema.json
+```
+
+## Values
+
+This table and `values.schema.json` are generated from the comments in [values.yaml](values.yaml). Sections not listed here yet are still documented by the comments in `values.yaml`, and are not validated by the schema.
+
+{{ template "chart.valuesTable" . }}
+
+{{ template "helm-docs.versionFooter" . }}

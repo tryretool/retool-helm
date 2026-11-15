@@ -105,20 +105,6 @@ jobs:
           python3 -m pip install pyyaml
           python3 .github/test_global_pod_scheduling.py
 
-  # We don't use helm-docs yet, can set this up later
-  #
-  # lint-docs:
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - changed
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Run helm-docs
-  #       run: .github/helm-docs.sh
-
   kubeconform-chart:
     if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-latest

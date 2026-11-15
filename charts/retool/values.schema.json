@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Retool Helm chart values",
+  "type": "object",
+  "required": [
+    "image"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": [
+        "tag"
+      ],
+      "properties": {
+        "pullPolicy": {
+          "description": "Image pull policy for Retool containers.",
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "pullSecrets": {
+          "description": "Image pull secrets for Retool pods, e.g. `[{name: my-registry}]`.",
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "repository": {
+          "description": "Retool backend image repository.",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Retool version to deploy, e.g. `3.148.12-stable`. Required: the chart does not pick a version for you.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
