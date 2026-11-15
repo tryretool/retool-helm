@@ -57,7 +57,7 @@ config:
     # passwordSecretKey is the key in the k8s secret, default: postgresql-password
     # passwordSecretKey:
 
-image: # @schema required
+image:  # @schema required
   # @schema type: string
   # -- Retool backend image repository.
   repository: "tryretool/backend"
