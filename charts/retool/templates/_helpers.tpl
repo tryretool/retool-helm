@@ -1889,21 +1889,50 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- $output -}}
 {{- end -}}
 
-{{/* Returns "1" for JSE versions that need NET_ADMIN/NET_RAW: below 4.34.0 and non-semver tags. */}}
+{{/*
+Resolve whether the js-executor needs NET_ADMIN/NET_RAW. Tri-state, like
+rr.jsExecutor.enabled: leave null to decide from the image tag, or set
+true/false to override explicitly.
+
+  null (default): grant below 4.58.0 (and for non-semver tags), drop at 4.58.0+.
+  true          : always grant.
+  false         : always drop.
+
+TODO(PLAT-2024): once the oldest supported stable is 4.86+, ignore the flag
+and always drop NET_ADMIN/NET_RAW.
+Usage: (include "retool.jsExecutor.requiresNetAdmin" .)
+*/}}
 {{- define "retool.jsExecutor.requiresNetAdmin" -}}
-{{- $tag := include "retool.jsExecutor.image.tag" . -}}
-{{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
-{{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0" (regexFind $semver_version_regexp $tag)) -}}
-{{- else -}}
+{{- $flag := .Values.rr.jsExecutor.netAdmin -}}
+{{- if kindIs "bool" $flag -}}
+  {{- if $flag -}}1{{- end -}}
+{{- else if kindIs "invalid" $flag -}}
+  {{- $tag := include "retool.jsExecutor.image.tag" . -}}
+  {{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+  {{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.58.0-0" (regexFind $semver_version_regexp $tag)) -}}
+  {{- else -}}
 1
+  {{- end -}}
+{{- else -}}
+  {{- fail (printf "rr.jsExecutor.netAdmin must be true, false, or null (got %s)" (kindOf $flag)) -}}
 {{- end -}}
 {{- end -}}
 
-{{/* Returns "1" for JSE versions that need DISABLE_IPTABLES_SECURITY_CONFIGURATION: 4.34.0 up to 4.58.0. */}}
+{{/*
+Resolve whether the js-executor needs DISABLE_IPTABLES_SECURITY_CONFIGURATION:
+NET_ADMIN/NET_RAW is being dropped on a version whose start.sh still runs
+iptables and reads the env var (4.34.0 up to 4.58.0). Not set below 4.34.0
+(iptables is the only isolation there, so NET_ADMIN is required) or on 4.58.0+
+(no iptables step; the env var is ignored).
+Usage: (include "retool.jsExecutor.skipIptablesEnv" .)
+*/}}
 {{- define "retool.jsExecutor.skipIptablesEnv" -}}
-{{- $tag := include "retool.jsExecutor.image.tag" . -}}
-{{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
-{{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0 < 4.58.0-0" (regexFind $semver_version_regexp $tag)) -}}
+{{- if eq (include "retool.jsExecutor.requiresNetAdmin" .) "1" -}}
+{{- else -}}
+  {{- $tag := include "retool.jsExecutor.image.tag" . -}}
+  {{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+  {{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.34.0-0 < 4.58.0-0" (regexFind $semver_version_regexp $tag)) -}}
 1
+  {{- end -}}
 {{- end -}}
 {{- end -}}

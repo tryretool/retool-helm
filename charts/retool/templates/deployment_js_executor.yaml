@@ -127,22 +127,20 @@ spec:
           capabilities:
             drop: ["ALL"]
             {{- if include "retool.jsExecutor.requiresNetAdmin" . }}
-            # Older JSE versions run as root at startup to install the iptables rules
-            # that restrict the sandboxes' network access: NET_ADMIN, plus NET_RAW for
-            # iptables-legacy's raw socket. It then drops to retool_user, which needs
-            # SETUID and SETGID.
+            # NET_ADMIN/NET_RAW are granted so the js-executor can install the iptables
+            # rules that restrict the sandboxes' network access (NET_RAW is for
+            # iptables-legacy's raw socket). Startup runs as root, then drops to
+            # retool_user, which needs SETUID and SETGID.
+            #
+            # Set rr.jsExecutor.netAdmin: false to drop NET_ADMIN/NET_RAW (on 4.58.0+
+            # they are dropped automatically; on 4.34-4.57 removing them also sets
+            # DISABLE_IPTABLES_SECURITY_CONFIGURATION=true, which is only safe while
+            # jsExecutorTokenSwappingProxy is on).
             add: ["NET_ADMIN", "NET_RAW", "SETUID", "SETGID"]
             {{- else }}
-            # Startup runs as root, then drops to retool_user, which needs SETUID and
-            # SETGID. Network isolation is handled by the token-swapping proxy, so the
-            # iptables capabilities (NET_ADMIN, NET_RAW) are not needed.
-            #
-            # NOTE: On 4.34 through 4.57 this assumes the jsExecutorTokenSwappingProxy flag
-            # is on, which is the default for on-prem since 4.34. The flag is an org-level
-            # setting that this chart cannot see. If it was toggled off, sandboxed code
-            # shares the host network and the iptables rules are the only network
-            # isolation, so NET_ADMIN and NET_RAW are required. From 4.58 the iptables
-            # rules no longer exist and the proxy is always used.
+            # Network isolation is handled by the token-swapping proxy, so the iptables
+            # capabilities (NET_ADMIN, NET_RAW) are not needed. Startup runs as root,
+            # then drops to retool_user, which needs SETUID and SETGID.
             add: ["SETUID", "SETGID"]
             {{- end }}
           seccompProfile:
@@ -156,10 +154,11 @@ spec:
           - name: NODE_ENV
             value: production
           {{- if include "retool.jsExecutor.skipIptablesEnv" . }}
-          # Without NET_ADMIN the JSE cannot install iptables rules, so skip that step.
-          # Only safe while jsExecutorTokenSwappingProxy is on (default for on-prem
-          # since 4.34); if it was toggled off, the iptables rules are needed.
-          # JSE 4.58+ has no iptables step, so this is not set there.
+          # NET_ADMIN is not granted, so skip the iptables step that would otherwise
+          # fail (start.sh exits 1). Only set on 4.34-4.57, where start.sh still runs
+          # iptables but the token-swapping proxy already provides network isolation.
+          # Only safe while jsExecutorTokenSwappingProxy is on (default on-prem since
+          # 4.34); if it was toggled off, keep rr.jsExecutor.netAdmin: true instead.
           - name: DISABLE_IPTABLES_SECURITY_CONFIGURATION
             value: "true"
           {{- end }}

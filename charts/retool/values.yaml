@@ -1117,6 +1117,23 @@ rr:
       tag: null
       pullPolicy: IfNotPresent
 
+    # Whether the js-executor needs the NET_ADMIN/NET_RAW capabilities (to install
+    # the iptables rules that isolate sandbox network access). Tri-state, like
+    # `enabled`: leave null to decide from the image tag (grant below 4.58.0 and
+    # for non-semver tags, drop at 4.58.0+), or set true/false to override.
+    #
+    # JSE 4.58.0+ performs network isolation with a per-execution token-swapping
+    # proxy and no longer installs iptables rules, so NET_ADMIN/NET_RAW are not
+    # needed. On 4.34-4.57 the proxy is on by default but start.sh still runs
+    # iptables (and exits 1 without NET_ADMIN), so dropping the capabilities there
+    # also sets DISABLE_IPTABLES_SECURITY_CONFIGURATION=true — only safe while the
+    # org-level jsExecutorTokenSwappingProxy flag is on. Before 4.34 iptables is
+    # the only isolation, so NET_ADMIN is required.
+    #
+    # TODO(PLAT-2024): once the oldest supported stable is 4.86+, ignore this flag
+    # and always drop NET_ADMIN/NET_RAW.
+    netAdmin: null
+
     replicaCount: 1
 
     # Horizontal Pod Autoscaler for the JS executor. Disabled by default;

@@ -1,9 +1,12 @@
 rr:
 
-  # JSE >= 4.34 does not install iptables rules, so deployment_js_executor.yaml
-  # must not grant NET_ADMIN/NET_RAW. Overlaid on test-install-values.yaml.
+  # rr.jsExecutor.netAdmin: false forces NET_ADMIN/NET_RAW off. On 4.34.0
+  # deployment_js_executor.yaml must not grant the capabilities AND must set
+  # DISABLE_IPTABLES_SECURITY_CONFIGURATION=true. Overlaid on
+  # test-install-values.yaml.
   jsExecutor:
     enabled: true
+    netAdmin: false
     image:
       repository: tryretool/js-executor-service
       tag: 4.34.0
