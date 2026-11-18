@@ -2,21 +2,19 @@
 
 kubeconform (via kubeconform.sh + ci/test-js-executor-*-option.yaml) only validates the
 schema of whatever Helm emits, so it would still pass if the gating in
-retool.jsExecutor.requiresNetAdmin / retool.jsExecutor.skipIptablesEnv were reversed.
-These assertions pin the behavior on both sides of each cutoff and of the
-rr.jsExecutor.netAdmin tri-state flag:
+retool.jsExecutor.requireNetAdminAndInstallIptables were reversed. These assertions pin
+the behavior on both sides of the 4.58.0 cutoff and of the tri-state flag:
 
-  netAdmin null on < 4.58.0 or non-semver tags: NET_ADMIN, NET_RAW, no DISABLE_IPTABLES_SECURITY_CONFIGURATION
-  netAdmin null on >= 4.58.0:                   no NET_ADMIN/NET_RAW, no DISABLE_IPTABLES_SECURITY_CONFIGURATION
-  netAdmin false:                                no NET_ADMIN/NET_RAW; DISABLE_IPTABLES_SECURITY_CONFIGURATION=true on 4.34.0-4.58.0 only
-  netAdmin true:                                 NET_ADMIN, NET_RAW (overrides version detection)
+  null on < 4.58.0 or non-semver tags: NET_ADMIN, NET_RAW, no DISABLE_IPTABLES_SECURITY_CONFIGURATION
+  null on >= 4.58.0:                   no NET_ADMIN/NET_RAW, DISABLE_IPTABLES_SECURITY_CONFIGURATION=true
+  false:                               no NET_ADMIN/NET_RAW, DISABLE_IPTABLES_SECURITY_CONFIGURATION=true
+  true:                                NET_ADMIN, NET_RAW (overrides version detection)
 """
 
 import subprocess
 import sys
 import unittest
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
@@ -47,74 +45,63 @@ def js_executor_container(output):
     raise AssertionError("no js-executor Deployment rendered")
 
 
-def render_tag(tag, net_admin=None):
+def render_tag(tag, require=None):
     settings = ["rr.jsExecutor.enabled=true", f"rr.jsExecutor.image.tag={tag}"]
-    if net_admin is not None:
-        settings.append(f"rr.jsExecutor.netAdmin={str(net_admin).lower()}")
+    if require is not None:
+        settings.append(f"rr.jsExecutor.requireNetAdminAndInstallIptables={str(require).lower()}")
     return js_executor_container(render(*settings))
 
 
 class JsExecutorCapabilityTests(unittest.TestCase):
-    def assert_legacy(self, container):
+    def assert_requires(self, container):
         self.assertIn(LEGACY_CAPS, container)
         self.assertNotIn(IPTABLES_ENV, container)
 
-    def assert_skips_iptables(self, container):
+    def assert_disables(self, container):
         self.assertIn(REDUCED_CAPS, container)
         self.assertNotIn(LEGACY_CAPS, container)
         self.assertIn(IPTABLES_ENV, container)
 
-    def assert_no_iptables_step(self, container):
-        self.assertIn(REDUCED_CAPS, container)
-        self.assertNotIn(LEGACY_CAPS, container)
-        self.assertNotIn(IPTABLES_ENV, container)
-
     def test_ci_option_files(self):
         legacy = js_executor_container(render(option_file="test-js-executor-enabled-option.yaml"))
-        self.assert_legacy(legacy)
-        # netAdmin: false on 4.34.0 -> no capabilities, iptables env set
-        self.assert_skips_iptables(js_executor_container(render(option_file="test-js-executor-no-net-admin-option.yaml")))
-        # default (null) on 4.58.0 -> no capabilities, no iptables env
-        self.assert_no_iptables_step(js_executor_container(render(option_file="test-js-executor-no-iptables-option.yaml")))
+        self.assert_requires(legacy)
+        # requireNetAdminAndInstallIptables: false on 4.34.0 -> no capabilities, iptables env set
+        self.assert_disables(js_executor_container(render(option_file="test-js-executor-no-net-admin-option.yaml")))
+        # default (null) on 4.58.0 -> no capabilities, iptables env set
+        self.assert_disables(js_executor_container(render(option_file="test-js-executor-no-iptables-option.yaml")))
 
     def test_below_4_58_keeps_capabilities_by_default(self):
         for tag in ("3.123.4", "4.33.9", "4.33.99", "4.34.0", "4.40.1", "4.57.9"):
             with self.subTest(tag=tag):
-                self.assert_legacy(render_tag(tag))
+                self.assert_requires(render_tag(tag))
 
     def test_non_semver_tags_are_treated_as_legacy(self):
         for tag in ("latest", "edge", "stable"):
             with self.subTest(tag=tag):
-                self.assert_legacy(render_tag(tag))
+                self.assert_requires(render_tag(tag))
 
     def test_4_58_and_later_drops_capabilities_by_default(self):
         for tag in ("4.58.0", "4.62.0", "5.0.0-stable"):
             with self.subTest(tag=tag):
-                self.assert_no_iptables_step(render_tag(tag))
+                self.assert_disables(render_tag(tag))
 
-    def test_netadmin_false_drops_capabilities_and_skips_iptables_on_4_34_to_4_57(self):
-        self.assert_skips_iptables(render_tag("4.34.0", net_admin=False))
-        self.assert_skips_iptables(render_tag("4.40.1", net_admin=False))
-        self.assert_skips_iptables(render_tag("4.57.9", net_admin=False))
+    def test_false_drops_capabilities_and_disables_iptables_on_any_version(self):
+        for tag in ("3.123.4", "4.34.0", "4.40.1", "4.57.9", "4.58.0"):
+            with self.subTest(tag=tag):
+                self.assert_disables(render_tag(tag, require=False))
 
-    def test_netadmin_false_drops_capabilities_without_iptables_env_elsewhere(self):
-        # Below 4.34 the iptables env var is not meaningful (iptables is the only
-        # isolation), and on 4.58+ start.sh ignores the env var.
-        self.assert_no_iptables_step(render_tag("3.123.4", net_admin=False))
-        self.assert_no_iptables_step(render_tag("4.58.0", net_admin=False))
-
-    def test_netadmin_true_forces_capabilities_on_any_version(self):
+    def test_true_forces_capabilities_on_any_version(self):
         for tag in ("3.123.4", "4.34.0", "4.58.0"):
             with self.subTest(tag=tag):
-                self.assert_legacy(render_tag(tag, net_admin=True))
+                self.assert_requires(render_tag(tag, require=True))
 
     def test_inherits_top_level_image_tag(self):
         cases = {
-            "3.123.4": self.assert_legacy,
-            "4.33.9": self.assert_legacy,
-            "4.34.0": self.assert_legacy,
-            "4.40.1": self.assert_legacy,
-            "4.58.0": self.assert_no_iptables_step,
+            "3.123.4": self.assert_requires,
+            "4.33.9": self.assert_requires,
+            "4.34.0": self.assert_requires,
+            "4.40.1": self.assert_requires,
+            "4.58.0": self.assert_disables,
         }
         for tag, check in cases.items():
             with self.subTest(tag=tag):
