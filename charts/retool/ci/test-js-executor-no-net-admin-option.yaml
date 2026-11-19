@@ -1,0 +1,13 @@
+rr:
+
+  # rr.jsExecutor.requireNetAdminAndInstallIptables: false forces NET_ADMIN/NET_RAW
+  # off and disables the iptables install. On 4.34.0 deployment_js_executor.yaml
+  # must not grant the capabilities AND must set
+  # DISABLE_IPTABLES_SECURITY_CONFIGURATION=true. Overlaid on
+  # test-install-values.yaml.
+  jsExecutor:
+    enabled: true
+    requireNetAdminAndInstallIptables: false
+    image:
+      repository: tryretool/js-executor-service
+      tag: 4.34.0

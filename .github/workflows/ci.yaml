@@ -108,6 +108,8 @@ jobs:
         run: |
           python3 -m pip install pyyaml
           python3 .github/test_global_pod_scheduling.py
+      - name: Verify js-executor capabilities and iptables env by version
+        run: python3 .github/test_js_executor_capabilities.py
 
   kubeconform-chart:
     if: needs.changed.outputs.run == 'true'

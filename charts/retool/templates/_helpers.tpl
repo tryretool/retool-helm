@@ -1888,3 +1888,30 @@ Checks whether or not ExternalSecret definitions are enabled and can potentially
 {{- end -}}
 {{- $output -}}
 {{- end -}}
+
+{{/*
+Resolve whether the js-executor needs NET_ADMIN/NET_RAW and should install the
+iptables rules that isolate sandbox network access.
+
+  null (default): grant and install iptables below 4.58.0 (and for non-semver
+                  tags); drop and disable iptables at 4.58.0+.
+  true          : always grant NET_ADMIN/NET_RAW and install iptables.
+  false         : always drop NET_ADMIN/NET_RAW and disable iptables.
+
+Usage: (include "retool.jsExecutor.requireNetAdminAndInstallIptables" .)
+*/}}
+{{- define "retool.jsExecutor.requireNetAdminAndInstallIptables" -}}
+{{- $flag := .Values.rr.jsExecutor.requireNetAdminAndInstallIptables -}}
+{{- if kindIs "bool" $flag -}}
+  {{- if $flag -}}1{{- end -}}
+{{- else if kindIs "invalid" $flag -}}
+  {{- $tag := include "retool.jsExecutor.image.tag" . -}}
+  {{- $semver_version_regexp := "^[0-9]+\\.[0-9]+(\\.[0-9]+)?" -}}
+  {{- if and (regexMatch $semver_version_regexp $tag) (semverCompare ">= 4.58.0-0" (regexFind $semver_version_regexp $tag)) -}}
+  {{- else -}}
+1
+  {{- end -}}
+{{- else -}}
+  {{- fail (printf "rr.jsExecutor.requireNetAdminAndInstallIptables must be true, false, or null (got %s)" (kindOf $flag)) -}}
+{{- end -}}
+{{- end -}}
