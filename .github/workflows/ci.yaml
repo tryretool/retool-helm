@@ -110,6 +110,8 @@ jobs:
           python3 .github/test_global_pod_scheduling.py
       - name: Verify js-executor capabilities and iptables env by version
         run: python3 .github/test_js_executor_capabilities.py
+      - name: Verify code-executor and js-executor service account options
+        run: python3 .github/test_executor_service_accounts.py
 
   kubeconform-chart:
     if: needs.changed.outputs.run == 'true'
