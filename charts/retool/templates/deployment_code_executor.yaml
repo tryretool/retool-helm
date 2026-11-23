@@ -172,6 +172,11 @@ spec:
           {{- with .Values.environmentVariables }}
 {{ toYaml . | indent 10 }}
           {{- end }}
+          {{- /* Code-executor-only settings, after the shared ones so they win. */}}
+          {{- include "retool.env" .Values.codeExecutor.env | nindent 10 }}
+          {{- with .Values.codeExecutor.environmentVariables }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
         ports:
         - containerPort: 3004
           name: http-server

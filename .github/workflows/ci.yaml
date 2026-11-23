@@ -100,6 +100,8 @@ jobs:
         run: python3 .github/test_isolated_pool_scheduling.py
       - name: Verify code-executor enablement
         run: python3 .github/test_code_executor.py
+      - name: Verify code-executor-only environment
+        run: python3 .github/test_code_executor_env.py
       - name: Verify values.schema.json accepts and rejects the right values
         run: python3 .github/test_values_schema.py
       - name: Verify telemetry ClusterRole names are unique per namespace

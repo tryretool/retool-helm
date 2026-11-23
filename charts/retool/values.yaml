@@ -1032,6 +1032,15 @@ codeExecutor:
   # config: {
   #   nodeOptions: --max_old_space_size=1024
   # }
+
+  # Code-executor-specific environment, in the same formats as the top-level
+  # env (map) and environmentVariables (list, including valueFrom entries). The
+  # code executor still receives the top-level env, environmentSecrets and
+  # environmentVariables; these are added after them, so a name set in both
+  # takes this value. Use for settings only the code executor reads, without
+  # setting them on every Retool pod.
+  env: {}
+  environmentVariables: []
   volumes: {}
   volumeMounts: {}
 
