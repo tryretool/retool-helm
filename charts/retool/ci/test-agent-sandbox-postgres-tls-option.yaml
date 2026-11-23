@@ -1,0 +1,48 @@
+rr:
+
+  # Agent Sandbox — verified TLS to an external Postgres. Like
+  # test-agent-sandbox-inherit-ssl-option.yaml, but sets postgres.sslMode and
+  # postgres.sslRootCert, and mounts the CA bundle into the controller and proxy
+  # with extraVolumes / extraVolumeMounts, so the inherited
+  # AGENT_SANDBOX_POSTGRES_URL ends ?sslmode=verify-full&sslrootcert=...
+  #
+  # Behavioral assertions for this path live in
+  # .github/test_agent_sandbox_postgres_tls.py.
+  agentSandbox:
+    enabled: true
+
+    image:
+      repository: tryretool/agent-sandbox-service
+      tag: 3.123.4
+      pullPolicy: IfNotPresent
+
+    jwtPublicKey: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AI\nY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END PUBLIC KEY-----'
+    jwtPrivateKey: '-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMFXLiN/YsJv89D2YkEZ6/Dj5fujghENmYTOilwdChU3oAoGCCqGSM49\nAwEHoUQDQgAEljtqa2nhBwe/PqNhWgPHhj0jv8AIY+QUCicYtfv9wLGcEGPQuXoBQtuoIuOwXOdbEWgrQyLdIEb0YjegAW3miA==\n-----END EC PRIVATE KEY-----'
+    # encryption key is required (proxy derives the asset-token HMAC key from it)
+    encryptionKey: a12b01429fe0fe69a80da94e9e837ab2f1e9bda378ed8a25905a238f6fea6b7a
+    postgres:
+      schema: agent_executor
+      sslMode: verify-full
+      sslRootCert: /etc/ssl/postgres-ca/ca.pem
+
+    extraVolumes:
+      - name: postgres-ca
+        configMap:
+          name: postgres-ca
+    extraVolumeMounts:
+      - name: postgres-ca
+        mountPath: /etc/ssl/postgres-ca
+        readOnly: true
+
+# Disable the in-cluster subchart and inherit an external SSL-required DB.
+postgresql:
+  enabled: false
+config:
+  postgresql:
+    host: agentdb-prod.postgres.database.example.com
+    port: 5432
+    db: hammerhead_production
+    user: retool_internal_user
+    ssl_enabled: true
+    passwordSecretName: main-postgres-password
+    passwordSecretKey: postgresql-password

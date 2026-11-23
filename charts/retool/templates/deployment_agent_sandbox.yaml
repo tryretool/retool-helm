@@ -430,12 +430,18 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- with $as.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml $as.controller.resources | nindent 12 }}
       volumes:
         - name: tmp
           emptyDir:
             sizeLimit: "256Mi"
+        {{- with $as.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}
@@ -661,12 +667,18 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- with $as.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml $as.proxy.resources | nindent 12 }}
       volumes:
         - name: tmp
           emptyDir:
             sizeLimit: "256Mi"
+        {{- with $as.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.image.pullSecrets | indent 8 }}

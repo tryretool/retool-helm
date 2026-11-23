@@ -1102,6 +1102,26 @@ or the catch-all externalSecret.name. No-op when agentSandbox is disabled.
 {{- fail "agentSandbox.postgres.database contains a character that breaks DSN assembly (whitespace, : / ? #); supply a full DSN via agentSandbox.postgres.url or postgres.urlSecretName." -}}
 {{- end -}}
 {{- end -}}
+{{- /*
+  sslMode/sslRootCert are appended to a DSN the chart assembles (the host and
+  inherit paths). With postgres.url or postgres.urlSecretName the DSN is
+  supplied verbatim, so put sslmode/sslrootcert in it instead.
+*/}}
+{{- if or $as.postgres.sslMode $as.postgres.sslRootCert -}}
+{{- if or $as.postgres.url $as.postgres.urlSecretName -}}
+{{- fail "agentSandbox.postgres.sslMode / sslRootCert only apply when the chart assembles the DSN (postgres.host, or inheriting config.postgresql). With postgres.url or postgres.urlSecretName, add sslmode / sslrootcert to that DSN instead." -}}
+{{- end -}}
+{{- end -}}
+{{- with $as.postgres.sslMode -}}
+{{- if not (has (toString .) (list "disable" "prefer" "require" "verify-ca" "verify-full" "no-verify")) -}}
+{{- fail "agentSandbox.postgres.sslMode must be one of disable, prefer, require, verify-ca, verify-full, no-verify." -}}
+{{- end -}}
+{{- end -}}
+{{- with $as.postgres.sslRootCert -}}
+{{- if not (regexMatch "^/[A-Za-z0-9._/-]+$" (toString .)) -}}
+{{- fail "agentSandbox.postgres.sslRootCert must be an absolute file path containing only letters, digits, '.', '_', '-' and '/' (it is embedded in the DSN). Mount the CA bundle with agentSandbox.extraVolumes / extraVolumeMounts." -}}
+{{- end -}}
+{{- end -}}
 {{- if not (or $as.jwtPublicKey $ext) -}}
 {{- fail "agentSandbox.enabled requires a JWT public key. Set agentSandbox.jwtPublicKey or agentSandbox.externalSecret.name." -}}
 {{- end -}}
@@ -1135,7 +1155,9 @@ PGPASSWORD entry when assembling from fields). validateSecrets guarantees one of
 these applies, in order: postgres.url -> postgres.host -> postgres.urlSecretName
 -> inherit the backend's config.postgresql connection (the default when nothing
 agent-specific is set; the inherited DSN also carries sslmode=no-verify when the
-backend uses SSL). externalSecret.name covers only the JWT/encryption keys
+backend uses SSL, unless postgres.sslMode overrides it). On the host and inherit
+paths postgres.sslMode / postgres.sslRootCert are appended as query parameters
+(see retool.agentSandbox.postgresSslQuery). externalSecret.name covers only the JWT/encryption keys
 -- it never sources Postgres. To read a DSN from that same secret, point
 postgres.urlSecretName at it (its postgres-url key is the urlSecretKey default).
 
@@ -1168,7 +1190,7 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
   value: {{ $pg.password | quote }}
 {{- end }}
 - name: AGENT_SANDBOX_POSTGRES_URL
-  value: {{ printf "postgres://%s@%s:%v/%s" $pg.user $pg.host $port $pg.database | quote }}
+  value: {{ printf "postgres://%s@%s:%v/%s%s" $pg.user $pg.host $port $pg.database (include "retool.agentSandbox.postgresSslQuery" .) | quote }}
 {{- else if $pg.urlSecretName }}
 - name: AGENT_SANDBOX_POSTGRES_URL
   valueFrom:
@@ -1213,11 +1235,32 @@ Usage: {{- include "retool.agentSandbox.postgresUrlEnv" . | nindent 12 }}
       name: {{ template "retool.fullname" . }}
       key: postgresql-password
       {{- end }}
-{{- /* inherit the backend's SSL too (mirror POSTGRES_SSL_ENABLED) */}}
-{{- $sslSuffix := ternary "?sslmode=no-verify" "" (eq (include "retool.postgresql.ssl_enabled" . | trimAll "\"") "true") }}
+{{- $sslSuffix := include "retool.agentSandbox.postgresSslQuery" . }}
 - name: AGENT_SANDBOX_POSTGRES_URL
   value: {{ printf "postgres://%s@%s:%s/%s%s" (include "retool.postgresql.user" . | trimAll "\"") (include "retool.postgresql.host" . | trimAll "\"") (include "retool.postgresql.port" . | trimAll "\"" | default "5432") (include "retool.postgresql.database" . | trimAll "\"") $sslSuffix | quote }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Query string for a DSN the chart assembles (the postgres.host and inherit paths),
+e.g. "?sslmode=verify-full&sslrootcert=/etc/ssl/rds/ca.pem", or "" when there is
+nothing to add. sslmode is postgres.sslMode when set; otherwise, on the inherit
+path only, it mirrors the backend (no-verify when config.postgresql.ssl_enabled,
+matching the backend's default POSTGRES_SSL_REJECT_UNAUTHORIZED=false).
+sslrootcert is a file path inside the controller/proxy containers; node-postgres
+reads it as the CA bundle. validateSecrets restricts both to URL-safe values.
+*/}}
+{{- define "retool.agentSandbox.postgresSslQuery" -}}
+{{- $pg := .Values.rr.agentSandbox.postgres -}}
+{{- $mode := $pg.sslMode | default "" | toString -}}
+{{- $inherit := not (or $pg.url $pg.host $pg.urlSecretName) -}}
+{{- if and (not $mode) $inherit (eq (include "retool.postgresql.ssl_enabled" . | trimAll "\"") "true") -}}
+{{- $mode = "no-verify" -}}
+{{- end -}}
+{{- $params := list -}}
+{{- with $mode }}{{ $params = append $params (printf "sslmode=%s" .) }}{{ end -}}
+{{- with $pg.sslRootCert }}{{ $params = append $params (printf "sslrootcert=%s" .) }}{{ end -}}
+{{- if $params }}?{{ join "&" $params }}{{ end -}}
 {{- end -}}
 
 {{/*
