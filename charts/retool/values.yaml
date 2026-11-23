@@ -1018,6 +1018,20 @@ codeExecutor:
   # Labels for code executor pods
   labels: {}
 
+  # Service account for code executor pods. By default they use the top-level
+  # serviceAccount. User code runs in these pods, so if the shared account
+  # carries cloud credentials (e.g. an EKS IRSA or GKE Workload Identity
+  # annotation), set create: true to give them their own account without it.
+  serviceAccount:
+    # Create a dedicated account, named <fullname>-code-executor unless name is set
+    create: false
+    # With create: false, an existing account to use; empty uses the shared one
+    name: ''
+    # Annotations for the created account
+    annotations: {}
+    # automountServiceAccountToken on the created account
+    automountToken: false
+
   startupProbe:
     enabled: true
     path: /api/checkHealth
@@ -1175,6 +1189,20 @@ rr:
 
     # Labels for JS executor pods
     labels: {}
+
+    # Service account for JS executor pods. By default they use the top-level
+    # serviceAccount. User code runs in these pods, so if the shared account
+    # carries cloud credentials (e.g. an EKS IRSA or GKE Workload Identity
+    # annotation), set create: true to give them their own account without it.
+    serviceAccount:
+      # Create a dedicated account, named <fullname>-js-executor unless name is set
+      create: false
+      # With create: false, an existing account to use; empty uses the shared one
+      name: ''
+      # Annotations for the created account
+      annotations: {}
+      # automountServiceAccountToken on the created account
+      automountToken: false
 
     startupProbe:
       enabled: true

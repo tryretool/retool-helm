@@ -351,6 +351,51 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Service account name for a workload that can opt out of the shared account.
+The code executor and JS executor run user code, so an install that grants the
+shared account cloud permissions (IRSA, Workload Identity) can give them a
+separate account without those permissions.
+  create: true -> .sa.name, or .default (the chart creates it)
+  .sa.name set -> that existing account
+  otherwise    -> the shared retool.serviceAccountName
+Usage: include "retool.workloadServiceAccountName" (dict "root" $ "sa" .Values.codeExecutor.serviceAccount "default" (include "retool.codeExecutor.name" .))
+*/}}
+{{- define "retool.workloadServiceAccountName" -}}
+{{- $sa := .sa | default dict -}}
+{{- if $sa.create -}}
+{{- default .default $sa.name -}}
+{{- else if $sa.name -}}
+{{- $sa.name -}}
+{{- else -}}
+{{- include "retool.serviceAccountName" .root -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+ServiceAccount manifest for a workload with serviceAccount.create: true; renders
+nothing otherwise. Takes the same dict as retool.workloadServiceAccountName plus
+"labels" (the workload's label block).
+*/}}
+{{- define "retool.workloadServiceAccount" -}}
+{{- $sa := .sa | default dict -}}
+{{- if $sa.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+automountServiceAccountToken: {{ $sa.automountToken | default false }}
+metadata:
+  name: {{ include "retool.workloadServiceAccountName" . }}
+  labels:
+    {{- include "retool.labels" .root | nindent 4 }}
+    {{- .labels | nindent 4 }}
+  {{- with $sa.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Render map-style env values as Kubernetes EnvVar entries.
 Scalar values are always quoted so YAML booleans and numbers become strings.
 Map values allow structured EnvVar fields such as valueFrom.
