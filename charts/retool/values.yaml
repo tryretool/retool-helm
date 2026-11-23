@@ -477,6 +477,8 @@ tolerations: []
 #   agents.evalWorker.topologySpreadConstraints
 #   codeExecutor.topologySpreadConstraints
 # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+# Not yet annotated: excluded from values.schema.json and README.md.
+# @schema hidden
 topologySpreadConstraints: []
 #  - maxSkew: 1
 #    topologyKey: topology.kubernetes.io/zone
