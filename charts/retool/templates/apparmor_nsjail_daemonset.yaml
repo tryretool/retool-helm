@@ -40,7 +40,7 @@ spec:
       hostPID: true
       initContainers:
         - name: install
-          image: {{ .Values.codeExecutor.appArmorInstallerImage | default "busybox:1.37" }}
+          image: {{ .Values.codeExecutor.appArmorInstallerImage | default (include "retool.initImage" .) }}
           securityContext:
             privileged: true
           command:
@@ -71,7 +71,7 @@ spec:
               mountPath: /host-run
       containers:
         - name: pause
-          image: {{ .Values.codeExecutor.appArmorInstallerImage | default "busybox:1.37" }}
+          image: {{ .Values.codeExecutor.appArmorInstallerImage | default (include "retool.initImage" .) }}
           command: ["sleep", "infinity"]
           securityContext:
             allowPrivilegeEscalation: false
@@ -85,6 +85,10 @@ spec:
             limits:
               cpu: 10m
               memory: 16Mi
+{{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+{{- end }}
       volumes:
         - name: apparmor-profiles
           configMap:
