@@ -471,6 +471,7 @@ tolerations: []
 # replaces this list. Set an override to [] to disable constraints for that
 # component; leave it unset to inherit:
 #   workflows.topologySpreadConstraints (workflow backend and workflow workers)
+#   workflows.backend.topologySpreadConstraints
 #   workflows.worker.topologySpreadConstraints
 #   agents.topologySpreadConstraints (agent and agent eval workers)
 #   agents.worker.topologySpreadConstraints
