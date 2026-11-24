@@ -57,10 +57,11 @@ jobs:
             exit 0
           fi
 
-          # Render tests exercise the chart too.
-          changed_tests=$(git diff --name-only "origin/main...HEAD" -- '.github/test_*.py')
+          # Render tests and the AppArmor/executor integration scripts exercise
+          # the chart too.
+          changed_tests=$(git diff --name-only "origin/main...HEAD" -- '.github/test_*.py' '.github/test-*.sh')
           if [[ -n "$changed_tests" ]]; then
-            echo "Chart render tests changed: $changed_tests"
+            echo "Chart tests changed: $changed_tests"
             echo "run=true" >> "$GITHUB_OUTPUT"
             echo "changed=" >> "$GITHUB_OUTPUT"
             exit 0

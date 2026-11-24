@@ -89,6 +89,18 @@ sysctl -w kernel.apparmor_restrict_unprivileged_userns=1 || {
 }
 
 # ---------------------------------------------------------------------------
+# ip6table_filter — the code executor's IPv6 iptables rules need it
+# ---------------------------------------------------------------------------
+# The code executor (4.98.0-edge and later) applies an ip6tables rule at
+# startup and exits when the filter table is missing. The runner kernel
+# doesn't have the module loaded, and the container can't load it.
+echo "=== Loading ip6table_filter ==="
+
+modprobe ip6table_filter || {
+  echo "  WARNING: could not load ip6table_filter; the code executor's IPv6 rules will fail."
+}
+
+# ---------------------------------------------------------------------------
 # Deploy AppArmor DaemonSets + ConfigMaps via helm template + kubectl apply
 # ---------------------------------------------------------------------------
 echo "=== Deploying AppArmor profiles ==="
