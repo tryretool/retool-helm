@@ -260,6 +260,11 @@ spec:
       affinity:
 {{ toYaml .Values.codeExecutor.affinity | indent 8 }}
 {{- end }}
+{{- $topologySpreadConstraints := include "retool.topologySpreadConstraints" (dict "sources" (list .Values.codeExecutor .Values) "selectorLabels" (include "retool.codeExecutor.selectorLabels" . | fromYaml)) }}
+{{- if $topologySpreadConstraints }}
+      topologySpreadConstraints:
+{{ $topologySpreadConstraints | indent 8 }}
+{{- end }}
 {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
