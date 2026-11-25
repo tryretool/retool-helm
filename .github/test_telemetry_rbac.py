@@ -77,5 +77,31 @@ class TelemetryRbacTests(unittest.TestCase):
         self.assertNotIn("\nkind: ClusterRole\n", output)
 
 
+
+TELEMETRY = "# Source: retool/templates/deployment_telemetry.yaml"
+
+
+def telemetry_image(*settings):
+    output = render("retool", "default", *settings)
+    for document in output.split("\n---\n"):
+        if document.lstrip().startswith(TELEMETRY) and "\nkind: Deployment\n" in document:
+            return document.split("image: '", 1)[1].split("'", 1)[0]
+    raise AssertionError(f"no Deployment rendered from {TELEMETRY}")
+
+
+class TelemetryImageTagTest(unittest.TestCase):
+    def test_inherits_plain_image_tag(self):
+        self.assertTrue(telemetry_image("image.tag=3.284.0").endswith(":3.284.0"))
+
+    def test_drops_backend_digest_from_inherited_tag(self):
+        digest = "sha256:" + "a" * 64
+        image = telemetry_image(f"image.tag=3.284.0@{digest}")
+        self.assertTrue(image.endswith(":3.284.0"), image)
+        self.assertNotIn("sha256", image)
+
+    def test_explicit_telemetry_tag_wins(self):
+        image = telemetry_image("image.tag=3.284.0@sha256:" + "a" * 64, "telemetry.image.tag=1.2.3@sha256:" + "b" * 64)
+        self.assertTrue(image.endswith(":1.2.3@sha256:" + "b" * 64), image)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

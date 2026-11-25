@@ -26,7 +26,10 @@ spec:
       serviceAccountName: {{ include "retool.telemetry.serviceAccountName" . }}
       containers:
       - name: telemetry
-        image: '{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag | default .Values.image.tag }}'
+        {{- /* image.tag may carry the backend image's digest (tag@sha256:...),
+               which doesn't exist in the telemetry repository, so only its
+               tag part is inherited. */}}
+        image: '{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag | default (regexReplaceAll "@sha256:[a-f0-9]+$" (toString .Values.image.tag) "") }}'
         imagePullPolicy: {{ .Values.telemetry.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
