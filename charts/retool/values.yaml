@@ -73,8 +73,10 @@ image:  # @schema required
   pullSecrets:
 
 # Small utility image for the initContainers that install the nsjail seccomp
-# profile onto the host, on the code executor and JS executor. Only used when
-# seccomp is in play.
+# profile onto the host and wait for the AppArmor profile to load, on the code
+# executor and JS executor, and for the AppArmor profile installer DaemonSet
+# unless codeExecutor.appArmorInstallerImage is set. Only used when seccomp or
+# AppArmor is in play.
 #
 # Override repository if every image has to come from one registry -- a private
 # mirror, an air-gapped install, or GCP Marketplace, which rejects any artifact
