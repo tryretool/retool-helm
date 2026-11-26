@@ -1,0 +1,15 @@
+# Exercises codeExecutor.env and codeExecutor.environmentVariables: settings only
+# the code executor reads, rendered after the shared top-level env. Overlaid on
+# top of test-install-values.yaml (which enables workflows, and so the code
+# executor).
+#
+# Behavioral assertions for this path live in .github/test_code_executor_env.py.
+codeExecutor:
+  env:
+    CODE_EXECUTOR_ONLY_SETTING: "true"
+  environmentVariables:
+    - name: CODE_EXECUTOR_EXAMPLE_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: code-executor-secrets
+          key: example
